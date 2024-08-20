@@ -1,21 +1,44 @@
-# 工具链配置（适配Termux的aarch64-linux-android-clang）
-CC      = aarch64-linux-android-clang
-AS      = aarch64-linux-android-clang
-LD      = aarch64-linux-android-ld
-OBJCOPY = aarch64-linux-android-objcopy
-OBJDUMP = aarch64-linux-android-objdump
-QEMU    = qemu-system-aarch64
+# 检测是否在Termux环境中
+ifeq ($(shell uname -o), Android)
+    # --- Termux 环境配置 ---
+    CROSS_COMPILE := aarch64-linux-android-
+    CC      := $(CROSS_COMPILE)clang
+    AS      := $(CROSS_COMPILE)clang
+    LD      := $(CROSS_COMPILE)clang
+    OBJCOPY := llvm-objcopy
+    OBJDUMP := llvm-objdump
+    QEMU    := qemu-system-aarch64
 
-# 裸机编译选项（必须加，脱离Android环境）
-CFLAGS  = -Wall -Wextra \
-          -ffreestanding \
-          -nostdlib \
-          -nostartfiles \
-          -fno-stack-protector \
-          -Iinclude
-LDFLAGS = -T boot/link.ld
+    # 裸机编译选项（适配Clang）
+    CFLAGS  := -Wall -Wextra \
+               -ffreestanding \
+               -nostdlib \
+               -fno-stack-protector \
+               -Iinclude
+#    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib
+    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib -Wl,-n -Wl,--no-dynamic-linker
 
-# 源码列表（新增文件只需要改这里）
+else
+    # --- 主机 (x86_64) 环境配置 ---
+    CROSS_COMPILE := aarch64-linux-gnu-
+    CC      := $(CROSS_COMPILE)gcc
+    AS      := $(CROSS_COMPILE)as
+    LD      := $(CROSS_COMPILE)ld
+    OBJCOPY := $(CROSS_COMPILE)objcopy
+    OBJDUMP := $(CROSS_COMPILE)objdump
+    QEMU    := qemu-system-aarch64
+
+    # 裸机编译选项（适配GCC）
+    CFLAGS  := -Wall -Wextra \
+               -ffreestanding \
+               -nostdlib \
+               -nostartfiles \
+               -fno-stack-protector \
+               -Iinclude
+    LDFLAGS := -T boot/link.ld
+endif
+
+# 源码列表（新增/删除文件只需改这里）
 SRC_ASM = boot/boot.S
 SRC_C   = kernel/main.c \
           kernel/uart.c \
@@ -46,16 +69,19 @@ build/%.o: %.c
 $(TARGET).elf: $(OBJ)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-# 转成QEMU可加载的二进制镜像
+# 转成二进制镜像
 $(TARGET).img: $(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
 
 # 一键运行：编译 + 启动QEMU
+#run: all
+#	$(QEMU) -machine virt -cpu cortex-a53 \
+	-kernel $(TARGET).elf -nographic  # 把 .img 改成 .elf
+# 一键运行
 run: all
-	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
-		-kernel $(TARGET).img -nographic -serial mon:stdio
-
-# 一键调试：编译 + 启动QEMU并等待GDB连接
+	$(QEMU) -machine virt -cpu cortex-a53  \
+ 		-kernel $(TARGET).img -nographic
+# 一键调试：编译 + 启动QEMU并等待GDB
 debug: all
 	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).img -nographic -s -S
