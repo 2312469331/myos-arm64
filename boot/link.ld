@@ -6,11 +6,22 @@ SECTIONS {
     .text : {
         *(.text)           /* 再放其他代码 */
     }
-
-    .rodata : { *(.rodata) }
-    .data : { *(.data) }
-    .bss : { *(.bss COMMON) }
-
+    /* 只读数据段（字符串等），紧跟在 .text 之后，8字节对齐 */
+     .rodata ALIGN(8) : {
+         *(.rodata)
+         *(.rodata.*)
+     }
+     /* 已初始化数据段 */
+     .data ALIGN(8) : {
+         *(.data)
+         *(.data.*)
+     }
+     /* 未初始化数据段（运行时由代码清零） */
+     .bss ALIGN(8) : {
+         *(COMMON)
+         *(.bss)
+         *(.bss.*)
+     }
     . = ALIGN(8);
     . += 0x1000; /* 4KB 栈 */
     stack_top = .;
