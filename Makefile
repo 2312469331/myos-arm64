@@ -10,13 +10,27 @@ ifeq ($(shell uname -o), Android)
     QEMU    := qemu-system-aarch64
 
     # 裸机编译选项（适配Clang）
-    CFLAGS  := -Wall -Wextra \
+#    CFLAGS  := -Wall -Wextra \
                -ffreestanding \
                -nostdlib \
                -fno-stack-protector \
                -Iinclude
 #    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib
-    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib
+# 裸机编译选项（适配Clang）
+CFLAGS := -Wall -Wextra \
+          -ffreestanding \
+          -nostdlib \
+          -static \
+          -fno-stack-protector \
+          -mgeneral-regs-only \
+          -Iinclude  # 如果头文件在include目录，否则用 -I.
+
+LDFLAGS := -fuse-ld=lld \
+           -T boot/link.ld \
+           -nostdlib \
+           -static \
+           -Wl,--build-id=none \
+           -Wl,--no-dynamic-linker
 
 else
     # --- 主机 (x86_64) 环境配置 ---
