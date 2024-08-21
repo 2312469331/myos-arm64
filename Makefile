@@ -16,7 +16,7 @@ ifeq ($(shell uname -o), Android)
                -fno-stack-protector \
                -Iinclude
 #    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib
-    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib -Wl,-n -Wl,--no-dynamic-linker
+    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib
 
 else
     # --- 主机 (x86_64) 环境配置 ---
