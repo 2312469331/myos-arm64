@@ -9,31 +9,23 @@ ifeq ($(shell uname -o), Android)
     OBJDUMP := llvm-objdump
     QEMU    := qemu-system-aarch64
 
-    # 裸机编译选项（适配Clang）
-#    CFLAGS  := -Wall -Wextra \
-               -ffreestanding \
+    CFLAGS := -Wall -Wextra \
+              -ffreestanding \
+              -nostdlib \
+              -static \
+              -fno-stack-protector \
+              -mgeneral-regs-only \
+              -Iinclude
+    ASFLAGS := -Iinclude
+    LDFLAGS := -fuse-ld=lld \
+               -T boot/link.ld \
                -nostdlib \
-               -fno-stack-protector \
-               -Iinclude
-#    LDFLAGS := -fuse-ld=lld -T boot/link.ld -nostdlib
-# 裸机编译选项（适配Clang）
-CFLAGS := -Wall -Wextra \
-          -ffreestanding \
-          -nostdlib \
-          -static \
-          -fno-stack-protector \
-          -mgeneral-regs-only \
-          -Iinclude  # 如果头文件在include目录，否则用 -I.
-
-LDFLAGS := -fuse-ld=lld \
-           -T boot/link.ld \
-           -nostdlib \
-           -static \
-           -Wl,--build-id=none \
-           -Wl,--no-dynamic-linker
+               -static \
+               -Wl,--build-id=none \
+               -Wl,--no-dynamic-linker
 
 else
-    # --- 主机 (x86_64) 环境配置 ---
+    # --- x86_64 Ubuntu 主机环境配置 ---
     CROSS_COMPILE := aarch64-linux-gnu-
     CC      := $(CROSS_COMPILE)gcc
     AS      := $(CROSS_COMPILE)as
@@ -42,65 +34,66 @@ else
     OBJDUMP := $(CROSS_COMPILE)objdump
     QEMU    := qemu-system-aarch64
 
-    # 裸机编译选项（适配GCC）
     CFLAGS  := -Wall -Wextra \
                -ffreestanding \
                -nostdlib \
                -nostartfiles \
                -fno-stack-protector \
+               -mgeneral-regs-only \
                -Iinclude
-    LDFLAGS := -T boot/link.ld
+    ASFLAGS := -Iinclude
+    LDFLAGS := -T boot/link.ld \
+               -nostdlib \
+               -nostartfiles
 endif
 
-# 源码列表（新增/删除文件只需改这里）
+# ======================
+# 源码配置（不动）
+# ======================
 SRC_ASM = boot/boot.S
 SRC_C   = kernel/main.c \
           kernel/uart.c \
           kernel/mmu.c \
           kernel/irq.c
 
-# 目标文件和输出镜像
+# 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
           $(patsubst %.c,build/%.o,$(SRC_C))
 TARGET  = build/kernel
 
-# 默认目标：编译内核镜像
+# 默认编译
 all: build_dir $(TARGET).img
 
-# 创建build目录（自动生成）
+# 创建编译目录
 build_dir:
 	mkdir -p build/boot build/kernel
 
-# 汇编文件编译规则
+# 汇编文件编译
 build/%.o: %.S
-	$(AS) $(CFLAGS) -c $< -o $@
+	$(AS) $(ASFLAGS) -c $< -o $@
 
-# C文件编译规则
+# C 文件编译
 build/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# 链接生成ELF
+# 链接 ELF（仅链接 .o 文件，无源码！）
 $(TARGET).elf: $(OBJ)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-# 转成二进制镜像
+# 生成 IMG 镜像
 $(TARGET).img: $(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
 
-# 一键运行：编译 + 启动QEMU
-#run: all
-#	$(QEMU) -machine virt -cpu cortex-a53 \
-	-kernel $(TARGET).elf -nographic  # 把 .img 改成 .elf
-# 一键运行
+# ======================
+# 你要的：IMG 启动 QEMU
+# ======================
 run: all
-	$(QEMU) -machine virt -cpu cortex-a53  \
- 		-kernel $(TARGET).img -nographic
-# 一键调试：编译 + 启动QEMU并等待GDB
+	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
+		-kernel $(TARGET).img -nographic
+
 debug: all
 	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).img -nographic -s -S
 
-# 清理所有编译产物
 clean:
 	rm -rf build/*
-
