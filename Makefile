@@ -91,6 +91,11 @@ run: all
 	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).img -nographic
 
+# 🔥 新增：串口独立调试模式（推荐！）
+serial: all
+	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
+		-kernel $(TARGET).img -serial pty -daemonize -display none
+
 debug: all
 	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).img -nographic -s -S
