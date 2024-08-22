@@ -1,5 +1,6 @@
 #include "printk.h"
 #include <stdarg.h>
+#include "uart.h"
 
 // 辅助：打印字符串
 static void print_str(const char *s) {
