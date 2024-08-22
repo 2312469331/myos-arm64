@@ -10,12 +10,14 @@ ifeq ($(shell uname -o), Android)
     QEMU    := qemu-system-aarch64
 
     CFLAGS := -Wall -Wextra \
+	      -O0 \
               -ffreestanding \
               -nostdlib \
               -static \
               -fno-stack-protector \
               -mgeneral-regs-only \
-              -Iinclude
+              -Iinclude \
+	      -g
     ASFLAGS := -Iinclude
     LDFLAGS := -fuse-ld=lld \
                -T boot/link.ld \
@@ -40,7 +42,8 @@ else
                -nostartfiles \
                -fno-stack-protector \
                -mgeneral-regs-only \
-               -Iinclude
+               -Iinclude \
+    	       -g
     ASFLAGS := -Iinclude
     LDFLAGS := -T boot/link.ld \
                -nostdlib \
@@ -54,7 +57,8 @@ SRC_ASM = boot/boot.S
 SRC_C   = kernel/main.c \
           kernel/uart.c \
           kernel/mmu.c \
-          kernel/irq.c
+          kernel/irq.c \
+	  kernel/printk.c
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
@@ -98,7 +102,7 @@ serial: all
 
 debug: all
 	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
-		-kernel $(TARGET).img -nographic -s -S
+		-kernel $(TARGET).elf -nographic -s -S
 
 clean:
 	rm -rf build/*

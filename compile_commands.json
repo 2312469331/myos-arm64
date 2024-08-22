@@ -1,0 +1,292 @@
+[
+  {
+    "file": "boot/boot.S",
+    "arguments": [
+      "aarch64-linux-android-clang",
+      "-Iinclude",
+      "-c",
+      "boot/boot.S",
+      "-o",
+      "build/boot/boot.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/boot/boot.o"
+  },
+  {
+    "file": "boot/boot.S",
+    "arguments": [
+      "clang",
+      "--target=aarch64-linux-android24",
+      "-Iinclude",
+      "-c",
+      "boot/boot.S",
+      "-o",
+      "build/boot/boot.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/boot/boot.o"
+  },
+  {
+    "file": "boot.S",
+    "arguments": [
+      "clang-21",
+      "-cc1as",
+      "-triple",
+      "aarch64-unknown-linux-android24",
+      "-filetype",
+      "-main-file-name",
+      "boot.S",
+      "-target-cpu",
+      "-target-feature",
+      "-target-feature",
+      "-target-feature",
+      "-target-feature",
+      "-I",
+      "include",
+      "-fdebug-compilation-dir=/data/data/com.termux/files/home/code/myos-arm64",
+      "-dwarf-debug-producer",
+      "-I",
+      "include",
+      "-dwarf-version=4",
+      "-mrelocation-model",
+      "-o",
+      "build/boot/boot.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/boot/boot.o"
+  },
+  {
+    "file": "/data/data/com.termux/files/usr/tmp/boot-e66862.s",
+    "arguments": [
+      "clang-21",
+      "-cc1as",
+      "-triple",
+      "aarch64-unknown-linux-android24",
+      "-filetype",
+      "-main-file-name",
+      "-target-cpu",
+      "-target-feature",
+      "-target-feature",
+      "-target-feature",
+      "-target-feature",
+      "-I",
+      "include",
+      "-fdebug-compilation-dir=/data/data/com.termux/files/home/code/myos-arm64",
+      "-dwarf-debug-producer",
+      "-I",
+      "include",
+      "-dwarf-version=4",
+      "-mrelocation-model",
+      "-o",
+      "build/boot/boot.o",
+      "/data/data/com.termux/files/usr/tmp/boot-e66862.s"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/boot/boot.o"
+  },
+  {
+    "file": "kernel/main.c",
+    "arguments": [
+      "aarch64-linux-android-clang",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/main.c",
+      "-o",
+      "build/kernel/main.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/main.o"
+  },
+  {
+    "file": "kernel/main.c",
+    "arguments": [
+      "clang",
+      "--target=aarch64-linux-android24",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/main.c",
+      "-o",
+      "build/kernel/main.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/main.o"
+  },
+  {
+    "file": "kernel/uart.c",
+    "arguments": [
+      "aarch64-linux-android-clang",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/uart.c",
+      "-o",
+      "build/kernel/uart.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/uart.o"
+  },
+  {
+    "file": "kernel/uart.c",
+    "arguments": [
+      "clang",
+      "--target=aarch64-linux-android24",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/uart.c",
+      "-o",
+      "build/kernel/uart.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/uart.o"
+  },
+  {
+    "file": "kernel/mmu.c",
+    "arguments": [
+      "aarch64-linux-android-clang",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/mmu.c",
+      "-o",
+      "build/kernel/mmu.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/mmu.o"
+  },
+  {
+    "file": "kernel/mmu.c",
+    "arguments": [
+      "clang",
+      "--target=aarch64-linux-android24",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/mmu.c",
+      "-o",
+      "build/kernel/mmu.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/mmu.o"
+  },
+  {
+    "file": "kernel/irq.c",
+    "arguments": [
+      "aarch64-linux-android-clang",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/irq.c",
+      "-o",
+      "build/kernel/irq.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/irq.o"
+  },
+  {
+    "file": "kernel/irq.c",
+    "arguments": [
+      "clang",
+      "--target=aarch64-linux-android24",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/irq.c",
+      "-o",
+      "build/kernel/irq.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/irq.o"
+  },
+  {
+    "file": "kernel/printk.c",
+    "arguments": [
+      "aarch64-linux-android-clang",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/printk.c",
+      "-o",
+      "build/kernel/printk.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/printk.o"
+  },
+  {
+    "file": "kernel/printk.c",
+    "arguments": [
+      "clang",
+      "--target=aarch64-linux-android24",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-ffreestanding",
+      "-fno-stack-protector",
+      "-mgeneral-regs-only",
+      "-Iinclude",
+      "-g",
+      "-c",
+      "kernel/printk.c",
+      "-o",
+      "build/kernel/printk.o"
+    ],
+    "directory": "/data/data/com.termux/files/home/code/myos-arm64",
+    "output": "build/kernel/printk.o"
+  }
+]
