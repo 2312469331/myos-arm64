@@ -1,3 +1,6 @@
+# 引入功能配置（条件编译）
+include config.mk
+$(info SRC_ASM_CONFIG = $(SRC_ASM_CONFIG))
 # 检测是否在Termux环境中
 ifeq ($(shell uname -o), Android)
     # --- Termux 环境配置 ---
@@ -50,28 +53,33 @@ else
                -nostdlib \
                -nostartfiles
 endif
-
 # ======================
-# 源码配置（不动）
+# 源码配置（合并 config.mk 配置）
 # ======================
-SRC_ASM = boot/boot.S
+SRC_ASM = boot/boot.S \
+           $(SRC_ASM_CONFIG)  # 来自 config.mk 的条件汇编文件
 SRC_C   = kernel/main.c \
-          kernel/uart.c \
-          kernel/mmu.c \
-          kernel/irq.c \
-	  kernel/printk.c
+           kernel/mmu.c \
+           kernel/irq.c \
+           kernel/printk.c \
+           $(SRC_C_CONFIG)    # 来自 config.mk 的条件C文件
+
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
           $(patsubst %.c,build/%.o,$(SRC_C))
+# 👇 新增：提取所有 .o 文件的目录，并去重
+OBJ_DIRS := $(sort $(dir $(OBJ)))
 TARGET  = build/kernel
 
 # 默认编译
 all: build_dir $(TARGET).img
 
 # 创建编译目录
+
+# 👇 修改 build_dir 目标，自动创建所有需要的目录
 build_dir:
-	mkdir -p build/boot build/kernel
+	mkdir -p $(OBJ_DIRS)
 
 # 汇编文件编译
 build/%.o: %.S
