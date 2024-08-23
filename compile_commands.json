@@ -56,7 +56,7 @@
     "output": "build/boot/boot.o"
   },
   {
-    "file": "/data/data/com.termux/files/usr/tmp/boot-e66862.s",
+    "file": "/data/data/com.termux/files/usr/tmp/boot-74c2e4.s",
     "arguments": [
       "clang-21",
       "-cc1as",
@@ -79,7 +79,7 @@
       "-mrelocation-model",
       "-o",
       "build/boot/boot.o",
-      "/data/data/com.termux/files/usr/tmp/boot-e66862.s"
+      "/data/data/com.termux/files/usr/tmp/boot-74c2e4.s"
     ],
     "directory": "/data/data/com.termux/files/home/code/myos-arm64",
     "output": "build/boot/boot.o"

@@ -37,7 +37,9 @@ static void print_dec(int num) {
 
 // 辅助：打印十六进制（通用，支持32/64位）
 static void print_hex(uint64_t num) {
-    const char hex_chars[] = "0123456789abcdef";
+//    char hex_chars[] = "0123456789abcdef";
+    static const char *hex_chars = "0123456789abcdef";
+
     char buf[16];
     int i = 0;
 

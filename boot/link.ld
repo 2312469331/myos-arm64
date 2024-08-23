@@ -6,11 +6,18 @@ SECTIONS {
     .text : {
         *(.text)           /* 再放其他代码 */
     }
-    /* 只读数据段（字符串等），紧跟在 .text 之后，8字节对齐 */
-     .rodata ALIGN(8) : {
-         *(.rodata)
-         *(.rodata.*)
-     }
+    /* 🔥 精准匹配 Clang 生成的所有字符串段 */
+    .rodata.str ALIGN(8) : {
+        SUBALIGN(8)
+        *(.rodata.str1.1)
+        *(.rodata.str1.8)
+        *(.rodata.cst8)  /* 匹配常量字符串段 */
+    }
+
+    .rodata ALIGN(16) : {
+        *(.rodata)
+        *(.rodata.*)
+    }
      /* 已初始化数据段 */
      .data ALIGN(8) : {
          *(.data)
@@ -22,7 +29,7 @@ SECTIONS {
          *(.bss)
          *(.bss.*)
      }
-    . = ALIGN(8);
+    . = ALIGN(16);
     . += 0x1000; /* 4KB 栈 */
     stack_top = .;
 }
