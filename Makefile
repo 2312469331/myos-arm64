@@ -21,7 +21,8 @@ ifeq ($(shell uname -o), Android)
               -mgeneral-regs-only \
               -Iinclude \
 	      -g
-    ASFLAGS := -Iinclude
+    ASFLAGS := -Iinclude \
+							 -g
     LDFLAGS := -fuse-ld=lld \
                -T boot/link.ld \
                -nostdlib \
@@ -101,16 +102,16 @@ $(TARGET).img: $(TARGET).elf
 # 你要的：IMG 启动 QEMU
 # ======================
 run: all
-	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
+	$(QEMU) -machine virt,secure=on,virtualization=on -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).img -nographic
 
 # 🔥 新增：串口独立调试模式（推荐！）
 serial: all
-	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
+	$(QEMU) -machine virt,secure=on,virtualization=on -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).img -serial pty -daemonize -display none
 
 debug: all
-	$(QEMU) -machine virt -cpu cortex-a53 -m 128M \
+	$(QEMU) -machine virt,secure=on,virtualization=on -cpu cortex-a53 -m 128M \
 		-kernel $(TARGET).elf -nographic -s -S
 
 clean:
