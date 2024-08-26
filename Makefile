@@ -1,6 +1,7 @@
 # 引入功能配置（条件编译）
 include config.mk
 $(info SRC_ASM_CONFIG = $(SRC_ASM_CONFIG))
+
 # 检测是否在Termux环境中
 ifeq ($(shell uname -o), Android)
     # --- Termux 环境配置 ---
@@ -14,6 +15,7 @@ ifeq ($(shell uname -o), Android)
 
     CFLAGS := -Wall -Wextra \
 	      -O0 \
+							--target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
               -ffreestanding \
               -nostdlib \
               -static \
@@ -22,6 +24,7 @@ ifeq ($(shell uname -o), Android)
               -Iinclude \
 	      -g
     ASFLAGS := -Iinclude \
+							 --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
 							 -g
     LDFLAGS := -fuse-ld=lld \
                -T boot/link.ld \
@@ -54,6 +57,13 @@ else
                -nostdlib \
                -nostartfiles
 endif
+# qemu配置
+
+# 编译器/工具配置（沿用你现有配置）
+QEMU := qemu-system-aarch64
+QEMU_MACHINE := virt,secure=on,virtualization=on
+QEMU_CPU := cortex-a53
+DTC := dtc
 # ======================
 # 源码配置（合并 config.mk 配置）
 # ======================
@@ -102,17 +112,34 @@ $(TARGET).img: $(TARGET).elf
 # 你要的：IMG 启动 QEMU
 # ======================
 run: all
-	$(QEMU) -machine virt,secure=on,virtualization=on -cpu cortex-a53 -m 128M \
-		-kernel $(TARGET).img -nographic
+	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
+		-kernel $(TARGET).elf -nographic
 
 # 🔥 新增：串口独立调试模式（推荐！）
 serial: all
-	$(QEMU) -machine virt,secure=on,virtualization=on -cpu cortex-a53 -m 128M \
+	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
 		-kernel $(TARGET).img -serial pty -daemonize -display none
 
 debug: all
-	$(QEMU) -machine virt,secure=on,virtualization=on -cpu cortex-a53 -m 128M \
+	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
 		-kernel $(TARGET).elf -nographic -s -S
+
+# 导出设备树（DTB + DTS）
+.PHONY: dtb
+dtb:
+	@echo "📤 Exporting QEMU device tree (DTB)..."
+	$(QEMU) -machine $(QEMU_MACHINE),dumpdtb=virt.dtb \
+		-cpu $(QEMU_CPU) \
+		-m 128M \
+		-nographic
+	@echo "🔄 Converting DTB to DTS..."
+	$(DTC) -I dtb -O dts -o virt.dts virt.dtb
+	@echo "✅ Done: virt.dtb (binary) + virt.dts (source) generated"
+
+# 清理设备树文件
+.PHONY: clean-dtb
+clean-dtb:
+	rm -f virt.dtb virt.dts
 
 clean:
 	rm -rf build/*

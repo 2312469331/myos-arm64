@@ -25,7 +25,8 @@ void uart_init(void) {
 
   // 4. 清除接收错误标志
   uart_clear_error();
-
+  // 配置接收中断
+  uart_irq_init();
   // 5. 使能UART + 发送 + 接收
   io_write32(UART0_BASE + UART_CR, UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE);
 }
@@ -118,5 +119,18 @@ void uart_set_loopback(bool enable) {
   } else {
     cr_val &= ~UART_CR_LBE;
   }
+
   io_write32(UART0_BASE + UART_CR, cr_val);
+}
+// 配置 UART 接收中断（半满触发）
+void uart_irq_init(void) {
+  // 设置接收FIFO半满触发
+  io_write32(UART0_BASE + UART_IFLS,
+             UART_IFLS_RXIFLSEL_1_2 | UART_IFLS_TXIFLSEL_1_2);
+
+  // 使能接收中断
+  io_write32(UART0_BASE + UART_IMSC, UART_IMSC_RXIM);
+
+  // 清除接收中断标志
+  io_write32(UART0_BASE + UART_ICR, UART_ICR_RXIC);
 }

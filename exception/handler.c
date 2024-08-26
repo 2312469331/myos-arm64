@@ -65,7 +65,9 @@ void el1_irq_handler(exception_ctx_t *ctx) {
 
 // 规范的UART中断回调示例（以UART0为例）
 // 注意：中断号要和实际硬件匹配（QEMU virt平台 UART0中断号通常是33）
-void uart_irq_callback(uint32_t irq, exception_ctx_t *ctx) {
+__attribute__((weak)) void uart_irq_callback(uint32_t irq,
+                                             exception_ctx_t *ctx) {
+  printk("%s", "sbgxr????");
   // 1. 标记参数（消除警告）
   (void)irq;
   (void)ctx;
@@ -95,4 +97,18 @@ void uart_irq_callback(uint32_t irq, exception_ctx_t *ctx) {
     uart_clear_error(); // 清除错误标志，避免卡死
     return;
   }
+}
+/*
+ * 定时器中断入口
+ * 你只需要在中断判定为 30 号时跳来这里
+ */
+// ---------------- 关键修改 ----------------
+// 1. 加 __attribute__((weak)) 声明为弱符号
+// 2. 函数体为空（默认不做任何事）
+// 3. 签名必须匹配 irq_handler_t
+__attribute__((weak)) void timer_irq_handler(uint32_t irq,
+                                             exception_ctx_t *ctx) {
+  // 默认空实现，会被 main 里的强符号覆盖
+  (void)irq; // 消除未使用参数警告
+  (void)ctx;
 }

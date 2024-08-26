@@ -8,15 +8,6 @@
 	#address-cells = <0x02>;
 	compatible = "linux,dummy-virt";
 
-	psci {
-		migrate = <0xc4000005>;
-		cpu_on = <0xc4000003>;
-		cpu_off = <0x84000002>;
-		cpu_suspend = <0xc4000001>;
-		method = "hvc";
-		compatible = "arm,psci-1.0", "arm,psci-0.2", "arm,psci";
-	};
-
 	memory@40000000 {
 		reg = <0x00 0x40000000 0x00 0x8000000>;
 		device_type = "memory";
@@ -260,6 +251,33 @@
 		compatible = "virtio,mmio";
 	};
 
+	gpio-restart {
+		secure-status = "okay";
+		status = "disabled";
+		gpios = <0x8005 0x01 0x00>;
+		compatible = "gpio-restart";
+	};
+
+	gpio-poweroff {
+		secure-status = "okay";
+		status = "disabled";
+		gpios = <0x8005 0x00 0x00>;
+		compatible = "gpio-poweroff";
+	};
+
+	pl061@90b0000 {
+		secure-status = "okay";
+		status = "disabled";
+		phandle = <0x8005>;
+		clock-names = "apb_pclk";
+		clocks = <0x8000>;
+		interrupts = <0x00 0x00 0x04>;
+		gpio-controller;
+		#gpio-cells = <0x02>;
+		compatible = "arm,pl061", "arm,primecell";
+		reg = <0x00 0x90b0000 0x00 0x1000>;
+	};
+
 	gpio-keys {
 		compatible = "gpio-keys";
 
@@ -305,6 +323,23 @@
 		compatible = "arm,pl031", "arm,primecell";
 	};
 
+	secram@e000000 {
+		secure-status = "okay";
+		status = "disabled";
+		reg = <0x00 0xe000000 0x00 0x1000000>;
+		device_type = "memory";
+	};
+
+	pl011@9040000 {
+		secure-status = "okay";
+		status = "disabled";
+		clock-names = "uartclk", "apb_pclk";
+		clocks = <0x8000 0x8000>;
+		interrupts = <0x00 0x08 0x04>;
+		reg = <0x00 0x9040000 0x00 0x1000>;
+		compatible = "arm,pl011", "arm,primecell";
+	};
+
 	pl011@9000000 {
 		clock-names = "uartclk", "apb_pclk";
 		clocks = <0x8000 0x8000>;
@@ -320,7 +355,8 @@
 
 	intc@8000000 {
 		phandle = <0x8002>;
-		reg = <0x00 0x8000000 0x00 0x10000 0x00 0x8010000 0x00 0x10000>;
+		interrupts = <0x01 0x09 0x04>;
+		reg = <0x00 0x8000000 0x00 0x10000 0x00 0x8010000 0x00 0x10000 0x00 0x8030000 0x00 0x10000 0x00 0x8040000 0x00 0x10000>;
 		compatible = "arm,cortex-a15-gic";
 		ranges;
 		#size-cells = <0x02>;
@@ -336,9 +372,17 @@
 		};
 	};
 
-	flash@0 {
+	flash@4000000 {
 		bank-width = <0x04>;
-		reg = <0x00 0x00 0x00 0x4000000 0x00 0x4000000 0x00 0x4000000>;
+		reg = <0x00 0x4000000 0x00 0x4000000>;
+		compatible = "cfi-flash";
+	};
+
+	secflash@0 {
+		secure-status = "okay";
+		status = "disabled";
+		bank-width = <0x04>;
+		reg = <0x00 0x00 0x00 0x4000000>;
 		compatible = "cfi-flash";
 	};
 
@@ -382,12 +426,19 @@
 	};
 
 	aliases {
+		serial1 = "/pl011@9040000";
 		serial0 = "/pl011@9000000";
+	};
+
+	secure-chosen {
+		stdout-path = "/pl011@9040000";
+		rng-seed = <0xd1d67c9 0x1ff60a64 0x9e0b7438 0xd5608136 0xaaef94b8 0xc571eac3 0x663019f9 0x193cf3a0>;
+		kaslr-seed = <0x1f330d4a 0x9f3bcaa0>;
 	};
 
 	chosen {
 		stdout-path = "/pl011@9000000";
-		rng-seed = <0x2b7b6f70 0xa2d179fa 0xa05aaf0 0x6ae1adea 0x5bb56b01 0x6db9af4e 0x86987127 0xf519e162>;
-		kaslr-seed = <0xe2cd5cb 0xbb3a3fa2>;
+		rng-seed = <0x347a426f 0x6e73f41d 0x98052275 0xa18a2546 0x9de2dba1 0x5bdf92cd 0x46df4285 0x1b9b5c2b>;
+		kaslr-seed = <0x64e62545 0xe9e5592c>;
 	};
 };

@@ -21,6 +21,12 @@
 #define UART_IMSC 0x038    // 中断屏蔽设置/清除寄存器
 #define UART_ICR 0x044     // 中断清除寄存器
 
+// ==================== 寄存器偏移（PL011 手册 Table 3-1） ====================
+// ... 你现有的定义保持不变 ...
+#define UART_IFLS 0x034 // 中断FIFO阈值选择寄存器（新增）
+#define UART_RIS 0x03C  // 原始中断状态寄存器（新增）
+#define UART_MIS 0x040  // 屏蔽后中断状态寄存器（新增）
+// ... 你现有的 UART_IMSC / UART_ICR 保持不变 ...
 // ========================= 寄存器关键位定义 =========================
 // FR 寄存器
 #define UART_FR_TXFE (1U << 7) // 发送FIFO空
@@ -38,6 +44,44 @@
 // LCR_H 寄存器
 #define UART_LCR_H_WLEN8 (3U << 5) // 8位数据位
 #define UART_LCR_H_FEN (1U << 4)   // FIFO使能（默认关闭，裸机简化用）
+// ==================== IFLS 寄存器（中断FIFO阈值） ====================
+// 接收FIFO阈值选择（位5:3）
+#define UART_IFLS_RXIFLSEL_1_8 (0U << 3) // ≥1/8满触发接收中断
+#define UART_IFLS_RXIFLSEL_1_4 (1U << 3) // ≥1/4满
+#define UART_IFLS_RXIFLSEL_1_2 (2U << 3) // ≥1/2满（复位默认值，最常用）
+#define UART_IFLS_RXIFLSEL_3_4 (3U << 3) // ≥3/4满
+#define UART_IFLS_RXIFLSEL_7_8 (4U << 3) // ≥7/8满
+
+// 发送FIFO阈值选择（位2:0）
+#define UART_IFLS_TXIFLSEL_1_8 (0U << 0) // ≤1/8满触发发送中断
+#define UART_IFLS_TXIFLSEL_1_4 (1U << 0) // ≤1/4满
+#define UART_IFLS_TXIFLSEL_1_2 (2U << 0) // ≤1/2满（复位默认值）
+#define UART_IFLS_TXIFLSEL_3_4 (3U << 0) // ≤3/4满
+#define UART_IFLS_TXIFLSEL_7_8 (4U << 0) // ≤7/8满
+// ==================== IMSC/RIS/MIS/ICR 寄存器（中断控制） ====================
+// 中断掩码/状态位（IMSC/RIS/MIS/ICR 共用位位置）
+#define UART_IMSC_OEIM (1U << 10) // 溢出错误中断掩码
+#define UART_IMSC_BEIM (1U << 9)  // 断帧错误中断掩码
+#define UART_IMSC_PEIM (1U << 8)  // 奇偶校验错误中断掩码
+#define UART_IMSC_FEIM (1U << 7)  // 帧格式错误中断掩码
+#define UART_IMSC_RTIM (1U << 6)  // 接收超时中断掩码
+#define UART_IMSC_TXIM (1U << 5)  // 发送中断掩码
+#define UART_IMSC_RXIM (1U << 4)  // 接收中断掩码（最常用）
+
+// Modem 状态中断（普通串口开发基本不用，保持屏蔽即可）
+#define UART_IMSC_DSRMIM (1U << 3) // nUARTDSR Modem 中断
+#define UART_IMSC_DCDMIM (1U << 2) // nUARTDCD Modem 中断
+#define UART_IMSC_CTSMIM (1U << 1) // nUARTCTS Modem 中断
+#define UART_IMSC_RIMIM (1U << 0)  // nUARTRI Modem 中断
+
+// ICR 专用：写1清除中断（复用IMSC位定义，更直观）
+#define UART_ICR_RXIC UART_IMSC_RXIM // 清除接收中断
+#define UART_ICR_TXIC UART_IMSC_TXIM // 清除发送中断
+#define UART_ICR_RTIC UART_IMSC_RTIM // 清除接收超时中断
+#define UART_ICR_FEIC UART_IMSC_FEIM // 清除帧错误中断
+#define UART_ICR_PEIC UART_IMSC_PEIM // 清除奇偶校验错误中断
+#define UART_ICR_BEIC UART_IMSC_BEIM // 清除断帧错误中断
+#define UART_ICR_OEIC UART_IMSC_OEIM // 清除溢出错误中断
 
 // 错误类型（RSR_ECR）
 typedef enum {
@@ -110,5 +154,5 @@ void uart_clear_error(void);
  * @param enable true-使能，false-禁用
  */
 void uart_set_loopback(bool enable);
-
+void uart_irq_init(void);
 #endif // __UART_H__

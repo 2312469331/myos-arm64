@@ -11,14 +11,19 @@
 
 #define GICD_ISPENDR(n) (GICD_BASE + 0x200 + (n) * 4) // 中断挂起组n (n=0~31)
 
-// --------------------------
-// GICD 寄存器偏移宏（严格对齐原结构体布局）
-// --------------------------
+// ------------------------------
+// GICD 寄存器偏移宏（严格对齐 GICv2 布局）
+// ------------------------------
 #define GICD_CTLR (GICD_BASE + 0x000)                   // 控制寄存器
 #define GICD_TYPER (GICD_BASE + 0x004)                  // 类型寄存器
 #define GICD_ISENABLER(n) (GICD_BASE + 0x100 + (n) * 4) // 中断使能组n (n=0~31)
 #define GICD_ICENABLER(n) (GICD_BASE + 0x200 + (n) * 4) // 中断禁用组n (n=0~31)
-
+// 👇 新增你缺失的三个关键宏！
+#define GICD_IPRIORITYR(n)                                                     \
+  (GICD_BASE + 0x400 + (n) * 4) // 优先级寄存器 (n=0~255)
+#define GICD_ITARGETSR(n)                                                      \
+  (GICD_BASE + 0x800 + (n) * 4)                     // 目标CPU寄存器 (n=0~255)
+#define GICD_ICFGR(n) (GICD_BASE + 0xC00 + (n) * 4) // 触发方式寄存器 (n=0~63)
 // --------------------------
 // GICC 寄存器偏移宏
 // --------------------------

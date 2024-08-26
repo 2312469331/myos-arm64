@@ -2,19 +2,20 @@
 #include "gic.h"
 #include "irq.h"
 #include "printk.h"
+#include "timer.h"
 #include "uart.h"
 
 // 👇 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
 void gic_test(void);
-// 如果 uart_irq_callback 已在其他文件实现，添加 extern 声明（根据实际参数修改）
-// 👇 修正：参数列表必须和定义完全匹配
+// uart_irq_callback 已在handler.c文件实现，添加 extern 声明（根据实际参数修改）
 extern void uart_irq_callback(uint32_t irq, exception_ctx_t *ctx);
-extern void vector_table; // 引用汇编向量表
-//
+extern void timer_irq_handler(uint32_t irq, exception_ctx_t *ctx);
 void main(void) {
   uart_test();
   gic_test();
+  irq_register(TIMER_IRQ_NUM, timer_irq_handler, "定时器");
+  gic_enable_irq(TIMER_IRQ_NUM);
   while (1)
     ;
 }
@@ -22,8 +23,8 @@ void gic_test(void) {
 
   uart_puts("OS Boot Success!\n");
 
-  // 1. 设置异常向量表基址
-  write_sysreg(vbar_el1, (uint64_t)&vector_table);
+  // 1. 设置异常向量表基址,boot.S已经加载完向量表，无需加载
+  // write_sysreg(vbar_el1, (uint64_t)&vector_table_el1);
   uart_puts("[Init] Exception Vector Table Done\n");
 
   // 2. 初始化GIC中断控制器
@@ -32,7 +33,7 @@ void gic_test(void) {
 
   // 3. 注册UART中断
   irq_register(IRQ_UART0, uart_irq_callback, "UART0");
-
+  gic_enable_irq(IRQ_UART0);
   // 4. 启用全局中断
   enable_irq();
   uart_puts("[Init] Global IRQ Enabled\n");
@@ -72,4 +73,47 @@ void uart_test(void) {
   // 测试 panic（可选，注释掉先验证 printk）
   // panic("Test panic: %s", "Something went wrong!");
   // 死循环（OS 无退出）
+}
+// 强符号：覆盖 timer.c 里的弱符号
+void timer_irq_handler(uint32_t irq, exception_ctx_t *ctx) {
+  // 1. 标记参数（消除警告）
+  (void)irq;
+  (void)ctx;
+  // 1. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
+  cntp_set_tval(TIMER_LOAD_VAL);
+  // 2. 系统时间++
+  system_tick++;
+}
+void uart_irq_callback(uint32_t irq, exception_ctx_t *ctx) {
+  printk("%s", "sbgxr????");
+  // 1. 标记参数（消除警告）
+  (void)irq;
+  (void)ctx;
+  // el1_irq_handler(exception_ctx_t *ctx)自动应答不需要多此一举
+  // // 改造后（使用 GIC 上层 API，更规范）
+  // uint32_t irq_num = gic_ack_irq(); // 应答中断
+  // // ... 处理 UART 数据 ...
+  // gic_eoi_irq(irq_num); // 结束中断
+
+  // 3. 检查UART接收FIFO是否有数据（非阻塞）
+  if (!uart_rx_ready()) {
+    return; // 无数据直接返回，不浪费中断时间
+  }
+  // 4. 非阻塞读+错误处理（规范）
+  uart_error_t err;
+  char ch;
+  uart_getc_nonblock(&ch, &err); // 现在 &ch 是 char*，和函数参数匹配
+  if (err != UART_ERR_NONE) {
+    // p
+    uart_clear_error(); // 清除错误标志，避免卡死
+    return;
+  }
+  // 5. 回显数据（仅做业务处理，快速退出）
+  // 修正后（正确）
+  uart_getc_nonblock(&ch, &err); // 现在 &ch 是 char*，和函数参数匹配
+  if (err != UART_ERR_NONE) {
+    // p
+    uart_clear_error(); // 清除错误标志，避免卡死
+    return;
+  }
 }
