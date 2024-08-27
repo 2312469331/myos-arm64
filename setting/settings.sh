@@ -31,6 +31,8 @@ pkg install -y git which fd
 yellow "[+] 配置 git 用户名和邮箱..."
 git config --global user.name "liuweiji"
 git config --global user.email "2312469331@qq.com"
+git config --global core.pager cat
+
 green "✓ Git 配置完成"
 
 # --------------------------

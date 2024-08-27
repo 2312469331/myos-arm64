@@ -74,7 +74,9 @@ el1_entry:
 	isb
 
 	// 2. 配置 EL1 栈指针 (必须在 EL2 设置 SP_EL1，供下一级使用)
-	ldr x0, =el1_stack_top
+	// 计算出栈区实际物理地址
+	// ldr x0, =el1_stack_top
+	mov sp, #(el1_stack_top - VIRT_BASE + PHYS_BASE)
 	mov sp, x0
 
 	// // 2. 关闭 MMU/Cache（确保物理地址访问，安全起见）
