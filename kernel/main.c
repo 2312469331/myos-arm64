@@ -4,6 +4,168 @@
 #include "printk.h"
 #include "timer.h"
 #include "uart.h"
+#include <stdint.h>
+
+#define PAGE_SIZE 4096
+#define PA_BASE 0x40000000
+#define PA_SIZE 0x10000000 // 映射256MB物理内存
+// 四级页表（全部 4KB 对齐）
+__attribute__((aligned(PAGE_SIZE), section(".pagetable"))) uint64_t pgd[512] = {
+    0};
+__attribute__((aligned(PAGE_SIZE), section(".pagetable"))) uint64_t pud[512] = {
+    0};
+__attribute__((aligned(PAGE_SIZE), section(".pagetable"))) uint64_t pmd[512] = {
+    0};
+__attribute__((aligned(PAGE_SIZE), section(".pagetable"))) uint64_t pte[512] = {
+    0};
+
+// 内存属性（和 boot.S 里 MAIR_EL1 对应）
+#define PROT_NORMAL (0 << 8) // Normal 可缓存内存
+#define PROT_DEVICE (1 << 8) // Device 不可缓存内存（外设用）
+
+// PTE 页表项标志（4KB 页）
+// bit0: 1 = 有效
+// bit1: 1 = 页映射（不是块）
+// bit2: 1 = 可执行
+// bit3: 1 = 可写
+// bit4: 0 = 内核态访问
+// bit10: 1 = 已访问
+// bit11: 1 = 已脏
+#define PTE_NORMAL                                                             \
+  (1 | (1 << 1) | (1 << 2) | (1 << 3) | (0 << 4) | (1 << 10) | (1 << 11) |     \
+   PROT_NORMAL)
+#define PTE_DEVICE                                                             \
+  (1 | (1 << 1) | (1 << 2) | (0 << 3) | (0 << 4) | (1 << 10) | (1 << 11) |     \
+   PROT_DEVICE)
+void init_boot_pgt(void) {
+  uint64_t va = PA_BASE;
+  uint64_t pa = PA_BASE;
+  // 遍历所有需要映射的4KB物理页（1:1映射）
+  for (; pa < PA_BASE + PA_SIZE; pa += PAGE_SIZE, va += PAGE_SIZE) {
+    // 计算虚拟地址的各级索引
+    uint64_t pgd_idx = (va >> 39) & 0x1FF; // bit47~39
+    uint64_t pud_idx = (va >> 30) & 0x1FF; // bit38~30
+    uint64_t pmd_idx = (va >> 21) & 0x1FF; // bit29~21
+    uint64_t pte_idx = (va >> 12) & 0x1FF; // bit20~12
+    // 1. 填写PGD项：指向PUD页表（页表项类型=3）
+    pgd[pgd_idx] = (uint64_t)pud | 3;
+    // 2. 填写PUD项：指向PMD页表（页表项类型=3）
+    pud[pud_idx] = (uint64_t)pmd | 3;
+    // 3. 填写PMD项：指向PTE页表（页表项类型=3）
+    pmd[pmd_idx] = (uint64_t)pte | 3;
+    // 4. 填写PTE项：指向物理页（Normal内存属性）
+    pte[pte_idx] = (pa & ~0xFFF) | // 物理页基地址（4KB对齐）
+                   (1 << 10) |     // AF=1（已访问）
+                   (3 << 8) |      // SH=11（内外共享）
+                   (1 << 6) |      // AP=01（EL1读写，EL0不可访问）
+                   (1 << 2) |      // AttrIndx=1（对应MAIR的Normal内存）
+                   1;              // Valid=1（有效页项）
+  }
+}
+// 辅助函数：获取或创建 PUD 页表
+uint64_t *get_pud(uint64_t virt) {
+  uint64_t pgd_idx = (virt >> 39) & 0x1FF;
+  if (!(pgd[pgd_idx] & 1)) {
+    // PGD 项不存在，创建指向 PUD 的项
+    pgd[pgd_idx] = ((uint64_t)pud & ~(PAGE_SIZE - 1)) | 1;
+  }
+  return pud;
+}
+
+// 辅助函数：获取或创建 PMD 页表
+uint64_t *get_pmd(uint64_t virt) {
+  uint64_t *pud = get_pud(virt);
+  uint64_t pud_idx = (virt >> 30) & 0x1FF;
+  if (!(pud[pud_idx] & 1)) {
+    // PUD 项不存在，创建指向 PMD 的项
+    pud[pud_idx] = ((uint64_t)pmd & ~(PAGE_SIZE - 1)) | 1;
+  }
+  return pmd;
+}
+
+// 辅助函数：获取或创建 PTE 页表
+uint64_t *get_pte(uint64_t virt) {
+  uint64_t *pmd = get_pmd(virt);
+  uint64_t pmd_idx = (virt >> 21) & 0x1FF;
+  if (!(pmd[pmd_idx] & 1)) {
+    // PMD 项不存在，创建指向 PTE 的项
+    pmd[pmd_idx] = ((uint64_t)pte & ~(PAGE_SIZE - 1)) | 1;
+  }
+  return pte;
+}
+
+// --------------------------
+// ioremap：精确映射 4KB 物理页到虚拟地址（核心！）
+// --------------------------
+void ioremap(uint64_t virt, uint64_t phys, uint64_t size) {
+  while (size >= PAGE_SIZE) {
+    // 1. 获取 PTE 页表
+    uint64_t *pte = get_pte(virt);
+    // 2. 计算 PTE 索引
+    uint64_t pte_idx = (virt >> 12) & 0x1FF;
+    // 3. 填 PTE 项：物理页基地址 + Device 属性
+    pte[pte_idx] = (phys & ~(PAGE_SIZE - 1)) | PTE_DEVICE;
+
+    // 推进到下一页
+    virt += PAGE_SIZE;
+    phys += PAGE_SIZE;
+    size -= PAGE_SIZE;
+  }
+}
+
+// --------------------------
+// 映射普通内存（1:1 映射，4KB 页）
+// --------------------------
+void map_memory(uint64_t virt, uint64_t phys, uint64_t size) {
+  while (size >= PAGE_SIZE) {
+    uint64_t *pte = get_pte(virt);
+    uint64_t pte_idx = (virt >> 12) & 0x1FF;
+    pte[pte_idx] = (phys & ~(PAGE_SIZE - 1)) | PTE_NORMAL;
+
+    virt += PAGE_SIZE;
+    phys += PAGE_SIZE;
+    size -= PAGE_SIZE;
+  }
+}
+
+// 刷新单个虚拟地址的 TLB（EL1 内核态）
+static void tlb_flush(uint64_t virt) {
+  __asm__ volatile("tlbi vaae1, %0\n" // 刷该虚拟地址的 TLB 表项(EL1)
+                   "dsb sy\n"         // 同步内存
+                   "isb\n"            // 同步指令流
+                   :
+                   : "r"(virt >> 12) // TLB 指令要填 虚拟地址>>12
+                   : "memory");
+}
+// 取消 ioremap 的映射（4KB 粒度）
+void iounmap(uint64_t virt, uint64_t size) {
+  while (size >= PAGE_SIZE) {
+    // 找到 PTE
+    uint64_t *pte = get_pte(virt);
+    uint64_t pte_idx = (virt >> 12) & 0x1FF;
+
+    // 清空页表项 = 取消映射
+    pte[pte_idx] = 0;
+
+    // 必须刷 TLB！
+    tlb_flush(virt);
+
+    virt += PAGE_SIZE;
+    size -= PAGE_SIZE;
+  }
+}
+void mem_unmap(uint64_t virt, uint64_t size) {
+  while (size >= PAGE_SIZE) {
+    uint64_t *pte = get_pte(virt);
+    uint64_t pte_idx = (virt >> 12) & 0x1FF;
+
+    pte[pte_idx] = 0;
+    tlb_flush(virt);
+
+    virt += PAGE_SIZE;
+    size -= PAGE_SIZE;
+  }
+}
 
 // 👇 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);

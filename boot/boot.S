@@ -77,9 +77,38 @@ el1_entry:
 	ldr x0, =el1_stack_top
 	mov sp, x0
 
-	// 2. 关闭 MMU/Cache（确保物理地址访问，安全起见）
-	mov x0, #0
-	msr sctlr_el1, x0
+	// // 2. 关闭 MMU/Cache（确保物理地址访问，安全起见）
+	// mov x0, #0
+	// msr sctlr_el1, x0
+	// isb
+
+	// 配置 MAIR_EL1
+	mov x0, #(0xFF << 0)
+	orr x0, x0, #(0x04 << 8)
+	msr mair_el1, x0
+	isb
+
+	// 配置 TCR_EL1
+	mov x0, #(0x10 << 0)
+	orr x0, x0, #(0x01 << 20)
+	orr x0, x0, #(0x01 << 8)
+	msr tcr_el1, x0
+	isb
+
+	// 👇 直接取 pgd 的物理地址（链接脚本确保它在 0x400000000 之后）
+	ldr x0, =pgd
+	msr ttbr0_el1, x0
+	isb
+
+	// 开启 MMU + 缓存
+	mrs  x0, sctlr_el1
+	orr  x0, x0, #(1 << 0)
+	orr  x0, x0, #(1 << 2)
+	orr  x0, x0, #(1 << 12)
+	msr  sctlr_el1, x0
+	isb
+	tlbi vmalle1
+	dsb  sy
 	isb
 
 	// 3. 准备 main 函数参数（可选，这里传 0）
