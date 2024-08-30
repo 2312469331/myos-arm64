@@ -20,7 +20,9 @@ EL1_STACK_SIZE      = 0x1000;      /* EL1（内核层）栈：4KB（存C代码/m
  PHYS_BASE    = 0x40000000;
  VIRT_BASE    = 0xFFFF800040080000;
  PAGE_SIZE    = 4096;
- ENTRY(_start);
+/* 告诉链接器：帮我算好el1_stack_top的物理地址 */
+PROVIDE(el1_stack_top_phys = el1_stack_top - VIRT_BASE + PHYS_BASE);
+
 /* 入口点：必须对应汇编里的 _start 标签（EL3 启动入口） */
 ENTRY(_start)
 
