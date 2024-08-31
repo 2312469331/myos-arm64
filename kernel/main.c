@@ -8,58 +8,6 @@
 
 #include <stdint.h>
 
-// --------------------------
-// 1. 页表：仍放在 .pagetable 物理段（完全安全）
-// --------------------------
-uint64_t init_pgt[512] __attribute__((section(".pagetable"), aligned(4096)));
-
-// --------------------------
-// 2. 常量：全部用宏定义，直接嵌入代码，不占 .rodata 虚拟段
-// --------------------------
-#define PGT_VALID (1UL << 0)
-#define PGT_BLOCK (1UL << 1)
-#define PGT_NORMAL_MEM (0UL << 2)
-#define PGT_RW (0UL << 7)
-#define PGT_KERNEL (0UL << 6)
-#define PGT_BASE_ATTR                                                          \
-  (PGT_VALID | PGT_BLOCK | PGT_NORMAL_MEM | PGT_RW | PGT_KERNEL)
-
-#define PHYS_BASE 0x40000000UL            // 物理基址（宏，嵌入代码）
-#define BLOCK_SIZE (1024UL * 1024 * 1024) // 1GB块（宏，嵌入代码）
-#define CODE_PA 0x40000000UL              // 代码物理地址（宏，嵌入代码）
-
-// --------------------------
-// 3. TTBR0 初始化：放在 .text.boot 物理段，常量全嵌入代码
-// --------------------------
-static void init_ttbr0_1to1(void) __attribute__((section(".text.boot")));
-static void init_ttbr0_1to1(void) {
-  // 局部变量 i 存在物理栈（el2_stack_top），安全
-  for (int i = 0; i < 256; i++) {
-    uint64_t pa = PHYS_BASE + (uint64_t)i * BLOCK_SIZE;
-    init_pgt[i] = pa | PGT_BASE_ATTR;
-  }
-}
-
-// --------------------------
-// 4. TTBR1 初始化：放在 .text.boot 物理段，常量全嵌入代码
-// --------------------------
-static void init_ttbr1_code_mapping(void)
-    __attribute__((section(".text.boot")));
-static void init_ttbr1_code_mapping(void) {
-  for (int i = 256; i < 512; i++) {
-    init_pgt[i] = CODE_PA | PGT_BASE_ATTR;
-  }
-}
-
-// --------------------------
-// 5. 总入口：放在 .text.boot 物理段（汇编调用）
-// --------------------------
-void init_page_tables(void) __attribute__((section(".text.boot")));
-void init_page_tables(void) {
-  init_ttbr0_1to1();
-  init_ttbr1_code_mapping();
-}
-
 // 👇 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
 void gic_test(void);

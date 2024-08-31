@@ -3,15 +3,6 @@
    已移除所有 AT() 语法，页表段不放在最前，仅通过 ALIGN() 控制布局
 */
 
-/* ---------------------- 1. 全局常量配置 (集中管理, 改这里就行) ---------------------- */
-SECTION_ALIGN     = 8;            /* 段对齐: 8 字节 (AArch64 64位数据/指令对齐) */
-STACK_ALIGN       = 16;           /* 栈对齐: 16 字节 (AAPCS64 强制要求, 函数调用必用) */
-
-/* 各异常级别栈大小 (可按需调整, 单位: 字节) */
-EL3_STACK_SIZE    = 0x2000;      /* EL3 (安全固件层) 栈: 8KB (比EL2/EL1大, 存早期初始化) */
-EL2_STACK_SIZE    = 0x1000;      /* EL2 (虚拟化层) 栈: 4KB (存切换/虚拟化相关上下文) */
-EL1_STACK_SIZE    = 0x1000;      /* EL1 (内核层) 栈: 4KB (存C代码/main/异常处理) */
-
 /* linker.ld for Clang/LLD */
 OUTPUT_FORMAT(elf64-littleaarch64)
 ENTRY(_start) /* 入口点 */
@@ -20,69 +11,87 @@ ENTRY(_start) /* 入口点 */
 PHYS_BASE = 0x40000000;
 /* 定义虚拟内存高地址偏移 (Kernel Base) */
 VIRT_BASE = 0xffff000000000000;
+/* 方法1：直接基于 VIRT_BASE/PHYS_BASE 计算（简单直观） */
+     el1_stack_top_phys = el1_stack_top - (VIRT_BASE - PHYS_BASE);
+/* ==============================================
+   LLD 规范版内核链接脚本
+   特性：严格遵循 LLD 文档，无单位解析错误，覆盖核心语法
+   适配：ARM64 内核/裸机镜像
+   ============================================== */
 
+/* ---------------- 1. 内存区域定义 (MEMORY) ---------------- */
+/* 规范：ORIGIN/LENGTH 必须是纯数值，禁止使用 1G/2M 等单位 */
+/* 物理内存基址 & 长度：0x40000000 开始，2MB = 2097152 字节 */
+/* 虚拟内存基址 & 长度：高地址（内核虚拟空间），1GB = 1073741824 字节 */
 MEMORY
 {
-    /* 物理内存区域：从 0x40000000 开始 */
-    /* 这里的地址是运行时地址(VMA)也是加载地址(LMA) */
-    BOOT_PHYS (rwx) : ORIGIN = PHYS_BASE, LENGTH = 2M
-    
-    /* 
-     * 内核虚拟区域：VMA设置为高虚拟地址
-     * 但 AT(PHYS_BASE + 2M) 表示这段数据实际上加载在物理内存的 2M 偏移处
-     */
-    KERNEL_VIRT (rwx) : ORIGIN = VIRT_BASE, LENGTH = 1G
+    BOOT_PHYS (rwx) : ORIGIN = 0x40000000, LENGTH = 2097152
+    KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF000000000000, LENGTH = 1073741824
 }
 
+/* ---------------- 2. 段分类 (CLASS) - 文档规范示例 ---------------- */
+/* 规范：CLASS 定义输入段集合，不可嵌套，输入段仅归属一个CLASS */
 SECTIONS
 {
-    /* ================================================= */
-    /* 1. 早期启动代码 (物理地址 1:1 映射)               */
-    /* ================================================= */
+    /* 定义 rodata 子段分类：将 .rodata.early 归类为 c 类 */
+    CLASS(c) { *(.rodata.early) }
+
+    /* ---------------- 3. 段布局核心 (SECTIONS 命令) ---------------- */
+    /* 3.1 早期启动段：物理地址 1:1 映射 */
     .boot :
     {
-        KEEP(*(.boot.text))    /* 启动汇编代码 */
-        KEEP(*(.boot.data))    /* 早期数据 */
-        . = ALIGN(4096);
-    } : BOOT_PHYS
-
-    /* ================================================= */
-    /* 2. MMU 开启后的代码 (虚拟地址)                    */
-    /* 关键：VMA在高地址，LMA在紧接boot的物理地址        */
-    /* ================================================= */
+        KEEP(*(.boot.text))  /* 保留启动汇编代码 */
+        KEEP(*(.boot.data))  /* 保留早期数据 */
+        . = ALIGN(4096);    /* 4K 对齐，符合 LLD 段对齐规则 */
+    } > BOOT_PHYS
+/* 3.1.1 页表段：物理地址，用于 MMU 页表初始化 */
+     .pagetable :
+     {
+         KEEP(*(.pagetable))  /* 保留所有 .pagetable 输入段（页表数据） */
+         . = ALIGN(4096);     /* 强制 4K 对齐，满足 ARM64 页表硬件要求 */
+     } > BOOT_PHYS  /* 与 .boot 同物理内存区域，MMU 开启前可直接访问物理地址 */
+    /* 3.2 内核核心段：虚拟地址(VMA) + 物理加载地址(LMA) 分离 */
+    /* 规范：AT(lma) 指定加载地址，VMA 为 KERNEL_VIRT 虚拟地址 */
     .kernel :
     {
-        /* 代码段 */
+        /* 代码段：可执行，类型 SHT_PROGBITS */
         *(.text .text.*)
-        *(.rodata .rodata.*)
+        *(.rodata .rodata.*) CLASS(c) /* 引用之前定义的 c 类段 */
         
-        /* 数据段 */
+        /* 数据段：可读写 */
         *(.data .data.*)
         
-        /* BSS段 */
+        /* BSS 段：未初始化数据，SHT_NOBITS 类型 */
         . = ALIGN(16);
-        __bss_start = .;
+        __bss_start = .;    /* 符号赋值：定义BSS起始 */
         *(.bss .bss.*)
         *(COMMON)
-        __bss_end = .;
-    } : KERNEL_VIRT AT(BOOT_PHYS) /* AT 指定加载地址 */
+        __bss_end = .;      /* 符号赋值：定义BSS结束 */
+    } > KERNEL_VIRT AT>BOOT_PHYS /* VMA在高地址，LMA在BOOT_PHYS区域 */
 
-    /* 丢弃无用段 */
+    /* 3.3 废弃无用段：符合 LLD 规范 */
     /DISCARD/ : {
-        *(.comment)
-        *(.eh_frame)
+        *(.comment)   /* 去掉注释段 */
+        *(.eh_frame)  /* 去掉异常处理帧 */
     }
-}
-    /* ---------------------- 栈空间 (不变, 保持原样) ---------------------- */
-    . = ALIGN(STACK_ALIGN);
 
-    . += EL3_STACK_SIZE;
+    /* 3.4 栈空间定义：内核异常栈 */
+    . = ALIGN(16); /* 栈对齐 */
     el3_stack_top = .;
-
-    . += EL2_STACK_SIZE;
+    . += 0x10000;  /* EL3 栈大小 64KB */
     el2_stack_top = .;
-
-    . += EL1_STACK_SIZE;
+    . += 0x8000;   /* EL2 栈大小 32KB */
     el1_stack_top = .;
+    . += 0x4000;   /* EL1 栈大小 16KB */
 }
+
+/* ---------------- 5. 内置函数示例 (DATA_SEGMENT_RELRO_END) ---------------- */
+/* 说明：内核开发通常无需 RELRO，此处仅展示 LLD 规范用法 */
+/* 仅在启用 -z relro 时生效，自动对齐到最大页边界 */
+/* . = DATA_SEGMENT_RELRO_END(0, .); */
+
+/* ---------------- 6. 符号赋值规范 ---------------- */
+/* 规范：= 定义新符号，+= 操作已有符号；算术运算会重置 st_type */
+__kernel_start = LOADADDR(.kernel); /* 获取内核加载地址 */
+__kernel_size = __bss_end - __kernel_start; /* 计算内核总大小 */
 

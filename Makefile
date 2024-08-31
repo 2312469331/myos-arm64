@@ -32,8 +32,9 @@ ifeq ($(shell uname -o), Android)
                -static \
                -Wl,--build-id=none \
                -Wl,--no-dynamic-linker
-
-
+    BOOT_CFLAGS = -march=armv8-a -mgeneral-regs-only -ffreestanding
+    BOOT_CFLAGS += -nostdlib -nostartfiles -fno-builtin -fPIC
+    BOOT_CFLAGS += -fno-stack-protector -O2 -Wall
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
     CROSS_COMPILE := aarch64-linux-gnu-
@@ -69,7 +70,8 @@ DTC := dtc
 # ======================
 SRC_ASM = boot/boot.S \
            $(SRC_ASM_CONFIG)  # 来自 config.mk 的条件汇编文件
-SRC_C   = kernel/main.c \
+SRC_C = boot/bootc.c \
+           kernel/main.c \
            kernel/mmu.c \
            kernel/irq.c \
            kernel/printk.c \
@@ -99,8 +101,8 @@ build/%.o: %.S
 
 # C 文件编译
 build/%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
+	@mkdir -p $(dir $@)
+	$(if $(findstring boot/,$<),$(CC) $(BOOT_CFLAGS) -c $< -o $@,$(CC) $(CFLAGS) -c $< -o $@)
 # 链接 ELF（仅链接 .o 文件，无源码！）
 $(TARGET).elf: $(OBJ)
 	$(LD) $(LDFLAGS) $^ -o $@

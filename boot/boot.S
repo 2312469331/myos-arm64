@@ -1,6 +1,6 @@
 // 必须放在文件最开头，优先级高于编译命令的 -march
 .arch    armv8-a
-.section .text.boot, "ax" // "ax" 表示可分配(Allocatable) + 可执行(Executable)
+.section .boot.text, "ax" // "ax" 表示可分配(Allocatable) + 可执行(Executable)
 
 /* =========================================================
  * boot.S - ARM64 三层启动代码 (EL3 -> EL2 -> EL1 -> main)
@@ -73,85 +73,76 @@ el1_entry:
 	ldr x0, =vector_table_el1
 	msr VBAR_EL1, x0
 	isb
-
-	// 2. 配置 EL1 物理栈（没问题，用物理地址）
+/* ==========================================
+       阶段 3: 初始化页表 (MMU 关闭，使用物理地址)
+       ========================================== */
+	// 设置栈指针 (物理地址)
 	ldr x0, =el1_stack_top_phys
+	ldr x0, [x0]
 	mov sp, x0
 
-	// --------------------------
-	// 核心修正1：先填页表！！！
-	// --------------------------
-	bl init_page_tables // 先把 pgd/init_pgt 页表项填好
+	// 调用 C 函数初始化页表
+	bl init_ttbr0_pagetable
+	bl init_ttbr1_pagetable
 
-	// --------------------------
-	// 核心修正2：同时配置 TTBR0 + TTBR1（都指向 pgd）
-	// --------------------------
-	ldr x0, =init_pgt // pgd = init_pgt（物理地址，和 C 代码一致）
-	msr ttbr0_el1, x0 // TTBR0：0-255 项 → 1:1 物理映射
-	msr ttbr1_el1, x0 // TTBR1：256-511 项 → 高地址虚拟映射
-	isb
-
-	// --------------------------
-	// 1. 定义 MAIR_EL1 配置值
-	// 格式: Attr7 << 56 | Attr6 << 48 | Attr5 << 40 | Attr4 << 32 | Attr3 << 24 | Attr2 << 16 | Attr1 << 8 | Attr0
-	// --------------------------
-	// Attr0: 0x00 → Device-nGnRnE (最严格的设备内存, 用于外设寄存器)
-	// Attr1: 0x44 → Normal, Inner Non-cacheable + Outer Non-cacheable (无缓存普通内存)
-	// Attr2: 0xAA → Normal, Inner Write-Through Non-transient + Outer Write-Through Non-transient (写直达缓存)
-	// Attr3: 0xFF → Normal, Inner Write-Back Non-transient + Outer Write-Back Non-transient (高性能写回缓存, 用于RAM)
-	// Attr4~Attr7: 复用 0xFF (高性能写回缓存, 方便后续扩展)
-	// --------------------------
-	ldr x0, =(0xFF << 56) | (0xFF << 48) | (0xFF << 40) | (0xFF << 32) | (0xFF << 24) | (0xAA << 16) | (0x44 << 8) | (0x00 << 0)
-
-	// 2. 写入 MAIR_EL1 寄存器
+/* ==========================================
+       阶段 4: 配置系统寄存器
+       ========================================== */
+	// 设置 MAIR_EL1
+	bl  get_mair_el1
 	msr mair_el1, x0
 
-	// 3. 同步指令流, 确保寄存器配置立即生效
+	// 设置 TCR_EL1
+	bl  get_tcr_el1
+	msr tcr_el1, x0
+
+	// 设置 TTBR0_EL1 (1:1 映射)
+	bl  get_ttbr0_el1
+	msr ttbr0_el1, x0
+
+	// 设置 TTBR1_EL1 (虚拟地址映射)
+	bl  get_ttbr1_el1
+	msr ttbr1_el1, x0
+
 	isb
 
-	// 组装 TCR_EL1 配置值（单行写法）
-	ldr x0, =((0b101 << 32) | (0b00 << 36) | (1 << 40) | (1 << 41) | (0b00 << 30) | (0b10 << 28) | (0b01 << 26) | (0b01 << 24) | (16 << 16) | (0b00 << 14) | (0b10 << 12) | (0b01 << 10) | (0b01 << 8) | (32 << 0))
+/* ==========================================
+       阶段 5: 开启 MMU
+       ========================================== */
+	// 读取 SCTLR_EL1
+	mrs x0, sctlr_el1
 
-	msr tcr_el1, x0 // 写入 TCR_EL1
-	isb             // 指令同步，确保配置立即生效
+	// 设置 MMU 使能位
+	ldr x1, =(1 << 0)  // M: MMU enable
+	orr x0, x0, x1
+	ldr x1, =(1 << 2)  // C: Cache enable
+	orr x0, x0, x1
+	ldr x1, =(1 << 12) // I: Instruction cache enable
+	orr x0, x0, x1
+	ldr x1, =(1 << 20) // UCT: Trap undefined cache ops
+	orr x0, x0, x1
+	ldr x1, =(1 << 28) // SPAN: Set Privileged Access Never
+	orr x0, x0, x1
 
-	// ... (前部分 MAIR/TCR/TTBR 配置保持不变) ...
+	// 写入 SCTLR_EL1
+	msr sctlr_el1, x0
 
-	// --------------------------
-	// 修正 1: 在开启 MMU 之前刷新 TLB
-	// --------------------------
-	tlbi vmalle1 // 刷新 TLB
-	dsb  sy      // 确保 TLB 刷新完成
-	isb          // 确保指令流同步
-
-	// --------------------------
-	// 3. 初始化栈指针 (致命修正)
-	// --------------------------
-	ldr x0, =el1_stack_top // 必须指向有效的 RAM 区域，且 16 字节对齐
+	// 数据同步屏障 + 指令同步屏障
+	dsb sy
+	isb
+/* ==========================================
+       阶段 6: 切换栈到虚拟地址
+       ========================================== */
+	ldr x0, =el1_stack_top
 	mov sp, x0
 
-	// --------------------------
-	// 2. 开启 MMU + 缓存
-	// --------------------------
-	mrs x0, sctlr_el1
-	ldr x1, =~( (1 << 0) | (1 << 2) | (1 << 12) | (1 << 3) | (1 << 4) | (1 << 19) )
-	and x0, x0, x1
-	ldr x1, =( (1 << 0) | (1 << 2) | (1 << 12) | (1 << 3) | (1 << 4) | (1 << 19) )
-	orr x0, x0, x1
-	msr sctlr_el1, x0
-	isb                                                                             // 确保 MMU 配置生效
+/* ==========================================
+       阶段 7: 跳转到 main (虚拟地址)
+       ========================================== */
+	ldr x0, =main
+	blr x0
 
-	// --------------------------
-	// 4. 调用 main 函数
-	// --------------------------
-	mov x0, #0
-	mov x1, #0
-	bl  main
-
-	// 防止 main 返回后跑飞
-	b .
-
-halt:
-	wfe
-	b halt
-
+	// 死循环
+hang:
+	wfi
+	b hang
