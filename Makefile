@@ -84,8 +84,9 @@ OBJ_DIRS := $(sort $(dir $(OBJ)))
 TARGET  = build/kernel
 
 # 默认编译
-all: build_dir $(TARGET).img
+# all: build_dir $(TARGET).img
 
+all: build_dir $(TARGET).elf
 # 创建编译目录
 
 # 👇 修改 build_dir 目标，自动创建所有需要的目录
