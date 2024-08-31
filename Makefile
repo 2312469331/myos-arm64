@@ -33,7 +33,7 @@ ifeq ($(shell uname -o), Android)
                -Wl,--build-id=none \
                -Wl,--no-dynamic-linker
     BOOT_CFLAGS = -march=armv8-a -mgeneral-regs-only -ffreestanding
-    BOOT_CFLAGS += -nostdlib -nostartfiles -fno-builtin -fPIC
+    BOOT_CFLAGS += -nostdlib  -fno-builtin -fPIC
     BOOT_CFLAGS += -fno-stack-protector -O2 -Wall
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
