@@ -66,7 +66,7 @@
     "output": "bject-file-name=/data/data/com.termux/files/home/os/build/boot/boot.o"
   },
   {
-    "file": "/data/data/com.termux/files/usr/tmp/boot-4e3d8e.s",
+    "file": "/data/data/com.termux/files/usr/tmp/boot-f4c5aa.s",
     "arguments": [
       "clang-21",
       "-cc1as",
@@ -91,7 +91,7 @@
       "bject-file-name=/data/data/com.termux/files/home/os/build/boot/boot.o",
       "-o",
       "build/boot/boot.o",
-      "/data/data/com.termux/files/usr/tmp/boot-4e3d8e.s"
+      "/data/data/com.termux/files/usr/tmp/boot-f4c5aa.s"
     ],
     "directory": "/data/data/com.termux/files/home/code/myos-arm64",
     "output": "bject-file-name=/data/data/com.termux/files/home/os/build/boot/boot.o"
@@ -163,7 +163,7 @@
     "output": "bject-file-name=/data/data/com.termux/files/home/os/build/boot/vector.o"
   },
   {
-    "file": "/data/data/com.termux/files/usr/tmp/vector-e7fea3.s",
+    "file": "/data/data/com.termux/files/usr/tmp/vector-233b3b.s",
     "arguments": [
       "clang-21",
       "-cc1as",
@@ -188,7 +188,7 @@
       "bject-file-name=/data/data/com.termux/files/home/os/build/boot/vector.o",
       "-o",
       "build/boot/vector.o",
-      "/data/data/com.termux/files/usr/tmp/vector-e7fea3.s"
+      "/data/data/com.termux/files/usr/tmp/vector-233b3b.s"
     ],
     "directory": "/data/data/com.termux/files/home/code/myos-arm64",
     "output": "bject-file-name=/data/data/com.termux/files/home/os/build/boot/vector.o"

@@ -12,7 +12,7 @@
 * ========================================================= */
 _start:
 	// 1. 初始化 EL3 栈指针 (使用链接脚本符号)
-	ldr x0, =el3_stack_top
+	ldr x0, =el3_stack_top_phys
 	mov sp, x0
 
 	// 2. 配置 SCR_EL3 (设置 EL2 为非安全 AArch64)
@@ -44,7 +44,7 @@ _start:
 * ========================================================= */
 el2_entry:
 	// 1. 初始化 EL2 栈指针 (供 EL2 阶段使用)
-	ldr x0, =el2_stack_top
+	ldr x0, =el2_stack_top_phys
 	mov sp, x0
 
 	// 3. 配置 HCR_EL2 (确保 EL1 使用 AArch64)

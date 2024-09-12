@@ -13,6 +13,8 @@ PHYS_BASE = 0x40000000;
 VIRT_BASE = 0xffff000000000000;
 /* 方法1：直接基于 VIRT_BASE/PHYS_BASE 计算（简单直观） */
      el1_stack_top_phys = el1_stack_top - (VIRT_BASE - PHYS_BASE);
+el2_stack_top_phys = el2_stack_top - (VIRT_BASE - PHYS_BASE);
+el3_stack_top_phys = el3_stack_top - (VIRT_BASE - PHYS_BASE);
 /* ==============================================
    LLD 规范版内核链接脚本
    特性：严格遵循 LLD 文档，无单位解析错误，覆盖核心语法
