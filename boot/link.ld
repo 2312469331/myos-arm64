@@ -26,7 +26,7 @@ VIRT_BASE = 0xffff000000000000;
 MEMORY
 {
     BOOT_PHYS (rwx) : ORIGIN = 0x40000000, LENGTH = 2097152
-    KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF000000000000, LENGTH = 1073741824
+  KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF000000000000, LENGTH = 1073741824
 }
 
 /* ---------------- 2. 段分类 (CLASS) - 文档规范示例 ---------------- */
@@ -43,17 +43,29 @@ SECTIONS
         KEEP(*(.boot.text))  /* 保留启动汇编代码 */
         KEEP(*(.boot.data))  /* 保留早期数据 */
         . = ALIGN(4096);    /* 4K 对齐，符合 LLD 段对齐规则 */
+        /* 记录.kernel 物理地址相对于 PHYS_BASE 的偏移 */
     } > BOOT_PHYS
 /* 3.1.1 页表段：物理地址，用于 MMU 页表初始化 */
      .pagetable :
      {
          KEEP(*(.pagetable))  /* 保留所有 .pagetable 输入段（页表数据） */
          . = ALIGN(4096);     /* 强制 4K 对齐，满足 ARM64 页表硬件要求 */
+
      } > BOOT_PHYS  /* 与 .boot 同物理内存区域，MMU 开启前可直接访问物理地址 */
+     /*   . = ALIGN(4096); */
+     /* kernel_phys_offset = . - PHYS_BASE; */
     /* 3.2 内核核心段：虚拟地址(VMA) + 物理加载地址(LMA) 分离 */
     /* 规范：AT(lma) 指定加载地址，VMA 为 KERNEL_VIRT 虚拟地址 */
-    .kernel :
+     /* 关键：这里手动让 .kernel 段的 VMA 也跟着物理地址的偏移走 */
+     /* 关键：记录当前物理地址（.kernel 段的 LMA 起始） */
+     __kernel_lma_start = .;
+     /* 计算物理地址相对于 PHYS_BASE 的偏移 */
+     __kernel_offset = __kernel_lma_start - PHYS_BASE;
+     /* 虚拟地址 = 虚拟基地址 + 物理偏移，LLD 允许这种符号计算 */
+     __kernel_vma_start = VIRT_BASE + __kernel_offset;
+     .kernel __kernel_vma_start : AT(__kernel_lma_start)
     {
+        . = ALIGN(4096);
         /* 代码段：可执行，类型 SHT_PROGBITS */
         *(.text .text.*)
         *(.rodata .rodata.*) CLASS(c) /* 引用之前定义的 c 类段 */
@@ -67,7 +79,7 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
         __bss_end = .;      /* 符号赋值：定义BSS结束 */
-    } > KERNEL_VIRT AT>BOOT_PHYS /* VMA在高地址，LMA在BOOT_PHYS区域 */
+    }>KERNEL_VIRT  /* VMA在高地址，LMA在BOOT_PHYS区域 */
 
     /* 3.3 废弃无用段：符合 LLD 规范 */
     /DISCARD/ : {

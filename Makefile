@@ -13,28 +13,44 @@ ifeq ($(shell uname -o), Android)
     OBJDUMP := llvm-objdump
     QEMU    := qemu-system-aarch64
 
-    CFLAGS := -Wall -Wextra \
-	      -O0 \
-							--target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
-              -ffreestanding \
-              -nostdlib \
-              -static \
-              -fno-stack-protector \
-              -mgeneral-regs-only \
-              -Iinclude \
-	      -g
-    ASFLAGS := -Iinclude \
-							 --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
-							 -g
-    LDFLAGS := -fuse-ld=lld \
-               -T boot/link.ld \
-               -nostdlib \
-               -static \
-               -Wl,--build-id=none \
-               -Wl,--no-dynamic-linker
-    BOOT_CFLAGS = -march=armv8-a -mgeneral-regs-only -ffreestanding
-    BOOT_CFLAGS += -nostdlib  -fno-builtin -fPIC
-    BOOT_CFLAGS += -fno-stack-protector -O2 -Wall
+# ============================================================
+# 核心编译选项：彻底关闭 PIC/PIE、GOT、CRT
+# ============================================================
+CFLAGS := -Wall -Wextra \
+          -O0 \
+          --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
+          -ffreestanding \
+          -nostdlib \
+          -static \
+          -fno-stack-protector \
+          -mgeneral-regs-only \
+          -Iinclude \
+          -fno-PIC -fno-PIE \
+          -g
+
+ASFLAGS := -Iinclude \
+           --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
+           -g
+
+# ============================================================
+# 链接器选项：彻底排除系统 CRT、强制入口 _start
+# ============================================================
+LDFLAGS := -fuse-ld=lld \
+           -T boot/link.ld \
+           -nostdlib \
+           -nodefaultlibs \
+           -static \
+           -e _start \
+           -Wl,--build-id=none \
+           -Wl,--no-dynamic-linker
+
+# ============================================================
+# Boot 段编译配置（已彻底关闭 -fPIC）
+# ============================================================
+BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
+BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
+BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
+
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
     CROSS_COMPILE := aarch64-linux-gnu-

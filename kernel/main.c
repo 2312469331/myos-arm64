@@ -12,8 +12,8 @@
 void uart_test(void);
 void gic_test(void);
 // uart_irq_callback 已在handler.c文件实现，添加 extern 声明（根据实际参数修改）
-extern void uart_irq_callback(uint32_t irq, exception_ctx_t *ctx);
-extern void timer_irq_handler(uint32_t irq, exception_ctx_t *ctx);
+extern void uart_irq_callback(uint32_t irq);
+extern void timer_irq_handler(uint32_t irq);
 void main(void) {
   uart_test();
   gic_test();
@@ -78,20 +78,18 @@ void uart_test(void) {
   // 死循环（OS 无退出）
 }
 // 强符号：覆盖 timer.c 里的弱符号
-void timer_irq_handler(uint32_t irq, exception_ctx_t *ctx) {
+void timer_irq_handler(uint32_t irq) {
   // 1. 标记参数（消除警告）
   (void)irq;
-  (void)ctx;
   // 1. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
   cntp_set_tval(TIMER_LOAD_VAL);
   // 2. 系统时间++
   system_tick++;
 }
-void uart_irq_callback(uint32_t irq, exception_ctx_t *ctx) {
+void uart_irq_callback(uint32_t irq) {
   printk("%s", "sbgxr????");
   // 1. 标记参数（消除警告）
   (void)irq;
-  (void)ctx;
   // el1_irq_handler(exception_ctx_t *ctx)自动应答不需要多此一举
   // // 改造后（使用 GIC 上层 API，更规范）
   // uint32_t irq_num = gic_ack_irq(); // 应答中断

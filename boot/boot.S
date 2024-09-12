@@ -82,8 +82,7 @@ el1_entry:
 	mov sp, x0
 
 	// 调用 C 函数初始化页表
-	bl init_ttbr0_pagetable
-	bl init_ttbr1_pagetable
+	bl init_page_tables
 
 /* ==========================================
        阶段 4: 配置系统寄存器
@@ -113,18 +112,10 @@ el1_entry:
 	mrs x0, sctlr_el1
 
 	// 设置 MMU 使能位
-	ldr x1, =(1 << 0)  // M: MMU enable
-	orr x0, x0, x1
-	ldr x1, =(1 << 2)  // C: Cache enable
-	orr x0, x0, x1
-	ldr x1, =(1 << 12) // I: Instruction cache enable
-	orr x0, x0, x1
-	ldr x1, =(1 << 20) // UCT: Trap undefined cache ops
-	orr x0, x0, x1
-	ldr x1, =(1 << 28) // SPAN: Set Privileged Access Never
-	orr x0, x0, x1
 
 	// 写入 SCTLR_EL1
+	msr sctlr_el1, x0
+	bl  get_sctlr_el1
 	msr sctlr_el1, x0
 
 	// 数据同步屏障 + 指令同步屏障
