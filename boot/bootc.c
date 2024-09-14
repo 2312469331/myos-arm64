@@ -87,8 +87,13 @@ static BOOT_CODE void init_l3_table(void) {
   // 映射 0x40000000 ~ 0x401FFFFF（2MB）
   for (uint64_t i = 0; i < 512; i++) {
     uint64_t pa = PHYS_BASE + (i << 12);
-    l3_table[i] = PTE_VALID | PTE_PAGE_DESC | PTE_ATTR_NORMAL | PTE_AP_RW_ALL |
-                  PTE_SH_OUTER | PTE_AF;
+    // l3_table[i] = PTE_VALID | PTE_PAGE_DESC | PTE_ATTR_NORMAL | PTE_AP_RW_ALL
+    // |
+    //               PTE_SH_OUTER | PTE_AF;
+    l3_table[i] |= (1ULL << 0); // Valid = 1
+    l3_table[i] |= (1ULL << 1); // Table = 1
+    l3_table[i] |=
+        (1ULL << 10); // AF = 1（开启硬件访问位，可选但推荐:warnx("%s");
     l3_table[i] |= pa & PTE_ADDR_MASK;
   }
 }
