@@ -90,13 +90,17 @@ SECTIONS
     }
 
     /* 3.4 栈空间定义：内核异常栈 */
-    . = ALIGN(16); /* 栈对齐 */
+    /* 定义一个栈专用段 */
+.stacks (NOLOAD) : {
+    . = ALIGN(16);
     el3_stack_top = .;
-    . += 0x10000;  /* EL3 栈大小 64KB */
+    . += 0x10000;
     el2_stack_top = .;
-    . += 0x8000;   /* EL2 栈大小 32KB */
+    . += 0x8000;
     el1_stack_top = .;
-    . += 0x4000;   /* EL1 栈大小 16KB */
+    . += 0x4000;
+} > KERNEL_VIRT
+
 }
 
 /* ---------------- 5. 内置函数示例 (DATA_SEGMENT_RELRO_END) ---------------- */

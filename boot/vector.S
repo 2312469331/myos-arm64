@@ -38,7 +38,6 @@ vector_table_el2:
 el2_sync: el2_irq: el2_fiq: el2_serror:
 	b . // 死循环占位
 
-	.align  11
 	.global vector_table_el1
 
 vector_table_el1:
@@ -155,4 +154,3 @@ el1_lower_aarch32_irq:
 el1_lower_aarch32_fiq:
 el1_lower_aarch32_serror:
 	b el1_exception_entry
-

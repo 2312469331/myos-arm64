@@ -108,19 +108,26 @@ el1_entry:
 /* ==========================================
        阶段 5: 开启 MMU
        ========================================== */
-	// 读取 SCTLR_EL1
-	mrs x0, sctlr_el1
-
 	// 设置 MMU 使能位
 
 	// 写入 SCTLR_EL1
-	msr sctlr_el1, x0
-	bl  get_sctlr_el1
-	msr sctlr_el1, x0
+	// msr sctlr_el1, x0
+	// bl  get_sctlr_el1
 
-	// 数据同步屏障 + 指令同步屏障
-	dsb sy
+	// 3. 关键：刷新 TLB，清除旧映射缓存
+	tlbi vmalle1
+	dsb  sy
 	isb
+	mrs  x0, sctlr_el1
+	orr  x0, x0, #(1 << 0)  // 置位 M (MMU Enable)
+	orr  x0, x0, #(1 << 2)  // 置位 C (D-Cache Enable)
+	orr  x0, x0, #(1 << 12) // 置位 I (I-Cache Enable)
+	msr  sctlr_el1, x0
+
+	tlbi vmalle1 // 刷新TLB
+	dsb  sy
+	isb
+
 /* ==========================================
        阶段 6: 切换栈到虚拟地址
        ========================================== */
@@ -131,7 +138,12 @@ el1_entry:
        阶段 7: 跳转到 main (虚拟地址)
        ========================================== */
 	ldr x0, =main
-	blr x0
+
+	// 开启 MMU 代码...
+	tlbi vmalle1
+	dsb  sy
+	isb
+	blr  x0
 
 	// 死循环
 hang:
