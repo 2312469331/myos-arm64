@@ -5,51 +5,20 @@
 
 #include <stdint.h>
 
-/* 强制放到 .boot.data 段 */
-#define BOOT_DATA __attribute__((section(".boot.data")))
-#define BOOT_CODE __attribute__((section(".boot.text")))
-
-/* 页表项位定义 (Non-secure 世界, Stage 1, 4KB粒度) */
-#define PTE_VALID (1UL << 0)      /* 条目有效位 Valid=1 */
-#define PTE_TABLE_DESC (1UL << 1) /* 非叶子节点(L0/L1/L2): bit1=1 → 0b11 */
-#define PTE_PAGE_DESC (1UL << 1)  /* 叶子节点(L3) */
-#define PTE_BLOCK_DESC (0UL << 1) /* 叶子节点(L1/L2大页): bit1=0 → 0b01 */
-/* AttrIndx (bit[5:2]) - 对应 MAIR_EL1 的索引 */
-#define PTE_ATTR(indx) (((indx) & 0xF) << 2)
-#define PTE_ATTR_NORMAL PTE_ATTR(0) /* AttrIndx=0: 普通内存 (Write-back) */
-#define PTE_ATTR_DEVICE PTE_ATTR(2) /* AttrIndx=2: 设备内存 (nGnRE) */
-/* AP 访问权限 (bit[7:6]) - 叶子节点专用 */
-#define PTE_AP(ap) (((ap) & 0x3) << 6)
-#define PTE_AP_RW_EL1 PTE_AP(0b01) /* EL1 读写, EL0 无权限 */
-#define PTE_AP_RW_ALL PTE_AP(0b11) /* EL0/EL1 都可读写 */
-#define PTE_AP_RO_EL1 PTE_AP(0b00) /* EL1 只读, EL0 无权限 */
-/* APTable 层级权限 (bit[62:61]) - Table descriptor专用 */
-#define PTE_APTABLE(ap) (((ap) & 0x3) << 61)
-#define PTE_APTABLE_RW PTE_APTABLE(0b01) /* 下一级默认EL1可读写 */
-#define PTE_APTABLE_RO PTE_APTABLE(0b00) /* 下一级默认EL1只读 */
-/* SH 共享属性 (bit[9:8]) - 叶子节点专用 */
-#define PTE_SH(sh) (((sh) & 0x3) << 8)
-#define PTE_SH_OUTER PTE_SH(0b10)  /* 外部可共享 */
-#define PTE_SH_INNER PTE_SH(0b11)  /* 内部可共享 */
-#define PTE_AF (1UL << 10)         /* 访问标志 (必须置1, 否则触发异常) */
-#define PTE_PXN (1UL << 53)        /* 特权级不可执行(EL1) */
-#define PTE_UXN (1UL << 54)        /* 用户态不可执行(EL0) */
-#define PTE_CONTIGUOUS (1UL << 55) /* 连续页表项标志 */
-#define PTE_ADDR_MASK (~0xFFFUL)   /* 物理地址掩码 (4KB页, 低12位清零) */
-/* XNTable 层级执行权限 (bit60) - Table descriptor专用 */
-#define PTE_XNTABLE (1UL << 60) /* 下一级所有页表项不可执行 */
 /* 地址常量 */
 #define PHYS_BASE 0x40000000UL
 #define KERNEL_VIRT_BASE 0xFFFF000000000000UL
-
+/* 页表声明 */
+/* 强制放到 .boot.data 段 */
+#define BOOT_DATA __attribute__((section(".boot.data")))
+#define BOOT_CODE __attribute__((section(".boot.text")))
 /* 页表声明 */
 uint64_t ttbr0_l0[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t ttbr1_l0[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t l1_table[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t l2_table[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t l3_table[512] __attribute__((section(".pagetable"), aligned(4096)));
-
-/* 清空所有页表条目 */
+/* 清空所有页表 */
 static BOOT_CODE void clear_page_tables(void) {
   for (uint64_t i = 0; i < 512; i++) {
     ttbr0_l0[i] = 0;
@@ -59,42 +28,44 @@ static BOOT_CODE void clear_page_tables(void) {
     l3_table[i] = 0;
   }
 }
-/* 初始化L0页表（TTBR0/TTBR1） */
+/* L0 表初始化 */
 static BOOT_CODE void init_l0_tables(void) {
-  // TTBR0: 用户地址映射，指向L1表
-  ttbr0_l0[0] = PTE_VALID | PTE_TABLE_DESC;
-  ttbr0_l0[0] |= (uint64_t)l1_table & PTE_ADDR_MASK;
-  // TTBR1: 内核地址映射，指向L1表
-  ttbr1_l0[0] = PTE_VALID | PTE_TABLE_DESC;
-  ttbr1_l0[0] |= (uint64_t)l1_table & PTE_ADDR_MASK;
+  // TTBR0 L0[0] -> L1
+  ttbr0_l0[0] |= (1ULL << 0); // Valid
+  ttbr0_l0[0] |= (1ULL << 1); // Table
+  ttbr0_l0[0] |= (uint64_t)l1_table & ~0xFFFUL;
+  // TTBR1 L0[0] -> L1
+  ttbr1_l0[0] |= (1ULL << 0); // Valid
+  ttbr1_l0[0] |= (1ULL << 1); // Table
+  ttbr1_l0[0] |= (uint64_t)l1_table & ~0xFFFUL;
 }
-/* 初始化L1页表 */
+/* L1 表初始化 */
 static BOOT_CODE void init_l1_table(void) {
   // 指向L2表
-  l1_table[0] = PTE_VALID | PTE_TABLE_DESC;
-  l1_table[0] |= (uint64_t)l2_table & PTE_ADDR_MASK;
-  l1_table[1] = PTE_VALID | PTE_TABLE_DESC;
-  l1_table[1] |= (uint64_t)l2_table & PTE_ADDR_MASK;
+  l1_table[0] = 0;
+  l1_table[0] |= (1ULL << 0); // Valid = 1
+  l1_table[0] |= (1ULL << 1); // Table = 1
+  l1_table[0] |= (uint64_t)l2_table & ~0xFFFUL;
+  l1_table[1] = 0;
+  l1_table[1] |= (1ULL << 0); // Valid = 1
+  l1_table[1] |= (1ULL << 1); // Table = 1
+  l1_table[1] |= (uint64_t)l2_table & ~0xFFFUL;
 }
-/* 初始化L2页表 */
+/* L2 表初始化 */
 static BOOT_CODE void init_l2_table(void) {
-  // 指向L3表
-  l2_table[0] = PTE_VALID | PTE_TABLE_DESC;
-  l2_table[0] |= (uint64_t)l3_table & PTE_ADDR_MASK;
+  // L2[0] -> L3
+  l2_table[0] |= (1ULL << 0);
+  l2_table[0] |= (1ULL << 1);
+  l2_table[0] |= (uint64_t)l3_table & ~0xFFFUL;
 }
-/* 初始化L3页表（映射4KB物理页） */
+/* L3 页表初始化 */
 static BOOT_CODE void init_l3_table(void) {
-  // 映射 0x40000000 ~ 0x401FFFFF（2MB）
   for (uint64_t i = 0; i < 512; i++) {
     uint64_t pa = PHYS_BASE + (i << 12);
-    // l3_table[i] = PTE_VALID | PTE_PAGE_DESC | PTE_ATTR_NORMAL | PTE_AP_RW_ALL
-    // |
-    //               PTE_SH_OUTER | PTE_AF;
-    l3_table[i] |= (1ULL << 0); // Valid = 1
-    l3_table[i] |= (1ULL << 1); // Table = 1
-    l3_table[i] |=
-        (1ULL << 10); // AF = 1（开启硬件访问位，可选但推荐:warnx("%s");
-    l3_table[i] |= pa & PTE_ADDR_MASK;
+    l3_table[i] |= (1ULL << 0);  // Valid
+    l3_table[i] |= (1ULL << 1);  // Page
+    l3_table[i] |= (1ULL << 10); // AF
+    l3_table[i] |= pa & ~0xFFFUL;
   }
 }
 /* 完整页表初始化入口 */

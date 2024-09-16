@@ -36,7 +36,7 @@ ASFLAGS := -Iinclude \
 # 链接器选项：彻底排除系统 CRT、强制入口 _start
 # ============================================================
 LDFLAGS := -fuse-ld=lld \
-           -T boot/link.ld \
+           -T arch/arm64/boot/link.ld \
            -nostdlib \
            -nodefaultlibs \
            -static \
@@ -70,7 +70,7 @@ else
                -Iinclude \
     	       -g
     ASFLAGS := -Iinclude
-    LDFLAGS := -T boot/link.ld \
+    LDFLAGS := -T barch/arm64/oot/link.ld \
                -nostdlib \
                -nostartfiles
 endif
@@ -81,18 +81,21 @@ QEMU := qemu-system-aarch64
 QEMU_MACHINE := virt,secure=on,virtualization=on
 QEMU_CPU := cortex-a53
 DTC := dtc
-# ======================
-# 源码配置（合并 config.mk 配置）
-# ======================
-SRC_ASM = boot/boot.S \
-           $(SRC_ASM_CONFIG)  # 来自 config.mk 的条件汇编文件
-SRC_C = boot/bootc.c \
-           kernel/main.c \
-           kernel/mmu.c \
-           kernel/irq.c \
-           kernel/printk.c \
-           $(SRC_C_CONFIG)    # 来自 config.mk 的条件C文件
-
+# =========================
+ # 源码配置（合并 config.mk 配置）
+ # =========================
+ SRC_ASM = arch/arm64/boot/boot.S \
+           $(SRC_ASM_CONFIG)   # 来自 config.mk 的条件汇编文件
+ SRC_C = arch/arm64/boot/bootc.c \
+         kernel/main.c \
+         kernel/irq.c \
+         kernel/printk.c \
+         kernel/mm.c \
+         kernel/pmm.c \
+         kernel/vmm.c \
+         kernel/kheap.c \
+         kernel/io.c \
+         $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
@@ -118,7 +121,7 @@ build/%.o: %.S
 # C 文件编译
 build/%.o: %.c
 	@mkdir -p $(dir $@)
-	$(if $(findstring boot/,$<),$(CC) $(BOOT_CFLAGS) -c $< -o $@,$(CC) $(CFLAGS) -c $< -o $@)
+	$(if $(findstring arch/arm64/boot/,$<),$(CC) $(BOOT_CFLAGS) -c $< -o $@,$(CC) $(CFLAGS) -c $< -o $@)
 # 链接 ELF（仅链接 .o 文件，无源码！）
 $(TARGET).elf: $(OBJ)
 	$(LD) $(LDFLAGS) $^ -o $@

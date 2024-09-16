@@ -13,7 +13,7 @@ $(info CONFIG_EXCEPTION = [$(CONFIG_EXCEPTION)])
 # 2. 条件加入源码（根据配置自动生成 SRC_ASM/SRC_C）
 # 异常处理相关
 ifeq ($(CONFIG_EXCEPTION),y)
-SRC_ASM_CONFIG += boot/vector.S          # 异常向量表
+SRC_ASM_CONFIG += arch/arm64/boot/vector.S          # 异常向量表
 SRC_C_CONFIG   += exception/handler.c    # 异常/中断处理函数
 endif
 
