@@ -76,8 +76,7 @@ else
     BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
     BOOT_CFLAGS += -Iinclude
     LDFLAGS := -T arch/arm64/boot/link.ld \
-               -nostdlib \
-               -nostartfiles
+               -nostdlib
 endif
 # qemu配置
 
