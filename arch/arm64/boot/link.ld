@@ -27,8 +27,10 @@ el3_stack_top_phys = el3_stack_top - (VIRT_BASE - PHYS_BASE);
 /* 虚拟内存基址 & 长度：高地址（内核虚拟空间），1GB = 1073741824 字节 */
 MEMORY
 {
-    BOOT_PHYS (rwx) : ORIGIN = 0x40000000, LENGTH = 2097152
-  KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF000000000000, LENGTH = 1073741824
+  /* 物理内存 0x40000000 ~ 0x140000000，共 4GB */
+    BOOT_PHYS (rwx) : ORIGIN = 0x40000000, LENGTH = 0x100000000
+    /* 虚拟内存 0xFFFF000000000000 ~ 0xFFFF000100000000，共 4GB */
+    KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF000000000000, LENGTH = 0x100000000
 }
 
 /* ---------------- 2. 段分类 (CLASS) - 文档规范示例 ---------------- */
@@ -72,7 +74,7 @@ SECTIONS
         . += 0x8000;
         el1_stack_top = .;
         . += 0x4000;
-    } 
+    }>KERNEL_VIRT  
 
     /* 计算内核段的物理地址和虚拟地址 */
     kernel_lma = stacks_lma + SIZEOF(.stacks);
@@ -97,7 +99,7 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
         __bss_end = .;      /* 符号赋值：定义BSS结束 */
-    } 
+    } >KERNEL_VIRT
 
     /* 3.3 废弃无用段：符合 LLD 规范 */
     /DISCARD/ : {
