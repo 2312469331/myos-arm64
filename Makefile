@@ -50,6 +50,7 @@ LDFLAGS := -fuse-ld=lld \
 BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
 BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
 BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
+BOOT_CFLAGS += -Iinclude
 
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
@@ -70,7 +71,11 @@ else
                -Iinclude \
     	       -g
     ASFLAGS := -Iinclude
-    LDFLAGS := -T barch/arm64/oot/link.ld \
+    BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
+    BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
+    BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
+    BOOT_CFLAGS += -Iinclude
+    LDFLAGS := -T arch/arm64/boot/link.ld \
                -nostdlib \
                -nostartfiles
 endif
@@ -90,11 +95,6 @@ DTC := dtc
          kernel/main.c \
          kernel/irq.c \
          kernel/printk.c \
-         kernel/mm.c \
-         kernel/pmm.c \
-         kernel/vmm.c \
-         kernel/kheap.c \
-         kernel/io.c \
          $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！

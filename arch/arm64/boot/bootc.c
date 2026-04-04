@@ -3,7 +3,7 @@
  * 所以必须链接到物理地址，使用位置无关代码
  */
 
-#include <stdint.h>
+#include <types.h>
 
 /* 地址常量 */
 #define PHYS_BASE 0x40000000UL
