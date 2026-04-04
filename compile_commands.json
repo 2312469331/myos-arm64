@@ -13,10 +13,153 @@
             "-Iinclude",
             "-g",
             "-o",
+            "build/driver/timer.o",
+            "driver/timer.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "driver/timer.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-ffreestanding",
+            "-nostdlib",
+            "-nostartfiles",
+            "-fno-stack-protector",
+            "-mgeneral-regs-only",
+            "-Iinclude",
+            "-g",
+            "-o",
+            "build/driver/uart.o",
+            "driver/uart.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "driver/uart.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-ffreestanding",
+            "-nostdlib",
+            "-nostartfiles",
+            "-fno-stack-protector",
+            "-mgeneral-regs-only",
+            "-Iinclude",
+            "-g",
+            "-o",
             "build/exception/handler.o",
             "exception/handler.c"
         ],
         "directory": "/home/liuweiji/code/myos-arm64",
         "file": "exception/handler.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-ffreestanding",
+            "-nostdlib",
+            "-nostartfiles",
+            "-fno-stack-protector",
+            "-mgeneral-regs-only",
+            "-Iinclude",
+            "-g",
+            "-o",
+            "build/kernel/irq.o",
+            "kernel/irq.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "kernel/irq.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-ffreestanding",
+            "-nostdlib",
+            "-nostartfiles",
+            "-fno-stack-protector",
+            "-mgeneral-regs-only",
+            "-Iinclude",
+            "-g",
+            "-o",
+            "build/kernel/main.o",
+            "kernel/main.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "kernel/main.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-ffreestanding",
+            "-nostdlib",
+            "-nostartfiles",
+            "-fno-stack-protector",
+            "-mgeneral-regs-only",
+            "-Iinclude",
+            "-g",
+            "-o",
+            "build/kernel/printk.o",
+            "kernel/printk.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "kernel/printk.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-ffreestanding",
+            "-nostdlib",
+            "-nostartfiles",
+            "-fno-stack-protector",
+            "-mgeneral-regs-only",
+            "-Iinclude",
+            "-g",
+            "-o",
+            "build/driver/gic.o",
+            "driver/gic.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "driver/gic.c"
+    },
+    {
+        "arguments": [
+            "aarch64-linux-gnu-gcc",
+            "-c",
+            "-march=armv8-a",
+            "-mgeneral-regs-only",
+            "-ffreestanding",
+            "-nostdlib",
+            "-fno-builtin",
+            "-fno-PIC",
+            "-fno-PIE",
+            "-fno-stack-protector",
+            "-O2",
+            "-Wall",
+            "-g",
+            "-Iinclude",
+            "-o",
+            "build/arch/arm64/boot/bootc.o",
+            "arch/arm64/boot/bootc.c"
+        ],
+        "directory": "/home/liuweiji/code/myos-arm64",
+        "file": "arch/arm64/boot/bootc.c"
     }
 ]
