@@ -100,7 +100,7 @@ el1_exception_entry:
 	stp x24, x25, [sp, #-16]!
 	stp x26, x27, [sp, #-16]!
 	stp x28, x29, [sp, #-16]!
-	stp x30, lr, [sp, #-16]!
+	stp x30, xzr, [sp, #-16]!
 
 	// 把 ELR_EL1、SPSR_EL1 也存到栈上
 	mrs x0, elr_el1
@@ -116,7 +116,7 @@ el1_exception_entry:
 	msr spsr_el1, x1
 
 	// 恢复所有通用寄存器
-	ldp x30, lr, [sp], #16
+	ldp x30, xzr, [sp], #16
 	ldp x28, x29, [sp], #16
 	ldp x26, x27, [sp], #16
 	ldp x24, x25, [sp], #16
