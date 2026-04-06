@@ -5,7 +5,9 @@
 #include <stdint.h>
 
 // ========================= 平台配置（QEMU virt ARM） =========================
-#define UART0_BASE ((volatile void *)0x09000000)
+// UART虚拟地址会在main函数中动态计算并设置
+extern volatile void *uart_base;
+#define UART0_BASE uart_base
 #define UART_CLOCK 24000000U     // UART 时钟频率：24MHz
 #define DEFAULT_BAUDRATE 115200U // 默认波特率
 

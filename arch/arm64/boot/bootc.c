@@ -7,7 +7,13 @@
 
 /* 地址常量 */
 #define PHYS_BASE 0x40000000UL
-#define KERNEL_VIRT_BASE 0xFFFF000000000000UL
+#define KERNEL_VIRT_BASE (0xFFFF800000000000UL + PHYS_BASE)
+#define L3_TABLE_SIZE 512      // 每个L3表的条目数
+#define L3_TABLE_MAP_SIZE (L3_TABLE_SIZE * 4096)  // 每个L3表映射的大小（2MB）
+#define L3_TABLE_NEEDED 2      // 需要的固定L3表数量
+
+
+/* 从链接脚本导入的符号 */
 /* 页表声明 */
 /* 强制放到 .boot.data 段 */
 #define BOOT_DATA __attribute__((section(".boot.data")))
@@ -17,7 +23,10 @@ uint64_t ttbr0_l0[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t ttbr1_l0[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t l1_table[512] __attribute__((section(".pagetable"), aligned(4096)));
 uint64_t l2_table[512] __attribute__((section(".pagetable"), aligned(4096)));
-uint64_t l3_table[512] __attribute__((section(".pagetable"), aligned(4096)));
+
+// 创建足够的L3表（最多支持16MB内核）
+#define MAX_L3_TABLES 8
+uint64_t l3_tables[MAX_L3_TABLES][512] __attribute__((section(".pagetable"), aligned(4096)));
 /* 清空所有页表 */
 static BOOT_CODE void clear_page_tables(void) {
   for (uint64_t i = 0; i < 512; i++) {
@@ -25,47 +34,93 @@ static BOOT_CODE void clear_page_tables(void) {
     ttbr1_l0[i] = 0;
     l1_table[i] = 0;
     l2_table[i] = 0;
-    l3_table[i] = 0;
+    for (uint64_t j = 0; j < MAX_L3_TABLES; j++) {
+      l3_tables[j][i] = 0;
+    }
   }
 }
 /* L0 表初始化 */
 static BOOT_CODE void init_l0_tables(void) {
-  // TTBR0 L0[0] -> L1
+  // 根据虚拟地址自动计算L0索引（bit 39-47）
+  uint64_t l0_index = (KERNEL_VIRT_BASE >> 39) & 0x1FF;
+  
+  // TTBR0 L0[0] -> L1（用户空间）
   ttbr0_l0[0] |= (1ULL << 0); // Valid
   ttbr0_l0[0] |= (1ULL << 1); // Table
   ttbr0_l0[0] |= (uint64_t)l1_table & ~0xFFFUL;
-  // TTBR1 L0[0] -> L1
-  ttbr1_l0[0] |= (1ULL << 0); // Valid
-  ttbr1_l0[0] |= (1ULL << 1); // Table
-  ttbr1_l0[0] |= (uint64_t)l1_table & ~0xFFFUL;
+  
+  // TTBR1 L0[l0_index] -> L1（内核空间）
+  ttbr1_l0[l0_index] |= (1ULL << 0); // Valid
+  ttbr1_l0[l0_index] |= (1ULL << 1); // Table
+  ttbr1_l0[l0_index] |= (uint64_t)l1_table & ~0xFFFUL;
 }
 /* L1 表初始化 */
 static BOOT_CODE void init_l1_table(void) {
+  // 根据虚拟地址自动计算L1索引（bit 30-38）
+  uint64_t l1_index = (KERNEL_VIRT_BASE >> 30) & 0x1FF;
+  
   // 指向L2表
-  l1_table[0] = 0;
-  l1_table[0] |= (1ULL << 0); // Valid = 1
-  l1_table[0] |= (1ULL << 1); // Table = 1
-  l1_table[0] |= (uint64_t)l2_table & ~0xFFFUL;
-  l1_table[1] = 0;
-  l1_table[1] |= (1ULL << 0); // Valid = 1
-  l1_table[1] |= (1ULL << 1); // Table = 1
-  l1_table[1] |= (uint64_t)l2_table & ~0xFFFUL;
+  l1_table[l1_index] = 0;
+  l1_table[l1_index] |= (1ULL << 0); // Valid = 1
+  l1_table[l1_index] |= (1ULL << 1); // Table = 1
+  l1_table[l1_index] |= (uint64_t)l2_table & ~0xFFFUL;
 }
 /* L2 表初始化 */
 static BOOT_CODE void init_l2_table(void) {
-  // L2[0] -> L3
-  l2_table[0] |= (1ULL << 0);
-  l2_table[0] |= (1ULL << 1);
-  l2_table[0] |= (uint64_t)l3_table & ~0xFFFUL;
+  // 根据虚拟地址自动计算L2索引（bit 21-29）
+  uint64_t l2_index = (KERNEL_VIRT_BASE >> 21) & 0x1FF;
+  
+  // 初始化需要的L2条目
+  for (uint64_t i = 0; i < L3_TABLE_NEEDED && i < MAX_L3_TABLES; i++) {
+    l2_table[l2_index + i] |= (1ULL << 0);  // Valid
+    l2_table[l2_index + i] |= (1ULL << 1);  // Table
+    l2_table[l2_index + i] |= (uint64_t)&l3_tables[i] & ~0xFFFUL;
+  }
 }
 /* L3 页表初始化 */
 static BOOT_CODE void init_l3_table(void) {
-  for (uint64_t i = 0; i < 512; i++) {
-    uint64_t pa = PHYS_BASE + (i << 12);
-    l3_table[i] |= (1ULL << 0);  // Valid
-    l3_table[i] |= (1ULL << 1);  // Page
-    l3_table[i] |= (1ULL << 10); // AF
-    l3_table[i] |= pa & ~0xFFFUL;
+
+  // 映射物理内存到多个L3表
+  uint64_t current_page = 0;
+  
+  // 映射所有需要的L3表
+  for (uint64_t table_idx = 0; table_idx < L3_TABLE_NEEDED && table_idx < MAX_L3_TABLES; table_idx++) {
+    uint64_t pages_in_this_table;
+    
+    // 计算当前表需要映射的页数
+    if (table_idx == L3_TABLE_NEEDED - 1) {
+      // 最后一个表，计算剩余页数
+      pages_in_this_table = L3_TABLE_SIZE - 1;
+    uint64_t pa = 0x09000000; // UART0物理基地址
+    
+    l3_tables[table_idx][511] |= (1ULL << 0);  // Valid
+    l3_tables[table_idx][511] |= (1ULL << 1);  // Page
+    l3_tables[table_idx][511] |= (1ULL << 11); // nG: Not Global (非全局)
+    l3_tables[table_idx][511] |= (1ULL << 10); // AF: Access Flag (访问标志)
+    l3_tables[table_idx][511] |= (2ULL << 8);  // SH: Outer Shareable (bits[9:8]=10)
+    l3_tables[table_idx][511] |= (0ULL << 6);  // AP[2:1]: EL0不可访问，EL1可读写 (bits[7:6]=00)
+    l3_tables[table_idx][511] |= (0ULL << 5);  // NS: Secure (非安全位为0)
+    l3_tables[table_idx][511] |= (2ULL << 2);  // AttrIndx: 使用MAIR_EL1的Attr2 (设备内存)
+    l3_tables[table_idx][511] |= pa & ~0xFFFUL;
+    } else {
+      // 完整的表
+      pages_in_this_table = L3_TABLE_SIZE;
+    }
+    
+    // 映射物理内存页面
+    for (uint64_t i = 0; i < pages_in_this_table; i++) {
+      uint64_t pa = PHYS_BASE + (current_page << 12);
+      l3_tables[table_idx][i] |= (1ULL << 0);  // Valid
+      l3_tables[table_idx][i] |= (1ULL << 1);  // Page
+      l3_tables[table_idx][i] |= (1ULL << 11); // nG: Not Global (非全局)
+      l3_tables[table_idx][i] |= (1ULL << 10); // AF: Access Flag (访问标志)
+      l3_tables[table_idx][i] |= (2ULL << 8);  // SH: Outer Shareable (bits[9:8]=10)
+      l3_tables[table_idx][i] |= (0ULL << 6);  // AP[2:1]: EL0不可访问，EL1可读写 (bits[7:6]=00)
+      l3_tables[table_idx][i] |= (0ULL << 5);  // NS: Secure (非安全位为0)
+      l3_tables[table_idx][i] |= (0ULL << 2);  // AttrIndx: 使用MAIR_EL1的Attr0 (bits[4:2]=000)
+      l3_tables[table_idx][i] |= pa & ~0xFFFUL;
+      current_page++;
+    }
   }
 }
 /* 完整页表初始化入口 */

@@ -5,7 +5,6 @@
 #include "printk.h"
 #include "types.h"
 #include "uart.h" // 你的串口打印函数
-
 #include <stdint.h>
 
 // ==============================
@@ -59,11 +58,11 @@ void c_exception_handler(void) {
   uint64_t spsr = read_spsr_el1(); // 进入异常前的 PSTATE
   uint64_t ec = (esr & ESR_ELx_EC_MASK) >> ESR_ELx_EC_SHIFT;
   // 用 printk 打印所有关键信息
-  printk("[Exception Handler] ELR (Fault PC): 0x%lx\n", elr);
-  printk("[Exception Handler] FAR (Fault Address): 0x%lx\n", far);
-  printk("[Exception Handler] ESR (Exception Syndrome): 0x%lx\n", esr);
-  printk("[Exception Handler] ESR EC (Exception Class): 0x%lx\n", ec);
-  printk("[Exception Handler] SPSR (PSTATE): 0x%lx\n", spsr);
+  printk("[Exception Handler] ELR (Fault PC): %lx\n", elr);
+  printk("[Exception Handler] FAR (Fault Address): %lx\n", far);
+  printk("[Exception Handler] ESR (Exception Syndrome): %lx\n", esr);
+  printk("[Exception Handler] ESR EC (Exception Class): %lx\n", ec);
+  printk("[Exception Handler] SPSR (PSTATE): %lx\n", spsr);
 
   switch (ec) {
   // ======================
@@ -157,8 +156,8 @@ void el1_sync_handler() {
 
   // 替换为 printk 版本
   printk("\n[EL1 Sync Exception]\n");
-  printk("ESR: 0x%x\n", esr);
-  printk("FAR: 0x%x\n", far);
+  printk("ESR: %x\n", esr);
+  printk("FAR: %x\n", far);
 
   // 未定义指令
   if (ec == 0x00) {

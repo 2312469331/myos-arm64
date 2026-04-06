@@ -10,11 +10,11 @@ ENTRY(_start) /* 入口点 */
 /* 定义物理内存起始地址 */
 PHYS_BASE = 0x40000000;
 /* 定义虚拟内存高地址偏移 (Kernel Base) */
-VIRT_BASE = 0xffff000000000000;
+VIRT_BASE = 0xffff800000000000 + PHYS_BASE;
 /* 方法1：直接基于 VIRT_BASE/PHYS_BASE 计算（简单直观） */
-     el1_stack_top_phys = el1_stack_top - (VIRT_BASE - PHYS_BASE);
-el2_stack_top_phys = el2_stack_top - (VIRT_BASE - PHYS_BASE);
-el3_stack_top_phys = el3_stack_top - (VIRT_BASE - PHYS_BASE);
+el1_stack_top_phys = el1_stack_top - 0xffff800000000000  ;
+el2_stack_top_phys = el2_stack_top - 0xffff800000000000  ;
+el3_stack_top_phys = el3_stack_top - 0xffff800000000000  ;
 /* ==============================================
    LLD 规范版内核链接脚本
    特性：严格遵循 LLD 文档，无单位解析错误，覆盖核心语法
@@ -30,15 +30,13 @@ MEMORY
   /* 物理内存 0x40000000 ~ 0x140000000，共 4GB */
     BOOT_PHYS (rwx) : ORIGIN = 0x40000000, LENGTH = 0x100000000
     /* 虚拟内存 0xFFFF000000000000 ~ 0xFFFF000100000000，共 4GB */
-    KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF000000000000, LENGTH = 0x100000000
+    KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF800000000000 + PHYS_BASE, LENGTH = 0x100000000
 }
 
 /* ---------------- 2. 段分类 (CLASS) - 文档规范示例 ---------------- */
 /* 规范：CLASS 定义输入段集合，不可嵌套，输入段仅归属一个CLASS */
 SECTIONS
 {
-
-
     /* ---------------- 3. 段布局核心 (SECTIONS 命令) ---------------- */
     /* 3.1 早期启动段：物理地址 1:1 映射 */
     .boot :
@@ -68,12 +66,12 @@ SECTIONS
     .stacks stacks_vma : AT(stacks_lma)
     {
         . = ALIGN(16);
+        . += 0x10;
         el3_stack_top = .;
-        . += 0x10000;
+        . += 0x80;
         el2_stack_top = .;
-        . += 0x8000;
+         . += 0x10000;
         el1_stack_top = .;
-        . += 0x4000;
     }>KERNEL_VIRT  
 
     /* 计算内核段的物理地址和虚拟地址 */
@@ -99,6 +97,8 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
         __bss_end = .;      /* 符号赋值：定义BSS结束 */
+
+
     } >KERNEL_VIRT
 
     /* 3.3 废弃无用段：符合 LLD 规范 */

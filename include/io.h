@@ -1,8 +1,8 @@
 #ifndef __IO_H__
 #define __IO_H__
 
-#include <printk.h>
-#include <stdint.h>
+#include "printk.h"
+#include "types.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -56,7 +56,7 @@ static inline void io_write32(volatile void *addr, uint32_t val) {
 
 static inline void io_write32_log(volatile void *addr, uint32_t val,
                                   const char *name) {
-  printk("[IO WRITE] %s (0x%lx) = 0x%x\n", name, (uintptr_t)addr, val);
+  printk("[IO WRITE] %s (%lx) = %x\n", name, (uintptr_t)addr, val);
   io_write32(addr, val);
 }
 
