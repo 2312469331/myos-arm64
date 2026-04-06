@@ -93,6 +93,9 @@ void printk(const char *fmt, ...) {
                 case 'c': // 字符
                     uart_putc((char)va_arg(args, int)); // char提升为int
                     break;
+                case 'p': // 指针地址（64位）
+                    print_hex((uint64_t)va_arg(args, void*));
+                    break;
                 default: // 未知格式化符
                     uart_putc('%');
                     uart_putc(*fmt);
@@ -136,6 +139,9 @@ void panic(const char *fmt, ...) {
                     break;
                 case 'c':
                     uart_putc((char)va_arg(args, int));
+                    break;
+                case 'p': // 指针地址（64位）
+                    print_hex((uint64_t)va_arg(args, void*));
                     break;
                 default:
                     uart_putc('%');

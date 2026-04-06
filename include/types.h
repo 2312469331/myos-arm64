@@ -49,5 +49,14 @@ typedef signed long long    int64_t;
 #endif
 #endif
 
+// 定义 size_t 类型
+#ifndef size_t
+#ifdef __aarch64__
+typedef unsigned long       size_t;
+#else
+typedef unsigned int        size_t;
+#endif
+#endif
+
 #endif // __TYPES_H__
 

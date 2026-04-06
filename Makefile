@@ -70,7 +70,7 @@ else
                -mgeneral-regs-only \
                -Iinclude \
     	       -g
-    ASFLAGS := -Iinclude
+    ASFLAGS := -Iinclude -g
     BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
     BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
     BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
@@ -93,7 +93,10 @@ DTC := dtc
  SRC_C = arch/arm64/boot/bootc.c \
          kernel/main.c \
          kernel/irq.c \
+         kernel/pmm.c \
          kernel/printk.c \
+         kernel/libc.c \
+         kernel/slab.c \
          $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
@@ -145,8 +148,12 @@ debug: all
 	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
 		-kernel $(TARGET).elf -nographic -s -S
 
+debug-no-suspend: all
+	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
+		-kernel $(TARGET).elf -nographic -s
+
 # 导出设备树（DTB + DTS）
-.PHONY: dtb
+.PHONY: debug debug-no-suspend dtb
 dtb:
 	@echo "📤 Exporting QEMU device tree (DTB)..."
 	$(QEMU) -machine $(QEMU_MACHINE),dumpdtb=virt.dtb \

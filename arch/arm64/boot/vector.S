@@ -37,7 +37,7 @@ vector_table_el2:
 	// EL2 异常处理（先写死循环，后续实现虚拟化切换）
 el2_sync: el2_irq: el2_fiq: el2_serror:
 	b . // 死循环占位
-
+	.align  11  
 	.global vector_table_el1
 
 vector_table_el1:
