@@ -7,18 +7,25 @@
 #define TOTAL_MEM_SIZE (128 * 1024 * 1024) // 改成 128MB
 /* 2. 页表基础常量（保持你的定义） */
 #define PHYS_BASE 0x40000000UL
-#define KERNEL_VIRT_BASE (0xFFFF800000000000UL + PHYS_BASE)
-#define L3_TABLE_SIZE 512                        // 每个表的条目数
-#define L3_TABLE_MAP_SIZE (L3_TABLE_SIZE * 4096) // 每个L3表映射 2MB
+#define KERNEL_VIRT_BASE (0xFFFF800000000000UL)
+#define TABLE_SIZE 512                        // 每个表的条目数
+#define L3_TABLE_MAP_SIZE (TABLE_SIZE * 4096) // 每个L3表映射 2MB
 /* 3. 通用向上取整计算宏（C语言标准写法） */
 #define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+
+/* 提前计算出各级虚拟地址的索引基址，避免循环内重复计算 */
+#define L0_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 39) & 0x1FF)
+#define L1_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 30) & 0x1FF)
+#define L2_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 21) & 0x1FF)
+#define L3_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 12) & 0x1FF)
+
 /* 4. 自动计算各级页表数量（核心逻辑） */
 // L3: 总内存 / 每个L3表映射的大小 (2MB)
-#define L3_TABLES_NEEDED DIV_ROUND_UP(TOTAL_MEM_SIZE, L3_TABLE_MAP_SIZE)
+#define L3_TABLES_NEEDED DIV_ROUND_UP(TOTAL_MEM_SIZE+L3_INDEX_BASE*4096, L3_TABLE_MAP_SIZE)
 // L2: 需要多少个L2表 = 总L3表数 / 512 (向上取整)
-#define L2_TABLES_NEEDED DIV_ROUND_UP(L3_TABLES_NEEDED, L3_TABLE_SIZE)
+#define L2_TABLES_NEEDED DIV_ROUND_UP(L3_TABLES_NEEDED+L2_INDEX_BASE, TABLE_SIZE)
 // L1: 需要多少个L1表 = 总L2表数 / 512 (向上取整)
-#define L1_TABLES_NEEDED DIV_ROUND_UP(L2_TABLES_NEEDED, L3_TABLE_SIZE)
+#define L1_TABLES_NEEDED DIV_ROUND_UP(L2_TABLES_NEEDED+L1_INDEX_BASE, TABLE_SIZE)
 // L0: 内核空间通常固定1个L0页表
 #define L0_TABLES_NEEDED 1
 /* 5. 保持你的原属性定义 */
@@ -27,43 +34,40 @@
 /* 6. 自动声明页表数组（完全动态） */
 // 注意：这里 ttbr0_l0/ttbr1_l0 是L0表，虽然只有1个，但维度保持 [数量][条目数]
 // 一致
-uint64_t ttbr0_l0[L0_TABLES_NEEDED][L3_TABLE_SIZE]
+uint64_t ttbr0_l0[L0_TABLES_NEEDED][TABLE_SIZE]
     __attribute__((section(".pagetable"), aligned(4096)));
-uint64_t ttbr1_l0[L0_TABLES_NEEDED][L3_TABLE_SIZE]
+uint64_t ttbr1_l0[L0_TABLES_NEEDED][TABLE_SIZE]
     __attribute__((section(".pagetable"), aligned(4096)));
 // L1表：数量 = L1_TABLES_NEEDED
-uint64_t l1_table[L1_TABLES_NEEDED][L3_TABLE_SIZE]
+uint64_t l1_table[L1_TABLES_NEEDED][TABLE_SIZE]
     __attribute__((section(".pagetable"), aligned(4096)));
 // L2表：数量 = L2_TABLES_NEEDED
-uint64_t l2_table[L2_TABLES_NEEDED][L3_TABLE_SIZE]
+uint64_t l2_table[L2_TABLES_NEEDED][TABLE_SIZE]
     __attribute__((section(".pagetable"), aligned(4096)));
 // L3表：数量 = L3_TABLES_NEEDED (彻底去掉了 MAX_L3_TABLES=8)
-uint64_t l3_tables[L3_TABLES_NEEDED][L3_TABLE_SIZE]
+uint64_t l3_tables[L3_TABLES_NEEDED][TABLE_SIZE]
     __attribute__((section(".pagetable"), aligned(4096)));
 
-/* 提前计算出各级虚拟地址的索引基址，避免循环内重复计算 */
-#define L0_INDEX_BASE ((KERNEL_VIRT_BASE >> 39) & 0x1FF)
-#define L1_INDEX_BASE ((KERNEL_VIRT_BASE >> 30) & 0x1FF)
-#define L2_INDEX_BASE ((KERNEL_VIRT_BASE >> 21) & 0x1FF)
+
 
 /* 清空页表（这部分本身就是通用的，无需大改） */
 static BOOT_CODE void clear_page_tables(void) {
   for (uint64_t i = 0; i < L0_TABLES_NEEDED; i++)
-    for (uint64_t j = 0; j < L3_TABLE_SIZE; j++) {
+    for (uint64_t j = 0; j < TABLE_SIZE; j++) {
       ttbr0_l0[i][j] = 0;
       ttbr1_l0[i][j] = 0;
     }
 
   for (uint64_t i = 0; i < L1_TABLES_NEEDED; i++)
-    for (uint64_t j = 0; j < L3_TABLE_SIZE; j++)
+    for (uint64_t j = 0; j < TABLE_SIZE; j++)
       l1_table[i][j] = 0;
 
   for (uint64_t i = 0; i < L2_TABLES_NEEDED; i++)
-    for (uint64_t j = 0; j < L3_TABLE_SIZE; j++)
+    for (uint64_t j = 0; j < TABLE_SIZE; j++)
       l2_table[i][j] = 0;
 
   for (uint64_t i = 0; i < L3_TABLES_NEEDED; i++)
-    for (uint64_t j = 0; j < L3_TABLE_SIZE; j++)
+    for (uint64_t j = 0; j < TABLE_SIZE; j++)
       l3_tables[i][j] = 0;
 }
 
@@ -73,8 +77,8 @@ static BOOT_CODE void init_l0_tables(void) {
   for (uint64_t i = 0; i < L1_TABLES_NEEDED; i++) {
     // i / 512 : 当前 L1 表落在了第几个物理 L0 表上
     // (L0_INDEX_BASE + i) % 512 : 在该 L0 表内的具体索引
-    uint64_t l0_tbl_idx = i / L3_TABLE_SIZE;
-    uint64_t l0_entry_idx = (L0_INDEX_BASE + i) % L3_TABLE_SIZE;
+    uint64_t l0_tbl_idx = i / TABLE_SIZE;
+    uint64_t l0_entry_idx = (L0_INDEX_BASE + i) % TABLE_SIZE;
 
     ttbr1_l0[l0_tbl_idx][l0_entry_idx] = (1ULL << 0);  // Valid
     ttbr1_l0[l0_tbl_idx][l0_entry_idx] |= (1ULL << 1); // Table
@@ -88,8 +92,8 @@ static BOOT_CODE void init_l0_tables(void) {
 /* L1 表初始化：通用循环，自动跨越 L1 边界 */
 static BOOT_CODE void init_l1_table(void) {
   for (uint64_t i = 0; i < L2_TABLES_NEEDED; i++) {
-    uint64_t l1_tbl_idx = i / L3_TABLE_SIZE;
-    uint64_t l1_entry_idx = (L1_INDEX_BASE + i) % L3_TABLE_SIZE;
+    uint64_t l1_tbl_idx = i / TABLE_SIZE;
+    uint64_t l1_entry_idx = (L1_INDEX_BASE + i) % TABLE_SIZE;
 
     l1_table[l1_tbl_idx][l1_entry_idx] = (1ULL << 0);  // Valid
     l1_table[l1_tbl_idx][l1_entry_idx] |= (1ULL << 1); // Table
@@ -100,8 +104,8 @@ static BOOT_CODE void init_l1_table(void) {
 /* L2 表初始化：通用循环，自动跨越 L2 边界 */
 static BOOT_CODE void init_l2_table(void) {
   for (uint64_t i = 0; i < L3_TABLES_NEEDED; i++) {
-    uint64_t l2_tbl_idx = i / L3_TABLE_SIZE;
-    uint64_t l2_entry_idx = (L2_INDEX_BASE + i) % L3_TABLE_SIZE;
+    uint64_t l2_tbl_idx = i / TABLE_SIZE;
+    uint64_t l2_entry_idx = (L2_INDEX_BASE + i) % TABLE_SIZE;
 
     l2_table[l2_tbl_idx][l2_entry_idx] = (1ULL << 0);  // Valid
     l2_table[l2_tbl_idx][l2_entry_idx] |= (1ULL << 1); // Table
@@ -127,7 +131,7 @@ static BOOT_CODE void init_l3_table(void) {
   uint64_t mapped_bytes = 0;
 
   for (uint64_t table_idx = 0; table_idx < L3_TABLES_NEEDED; table_idx++) {
-    for (uint64_t page_idx = 0; page_idx < L3_TABLE_SIZE; page_idx++) {
+    for (uint64_t page_idx = 0; page_idx < TABLE_SIZE; page_idx++) {
 
       if (mapped_bytes < TOTAL_MEM_SIZE) {
         // 映射物理内存：基地址 + 当前已映射字节数

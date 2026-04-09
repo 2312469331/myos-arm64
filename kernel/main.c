@@ -12,10 +12,20 @@
 // 计算UART虚拟地址：在最后一个L3表的最后一项
 // L3表数量 = (内核大小 + 2MB - 1) / 2MB
 #define PHYS_BASE 0x40000000UL
-#define VIRT_BASE 0xffff800000000000UL + PHYS_BASE
+#define VIRT_BASE 0xffff800000000000UL
 #define LINEAR_MAP_BASE 0xFFFF800000000000UL // 线性分配区地址基地址
 #define L3_TABLE_MAP_SIZE (512 * 4096)       // 每个L3表映射2MB
 // 从链接脚本导入的符号
+// 在 bootc.c 中定义函数指针类型和获取函数
+typedef uint64_t (*get_ttbr1_fn_t)(void);
+// 在 bootc.c 中定义函数指针类型和获取函数
+typedef uint64_t (*get_ttbr1_fn_t)(void);
+// 在 main.c 中使用
+extern uint64_t get_ttbr1_el1(void);
+extern uintptr_t __boot_phys_base;  // 从链接脚本获取 boot 段物理基址
+
+// 计算函数物理地址并调用
+uintptr_t func_pa = (uintptr_t)get_ttbr1_el1 + VIRT_BASE ;
 
 // 👇 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
@@ -33,7 +43,7 @@ void main(void) {
   if (l3_tables_needed > 0) {
     uint64_t last_table_idx = l3_tables_needed - 1;
     uint64_t uart_va =
-        VIRT_BASE + (last_table_idx * L3_TABLE_MAP_SIZE) + (511 * 4096);
+        VIRT_BASE + PHYS_BASE + (last_table_idx * L3_TABLE_MAP_SIZE) + (511 * 4096);
     uart_base = (volatile void *)uart_va;
   }
 
@@ -55,15 +65,10 @@ void main(void) {
   // 设置slab分配器所需的全局变量
   extern uintptr_t slab_linear_map_base;
   extern phys_addr_t slab_l0_table_pa;
-
-  // L0页表物理地址（使用TTBR1，内核空间的L0表）
-  extern uint64_t ttbr1_l0;
-
+  get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
+  slab_l0_table_pa = get_ttbr1_pa();
   // 线性映射基址：VA = PA + slab_linear_map_base
   slab_linear_map_base = LINEAR_MAP_BASE;
-
-  // 计算L0页表的物理地址：PA = VA - (VIRT_BASE - PHYS_BASE)
-  slab_l0_table_pa = (phys_addr_t)((uintptr_t)&ttbr1_l0);
 
   printk("[SLAB] Linear map base: %lx\n", slab_linear_map_base);
   printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);

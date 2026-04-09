@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "启动 QEMU 调试服务器",
+            "type": "shell",
+            "command": "./run-qemu-debug.sh &",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "isBackground": false
+        }
+    ]
+}
