@@ -73,7 +73,7 @@ else ifeq ($(OS),Windows_NT)
     ASFLAGS := -Iinclude -g
     BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
     BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-    BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
+    BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
     BOOT_CFLAGS += -Iinclude
     LDFLAGS := -T arch/arm64/boot/link.ld \
                -nostdlib
@@ -98,7 +98,7 @@ else
     ASFLAGS := -Iinclude -g
     BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
     BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-    BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
+    BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
     BOOT_CFLAGS += -Iinclude
     LDFLAGS := -T arch/arm64/boot/link.ld \
                -nostdlib
