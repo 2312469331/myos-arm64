@@ -10,7 +10,7 @@ ENTRY(_start) /* 入口点 */
 /* 定义物理内存起始地址 */
 PHYS_BASE = 0x40000000;
 /* 定义虚拟内存高地址偏移 (Kernel Base) */
-VIRT_BASE = 0xffff800000000000 + PHYS_BASE;
+VIRT_BASE = 0xffff800000000000;
 /* 方法1：直接基于 VIRT_BASE/PHYS_BASE 计算（简单直观） */
 el1_stack_top_phys = el1_stack_top - 0xffff800000000000  ;
 el2_stack_top_phys = el2_stack_top - 0xffff800000000000  ;
@@ -59,7 +59,7 @@ SECTIONS
 
     /* 计算栈段的物理地址 */
     stacks_lma = pagetable_lma + SIZEOF(.pagetable);
-    stacks_vma = VIRT_BASE + (stacks_lma - PHYS_BASE);
+    stacks_vma = VIRT_BASE + PHYS_BASE + (stacks_lma - PHYS_BASE);
     . = stacks_vma;
     /* 3.4 栈空间定义：内核异常栈 */
     /* 定义一个栈专用段 */
@@ -76,7 +76,7 @@ SECTIONS
 
     /* 计算内核段的物理地址和虚拟地址 */
     kernel_lma = stacks_lma + SIZEOF(.stacks);
-    kernel_vma = VIRT_BASE + (kernel_lma - PHYS_BASE);
+    kernel_vma = VIRT_BASE  + PHYS_BASE + (kernel_lma - PHYS_BASE);
     . = kernel_vma;
     /* 3.2 内核核心段：虚拟地址(VMA) + 物理加载地址(LMA) 分离 */
     .kernel kernel_vma : AT(kernel_lma)

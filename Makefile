@@ -51,7 +51,32 @@ BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
 BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
 BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
 BOOT_CFLAGS += -Iinclude
+else ifeq ($(OS),Windows_NT)
+    # --- x86_64 Windows 主机环境配置 ---
+    CROSS_COMPILE := aarch64-none-elf-
+    CC      := $(CROSS_COMPILE)gcc
+    AS      := $(CROSS_COMPILE)as
+    LD      := $(CROSS_COMPILE)ld
+    OBJCOPY := $(CROSS_COMPILE)objcopy
+    OBJDUMP := $(CROSS_COMPILE)objdump
+    QEMU    := qemu-system-aarch64
 
+    CFLAGS  := -Wall -Wextra \
+               -ffreestanding \
+               -nostdlib \
+               -nostartfiles \
+               -fno-stack-protector \
+               -mgeneral-regs-only \
+               -Iinclude \
+                -fno-PIC -fno-PIE \
+    	       -g
+    ASFLAGS := -Iinclude -g
+    BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
+    BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
+    BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
+    BOOT_CFLAGS += -Iinclude
+    LDFLAGS := -T arch/arm64/boot/link.ld \
+               -nostdlib
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
     CROSS_COMPILE := aarch64-linux-gnu-

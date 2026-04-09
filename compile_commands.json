@@ -1,215 +1,245 @@
 [
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-march=armv8-a",
-      "-mgeneral-regs-only",
-      "-ffreestanding",
-      "-fno-builtin",
-      "-fno-PIC",
-      "-fno-PIE",
-      "-fno-stack-protector",
-      "-O2",
-      "-Wall",
-      "-g",
-      "-Iinclude",
-      "-c",
-      "-o",
-      "build/arch/arm64/boot/bootc.o",
-      "arch/arm64/boot/bootc.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/arch/arm64/boot/bootc.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/arch/arm64/boot/bootc.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/kernel/main.o",
-      "kernel/main.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/kernel/main.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/kernel/main.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/kernel/irq.o",
-      "kernel/irq.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/kernel/irq.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/kernel/irq.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/kernel/pmm.o",
-      "kernel/pmm.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/kernel/pmm.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/kernel/pmm.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/kernel/printk.o",
-      "kernel/printk.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/kernel/printk.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/kernel/printk.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/kernel/libc.o",
-      "kernel/libc.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/kernel/libc.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/kernel/libc.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/kernel/slab.o",
-      "kernel/slab.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/kernel/slab.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/kernel/slab.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/exception/handler.o",
-      "exception/handler.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/exception/handler.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/exception/handler.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/driver/gic.o",
-      "driver/gic.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/driver/gic.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/driver/gic.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/driver/uart.o",
-      "driver/uart.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/driver/uart.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/driver/uart.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/aarch64-linux-gnu-gcc",
-      "-Wall",
-      "-Wextra",
-      "-ffreestanding",
-      "-fno-stack-protector",
-      "-mgeneral-regs-only",
-      "-Iinclude",
-      "-g",
-      "-c",
-      "-o",
-      "build/driver/timer.o",
-      "driver/timer.c"
-    ],
-    "directory": "/home/liuweiji/code/myos-arm64",
-    "file": "/home/liuweiji/code/myos-arm64/driver/timer.c",
-    "output": "/home/liuweiji/code/myos-arm64/build/driver/timer.o"
-  }
-]
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-march=armv8-a",
+   "-mgeneral-regs-only",
+   "-ffreestanding",
+   "-nostdlib",
+   "-fno-builtin",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-fno-stack-protector",
+   "-O2",
+   "-Wall",
+   "-g",
+   "-Iinclude",
+   "-c",
+   "arch/arm64/boot/bootc.c",
+   "-o",
+   "build/arch/arm64/boot/bootc.o"
+  ],
+  "file": "arch/arm64/boot/bootc.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/main.c",
+   "-o",
+   "build/kernel/main.o"
+  ],
+  "file": "kernel/main.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/irq.c",
+   "-o",
+   "build/kernel/irq.o"
+  ],
+  "file": "kernel/irq.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/pmm.c",
+   "-o",
+   "build/kernel/pmm.o"
+  ],
+  "file": "kernel/pmm.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/printk.c",
+   "-o",
+   "build/kernel/printk.o"
+  ],
+  "file": "kernel/printk.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/libc.c",
+   "-o",
+   "build/kernel/libc.o"
+  ],
+  "file": "kernel/libc.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/slab.c",
+   "-o",
+   "build/kernel/slab.o"
+  ],
+  "file": "kernel/slab.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "exception/handler.c",
+   "-o",
+   "build/exception/handler.o"
+  ],
+  "file": "exception/handler.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "driver/gic.c",
+   "-o",
+   "build/driver/gic.o"
+  ],
+  "file": "driver/gic.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "driver/uart.c",
+   "-o",
+   "build/driver/uart.o"
+  ],
+  "file": "driver/uart.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-Iinclude",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "driver/timer.c",
+   "-o",
+   "build/driver/timer.o"
+  ],
+  "file": "driver/timer.c"
+ }
+]

@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "QEMU ARM64 内核调试",
+            "name": "QEMU ARM64 内核调试 (LLDB)",
             "type": "lldb",
             "request": "attach",
             "targetCreateCommands": [
@@ -12,6 +12,35 @@
                 "gdb-remote localhost:1234"
             ],
             "stopOnEntry": true
+        },
+        {
+            "name": "QEMU ARM64 内核调试 (GDB)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kernel.elf",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/Users/chanpinkaifa/scoop/apps/bin/aarch64-none-elf-gdb.exe",
+            "miDebuggerServerAddress": "localhost:1234",
+            "preLaunchTask": "启动 QEMU 调试服务器",
+            // "setupCommands": [
+            //     {
+            //         "text": "file ${workspaceFolder}/build/kernel.elf",
+            //         "description": "加载内核可执行文件"
+            //     },
+            //     {
+            //         "text": "target remote localhost:1234",
+            //         "description": "连接到 QEMU 调试服务器"
+            //     },
+            //     {
+            //         "text": "break main",
+            //         "description": "在 main 函数处断点"
+            //     }
+            // ]
         }
     ]
 }
