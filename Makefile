@@ -2,6 +2,14 @@
 include config.mk
 $(info SRC_ASM_CONFIG = $(SRC_ASM_CONFIG))
 
+# 架构变量，可通过命令行指定：make ARCH=arm64 或 make ARCH=x86_64
+ ARCH ?= arm64
+ # 项目根目录绝对路径（避免相对路径问题）
+ ROOT_DIR := $(CURDIR)
+ # 1. 动态头文件搜索路径（-I）
+ # 通用头文件 + 架构专属头文件
+ INCLUDES := -I$(ROOT_DIR)/include
+ INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/include
 # 检测是否在Termux环境中
 ifeq ($(shell uname -o), Android)
     # --- Termux 环境配置 ---
@@ -24,10 +32,10 @@ CFLAGS := -Wall -Wextra \
           -static \
           -fno-stack-protector \
           -mgeneral-regs-only \
-          -Iinclude \
           -fno-PIC -fno-PIE \
           -g
-
+# 3. 最终编译/链接选项
+ CFLAGS += $(INCLUDES) 
 ASFLAGS := -Iinclude \
            --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
            -g
@@ -49,8 +57,10 @@ LDFLAGS := -fuse-ld=lld \
 # ============================================================
 BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
 BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-BOOT_CFLAGS += -fno-stack-protector -O2 -Wall -g
-BOOT_CFLAGS += -Iinclude
+BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
+BOOT_CFLAGS += -Iarch/arm64/include
+# 3. 最终编译/链接选项
+BOOT_CFLAGS+= $(INCLUDES)
 else ifeq ($(OS),Windows_NT)
     # --- x86_64 Windows 主机环境配置 ---
     CROSS_COMPILE := aarch64-none-elf-
