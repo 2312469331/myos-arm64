@@ -72,6 +72,7 @@ SECTIONS
         el2_stack_top = .;
          . += 0x10000;
         el1_stack_top = .;
+        . = ALIGN(4096);
     }>KERNEL_VIRT  
 
     /* 计算内核段的物理地址和虚拟地址 */

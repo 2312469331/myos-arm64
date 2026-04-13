@@ -2,35 +2,8 @@
  * 注意：这个文件的所有函数必须在 MMU 开启前执行
  * 所以必须链接到物理地址，使用位置无关代码
  */
+#include <bootc.h>
 #include <types.h>
-/* 1. 核心配置：在这里指定你需要映射的总内存大小 */
-#define TOTAL_MEM_SIZE (128 * 1024 * 1024) // 改成 128MB
-/* 2. 页表基础常量（保持你的定义） */
-#define PHYS_BASE 0x40000000UL
-#define KERNEL_VIRT_BASE (0xFFFF800000000000UL)
-#define TABLE_SIZE 512                        // 每个表的条目数
-#define L3_TABLE_MAP_SIZE (TABLE_SIZE * 4096) // 每个L3表映射 2MB
-/* 3. 通用向上取整计算宏（C语言标准写法） */
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
-
-/* 提前计算出各级虚拟地址的索引基址，避免循环内重复计算 */
-#define L0_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 39) & 0x1FF)
-#define L1_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 30) & 0x1FF)
-#define L2_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 21) & 0x1FF)
-#define L3_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE)>> 12) & 0x1FF)
-
-/* 4. 自动计算各级页表数量（核心逻辑） */
-// L3: 总内存 / 每个L3表映射的大小 (2MB)
-#define L3_TABLES_NEEDED DIV_ROUND_UP(TOTAL_MEM_SIZE+L3_INDEX_BASE*4096, L3_TABLE_MAP_SIZE)
-// L2: 需要多少个L2表 = 总L3表数 / 512 (向上取整)
-#define L2_TABLES_NEEDED DIV_ROUND_UP(L3_TABLES_NEEDED+L2_INDEX_BASE, TABLE_SIZE)
-// L1: 需要多少个L1表 = 总L2表数 / 512 (向上取整)
-#define L1_TABLES_NEEDED DIV_ROUND_UP(L2_TABLES_NEEDED+L1_INDEX_BASE, TABLE_SIZE)
-// L0: 内核空间通常固定1个L0页表
-#define L0_TABLES_NEEDED 1
-/* 5. 保持你的原属性定义 */
-#define BOOT_DATA __attribute__((section(".boot.data")))
-#define BOOT_CODE __attribute__((section(".boot.text")))
 /* 6. 自动声明页表数组（完全动态） */
 // 注意：这里 ttbr0_l0/ttbr1_l0 是L0表，虽然只有1个，但维度保持 [数量][条目数]
 // 一致
@@ -47,8 +20,6 @@ uint64_t l2_table[L2_TABLES_NEEDED][TABLE_SIZE]
 // L3表：数量 = L3_TABLES_NEEDED (彻底去掉了 MAX_L3_TABLES=8)
 uint64_t l3_tables[L3_TABLES_NEEDED][TABLE_SIZE]
     __attribute__((section(".pagetable"), aligned(4096)));
-
-
 
 /* 清空页表（这部分本身就是通用的，无需大改） */
 static BOOT_CODE void clear_page_tables(void) {
@@ -133,7 +104,8 @@ static BOOT_CODE void init_l3_table(void) {
   for (uint64_t table_idx = 0; table_idx < L3_TABLES_NEEDED; table_idx++) {
     for (uint64_t page_idx = 0; page_idx < TABLE_SIZE; page_idx++) {
 
-      if (mapped_bytes < TOTAL_MEM_SIZE) {
+      if (mapped_bytes < TOTAL_MEM_SIZE &&
+          !(table_idx == L3_TABLES_NEEDED - 1 && page_idx == 511)) {
         // 映射物理内存：基地址 + 当前已映射字节数
         uint64_t pa = PHYS_BASE + mapped_bytes;
         l3_tables[table_idx][page_idx] = mem_attr | (pa & ~0xFFFUL);

@@ -6,6 +6,7 @@
 #include "slab.h"
 #include "timer.h"
 #include "uart.h"
+#include <bootc.h>
 #include <libc.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -22,10 +23,10 @@ typedef uint64_t (*get_ttbr1_fn_t)(void);
 typedef uint64_t (*get_ttbr1_fn_t)(void);
 // 在 main.c 中使用
 extern uint64_t get_ttbr1_el1(void);
-extern uintptr_t __boot_phys_base;  // 从链接脚本获取 boot 段物理基址
+extern uintptr_t __boot_phys_base; // 从链接脚本获取 boot 段物理基址
 
 // 计算函数物理地址并调用
-uintptr_t func_pa = (uintptr_t)get_ttbr1_el1 + VIRT_BASE ;
+uintptr_t func_pa = (uintptr_t)get_ttbr1_el1 + VIRT_BASE;
 
 // 👇 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
@@ -38,12 +39,10 @@ extern void uart_irq_callback(uint32_t irq);
 extern void timer_irq_handler(uint32_t irq);
 void main(void) {
 
-  uint64_t l3_tables_needed = 2;
-
-  if (l3_tables_needed > 0) {
-    uint64_t last_table_idx = l3_tables_needed - 1;
-    uint64_t uart_va =
-        VIRT_BASE + PHYS_BASE + (last_table_idx * L3_TABLE_MAP_SIZE) + (511 * 4096);
+  if (L3_TABLES_NEEDED > 0) {
+    uint64_t last_table_idx = L3_TABLES_NEEDED - 1;
+    uint64_t uart_va = VIRT_BASE + PHYS_BASE +
+                       (last_table_idx * L3_TABLE_MAP_SIZE) + (511 * 4096);
     uart_base = (volatile void *)uart_va;
   }
 
