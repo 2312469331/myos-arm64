@@ -58,5 +58,18 @@ typedef unsigned int        size_t;
 #endif
 #endif
 
+#ifndef pte_t
+typedef uint64_t pte_t;
+#endif
+#ifndef phys_addr_t
+typedef uint64_t phys_addr_t;
+#endif
+/* 1. 定义 bool 类型（内核标准写法） */
+// C23 已经内置 bool，C++ 也有，只在老C里自己定义
+#if !defined(__cplusplus) && __STDC_VERSION__ < 202000
+typedef unsigned char bool;
+#define true  1
+#define false 0
+#endif
 #endif // __TYPES_H__
 

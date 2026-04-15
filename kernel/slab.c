@@ -1,215 +1,7 @@
 #include "slab.h"
 #include <libc.h>
-/* =========================================================
- * 线性映射区
- * =========================================================
- */
-
-uintptr_t slab_linear_map_base;
-phys_addr_t slab_l0_table_pa;
-
-static inline void *phys_to_virt(phys_addr_t pa) {
-  return (void *)(slab_linear_map_base + (uintptr_t)pa);
-}
-
-static inline phys_addr_t virt_to_phys(const void *va) {
-  return (phys_addr_t)((uintptr_t)va - slab_linear_map_base);
-}
-
-static inline bool va_in_linear_map(const void *va) {
-  uintptr_t v = (uintptr_t)va;
-
-  return v >= slab_linear_map_base;
-}
-
-/* =========================================================
- * 基础工具
- * =========================================================
- */
-
-static inline unsigned long align_up_ul(unsigned long x, unsigned long a) {
-  return (x + a - 1) & ~(a - 1);
-}
-
-static inline unsigned int ilog2_ul(unsigned long x) {
-  unsigned int r = 0;
-
-  while (x > 1) {
-    x >>= 1;
-    r++;
-  }
-  return r;
-}
-
-static inline unsigned int get_order_ul(unsigned long size) {
-  unsigned long pages;
-  unsigned long n = 1;
-  unsigned int order = 0;
-
-  if (!size)
-    return 0;
-
-  pages = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-  while (n < pages) {
-    n <<= 1;
-    order++;
-  }
-  return order;
-}
-
-static inline bool pte_present(pte_t pte) { return !!(pte & ARM64_PTE_VALID); }
-
-static inline phys_addr_t pte_to_phys(pte_t pte) {
-  return (phys_addr_t)(pte & ARM64_PTE_ADDR_MASK);
-}
-
-static bool pte_table_empty(pte_t *table) {
-  unsigned int i;
-
-  for (i = 0; i < PTRS_PER_PTE; i++) {
-    if (pte_present(table[i]))
-      return false;
-  }
-  return true;
-}
-
-/* =========================================================
- * 页表映射/拆映射
- * =========================================================
- */
-
-static int arm64_map_one_page(uintptr_t va, phys_addr_t pa) {
-  pte_t *l0, *l1, *l2, *l3;
-  phys_addr_t new_pa;
-  unsigned long idx0, idx1, idx2, idx3;
-
-  if (!slab_l0_table_pa)
-    return -1;
-
-  l0 = (pte_t *)phys_to_virt(slab_l0_table_pa);
-
-  idx0 = L0_INDEX(va);
-  idx1 = L1_INDEX(va);
-  idx2 = L2_INDEX(va);
-  idx3 = L3_INDEX(va);
-
-  if (!pte_present(l0[idx0])) {
-    new_pa = alloc_phys_pages(0);
-    if (!new_pa)
-      return -1;
-    memset(phys_to_virt(new_pa), 0, PAGE_SIZE);
-    l0[idx0] = (pte_t)new_pa | ARM64_TABLE_PROT;
-  }
-  l1 = (pte_t *)phys_to_virt(pte_to_phys(l0[idx0]));
-
-  if (!pte_present(l1[idx1])) {
-    new_pa = alloc_phys_pages(0);
-    if (!new_pa)
-      return -1;
-    memset(phys_to_virt(new_pa), 0, PAGE_SIZE);
-    l1[idx1] = (pte_t)new_pa | ARM64_TABLE_PROT;
-  }
-  l2 = (pte_t *)phys_to_virt(pte_to_phys(l1[idx1]));
-
-  if (!pte_present(l2[idx2])) {
-    new_pa = alloc_phys_pages(0);
-    if (!new_pa)
-      return -1;
-    memset(phys_to_virt(new_pa), 0, PAGE_SIZE);
-    l2[idx2] = (pte_t)new_pa | ARM64_TABLE_PROT;
-  }
-  l3 = (pte_t *)phys_to_virt(pte_to_phys(l2[idx2]));
-
-  l3[idx3] = (pte_t)pa | ARM64_PAGE_PROT;
-
-  /*
-   * 真机上通常还需要:
-   *   dsb ishst;
-   *   tlbi ... (必要时)
-   *   dsb ish;
-   *   isb;
-   *
-   * 但你要求只做最基础分配逻辑，这里不加同步/屏障细节。
-   */
-  return 0;
-}
-
-static void arm64_unmap_one_page(uintptr_t va) {
-  pte_t *l0, *l1, *l2, *l3;
-  phys_addr_t l1_pa, l2_pa, l3_pa;
-  unsigned long idx0, idx1, idx2, idx3;
-
-  if (!slab_l0_table_pa)
-    return;
-
-  l0 = (pte_t *)phys_to_virt(slab_l0_table_pa);
-
-  idx0 = L0_INDEX(va);
-  idx1 = L1_INDEX(va);
-  idx2 = L2_INDEX(va);
-  idx3 = L3_INDEX(va);
-
-  if (!pte_present(l0[idx0]))
-    return;
-
-  l1_pa = pte_to_phys(l0[idx0]);
-  l1 = (pte_t *)phys_to_virt(l1_pa);
-
-  if (!pte_present(l1[idx1]))
-    return;
-
-  l2_pa = pte_to_phys(l1[idx1]);
-  l2 = (pte_t *)phys_to_virt(l2_pa);
-
-  if (!pte_present(l2[idx2]))
-    return;
-
-  l3_pa = pte_to_phys(l2[idx2]);
-  l3 = (pte_t *)phys_to_virt(l3_pa);
-
-  if (!pte_present(l3[idx3]))
-    return;
-
-  /* 1. 先让 L3 页项失效 */
-  l3[idx3] = 0;
-
-  /* 2. 检查整个 L3 表是否空，空则释放，并让 L2 对应项失效 */
-  if (pte_table_empty(l3)) {
-    l2[idx2] = 0;
-    free_phys_pages(l3_pa, 0);
-
-    /* 3. 检查整个 L2 表是否空，空则释放，并让 L1 对应项失效 */
-    if (pte_table_empty(l2)) {
-      l1[idx1] = 0;
-      free_phys_pages(l2_pa, 0);
-
-      /* 4. 检查整个 L1 表是否空，空则释放，并让 L0 对应项失效 */
-      if (pte_table_empty(l1)) {
-        l0[idx0] = 0;
-        free_phys_pages(l1_pa, 0);
-      }
-    }
-  }
-}
-
-static int arm64_map_range(uintptr_t va, phys_addr_t pa, size_t size) {
-  size_t off, len;
-
-  len = align_up_ul(size, PAGE_SIZE);
-  for (off = 0; off < len; off += PAGE_SIZE) {
-    if (arm64_map_one_page(va + off, pa + off))
-      return -1;
-  }
-  return 0;
-}
-
-static void arm64_unmap_range(uintptr_t va, size_t size) {
-  size_t off, len;
-
-  len = align_up_ul(size, PAGE_SIZE);
-  for (off = 0; off < len; off += PAGE_SIZE)
-    arm64_unmap_one_page(va + off);
-}
+#include "types.h"
+#include "mmu.h"
 
 /* =========================================================
  * slab 元数据
@@ -442,12 +234,10 @@ static struct slab_page *slab_grow(struct slab_cache *cache) {
 }
 
 static void slab_destroy_page(struct slab_page *sp) {
-  size_t span;
+
 
   if (!sp)
     return;
-
-  span = PAGE_SIZE << sp->order;
 
   slab_cache_del_page(sp->cache, sp);
   // arm64_unmap_range(sp->va, span);
@@ -547,15 +337,6 @@ static void large_free(struct large_alloc *la) {
     return;
 
   // span = PAGE_SIZE << la->order;
-
-  /*
-   * 用户要求：
-   *   释放时先把页让伙伴系统 free，
-   *   把 L3 项失效，然后逐级检查空表并回收。
-   *
-   * 真实工程里通常更推荐先 unmap 再 free，
-   * 但这里按你的要求顺序写。
-   */
   free_phys_pages(la->pa, la->order);
   // arm64_unmap_range(la->va, span);
   free_large_meta(la);
