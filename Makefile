@@ -2,6 +2,24 @@
 include config.mk
 $(info SRC_ASM_CONFIG = $(SRC_ASM_CONFIG))
 
+# --------------- QEMU 全局公共配置 ---------------
+
+# qemu配置
+
+# 编译器/工具配置（沿用你现有配置）
+QEMU := qemu-system-aarch64
+QEMU_MACHINE := virt,secure=on,virtualization=on
+QEMU_CPU := cortex-a53
+DTC := dtc
+QEMU_MEM		= 256M
+
+# 公共基础参数(所有目标共用)
+QEMU_BASE_ARGS	:= \
+	-machine $(QEMU_MACHINE) \
+	-cpu $(QEMU_CPU) \
+	-m $(QEMU_MEM)
+
+# ---------------------------------------------------
 # 架构变量，可通过命令行指定：make ARCH=arm64 或 make ARCH=x86_64
  ARCH ?= arm64
  # 项目根目录绝对路径（避免相对路径问题）
@@ -113,13 +131,6 @@ else
     LDFLAGS := -T arch/arm64/boot/link.ld \
                -nostdlib
 endif
-# qemu配置
-
-# 编译器/工具配置（沿用你现有配置）
-QEMU := qemu-system-aarch64
-QEMU_MACHINE := virt,secure=on,virtualization=on
-QEMU_CPU := cortex-a53
-DTC := dtc
 # =========================
  # 源码配置（合并 config.mk 配置）
  # =========================
@@ -170,39 +181,48 @@ $(TARGET).img: $(TARGET).elf
 # ======================
 # 你要的：IMG 启动 QEMU
 # ======================
+
+# 正常运行
 run: all
-	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
-		-kernel $(TARGET).elf -nographic
+	$(QEMU) $(QEMU_BASE_ARGS) \
+		-kernel $(TARGET).elf \
+		-nographic
 
-# 🔥 新增：串口独立调试模式（推荐！）
+# 串口独立调试
 serial: all
-	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
-		-kernel $(TARGET).img -serial pty -daemonize -display none
+	$(QEMU) $(QEMU_BASE_ARGS) \
+		-kernel $(TARGET).img \
+		-serial pty -daemonize -display none
 
+# GDB 阻塞等待调试
 debug: all
-	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
-		-kernel $(TARGET).elf -nographic -s -S
+	$(QEMU) $(QEMU_BASE_ARGS) \
+		-kernel $(TARGET).elf \
+		-nographic -s -S
 
+# GDB 不阻塞直接运行
 debug-no-suspend: all
-	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m 128M \
-		-kernel $(TARGET).elf -nographic -s
+	$(QEMU) $(QEMU_BASE_ARGS) \
+		-kernel $(TARGET).elf \
+		-nographic -s
 
-# 导出设备树（DTB + DTS）
-.PHONY: debug debug-no-suspend dtb
+# 导出设备树
+.PHONY: dtb
 dtb:
 	@echo "📤 Exporting QEMU device tree (DTB)..."
-	$(QEMU) -machine $(QEMU_MACHINE),dumpdtb=virt.dtb \
+	$(QEMU) \
+		-machine $(QEMU_MACHINE),dumpdtb=virt.dtb \
 		-cpu $(QEMU_CPU) \
-		-m 128M \
+		-m $(QEMU_MEM) \
 		-nographic
 	@echo "🔄 Converting DTB to DTS..."
 	$(DTC) -I dtb -O dts -o virt.dts virt.dtb
 	@echo "✅ Done: virt.dtb (binary) + virt.dts (source) generated"
 
-# 清理设备树文件
-.PHONY: clean-dtb
+.PHONY: debug debug-no-suspend dtb clean-dtb clean
 clean-dtb:
 	rm -f virt.dtb virt.dts
 
 clean:
 	rm -rf build/*
+
