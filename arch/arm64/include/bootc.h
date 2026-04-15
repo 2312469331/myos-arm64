@@ -1,7 +1,7 @@
 #ifndef BOOTC_H
 #define BOOTC_H
 /* 1. 核心配置：在这里指定你需要映射的总内存大小 */
-#define TOTAL_MEM_SIZE (128 * 1024 * 1024) // 改成 128MB
+#define TOTAL_MEM_SIZE (256 * 1024 * 1024) // 改成 128MB
 /* 2. 页表基础常量（保持你的定义） */
 #define PHYS_BASE 0x40000000UL
 #define KERNEL_VIRT_BASE (0xFFFF800000000000UL)

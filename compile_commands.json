@@ -1,251 +1,6 @@
 [
   {
-    "file": "arch/arm64/boot/boot.S",
-    "arguments": [
-      "aarch64-linux-android-clang",
-      "-Iinclude",
-      "--target=aarch64-elf",
-      "-mcpu=cortex-a53",
-      "-march=armv8-a",
-      "-g",
-      "-c",
-      "arch/arm64/boot/boot.S",
-      "-o",
-      "build/arch/arm64/boot/boot.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/arch/arm64/boot/boot.o"
-  },
-  {
-    "file": "arch/arm64/boot/boot.S",
-    "arguments": [
-      "clang",
-      "--target=aarch64-linux-android24",
-      "-Iinclude",
-      "--target=aarch64-elf",
-      "-mcpu=cortex-a53",
-      "-march=armv8-a",
-      "-g",
-      "-c",
-      "arch/arm64/boot/boot.S",
-      "-o",
-      "build/arch/arm64/boot/boot.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/arch/arm64/boot/boot.o"
-  },
-  {
-    "file": "boot.S",
-    "arguments": [
-      "clang-21",
-      "-cc1as",
-      "-triple",
-      "aarch64-unknown-unknown-elf",
-      "-filetype",
-      "-main-file-name",
-      "boot.S",
-      "-target-cpu",
-      "-target-feature",
-      "-target-feature",
-      "-target-feature",
-      "-I",
-      "include",
-      "-fdebug-compilation-dir=/data/data/com.termux/files/home/os",
-      "-dwarf-debug-producer",
-      "-I",
-      "include",
-      "-debug-info-kind=constructor",
-      "-dwarf-version=5",
-      "-mrelocation-model",
-      "-o",
-      "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/boot.o",
-      "-o",
-      "build/arch/arm64/boot/boot.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/boot.o"
-  },
-  {
-    "file": "/data/data/com.termux/files/usr/tmp/boot-96c469.s",
-    "arguments": [
-      "clang-21",
-      "-cc1as",
-      "-triple",
-      "aarch64-unknown-unknown-elf",
-      "-filetype",
-      "-main-file-name",
-      "-target-cpu",
-      "-target-feature",
-      "-target-feature",
-      "-target-feature",
-      "-I",
-      "include",
-      "-fdebug-compilation-dir=/data/data/com.termux/files/home/os",
-      "-dwarf-debug-producer",
-      "-I",
-      "include",
-      "-debug-info-kind=constructor",
-      "-dwarf-version=5",
-      "-mrelocation-model",
-      "-o",
-      "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/boot.o",
-      "-o",
-      "build/arch/arm64/boot/boot.o",
-      "/data/data/com.termux/files/usr/tmp/boot-96c469.s"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/boot.o"
-  },
-  {
-    "file": "arch/arm64/boot/vector.S",
-    "arguments": [
-      "aarch64-linux-android-clang",
-      "-Iinclude",
-      "--target=aarch64-elf",
-      "-mcpu=cortex-a53",
-      "-march=armv8-a",
-      "-g",
-      "-c",
-      "arch/arm64/boot/vector.S",
-      "-o",
-      "build/arch/arm64/boot/vector.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/arch/arm64/boot/vector.o"
-  },
-  {
-    "file": "arch/arm64/boot/vector.S",
-    "arguments": [
-      "clang",
-      "--target=aarch64-linux-android24",
-      "-Iinclude",
-      "--target=aarch64-elf",
-      "-mcpu=cortex-a53",
-      "-march=armv8-a",
-      "-g",
-      "-c",
-      "arch/arm64/boot/vector.S",
-      "-o",
-      "build/arch/arm64/boot/vector.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/arch/arm64/boot/vector.o"
-  },
-  {
-    "file": "vector.S",
-    "arguments": [
-      "clang-21",
-      "-cc1as",
-      "-triple",
-      "aarch64-unknown-unknown-elf",
-      "-filetype",
-      "-main-file-name",
-      "vector.S",
-      "-target-cpu",
-      "-target-feature",
-      "-target-feature",
-      "-target-feature",
-      "-I",
-      "include",
-      "-fdebug-compilation-dir=/data/data/com.termux/files/home/os",
-      "-dwarf-debug-producer",
-      "-I",
-      "include",
-      "-debug-info-kind=constructor",
-      "-dwarf-version=5",
-      "-mrelocation-model",
-      "-o",
-      "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/vector.o",
-      "-o",
-      "build/arch/arm64/boot/vector.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/vector.o"
-  },
-  {
-    "file": "/data/data/com.termux/files/usr/tmp/vector-0546f4.s",
-    "arguments": [
-      "clang-21",
-      "-cc1as",
-      "-triple",
-      "aarch64-unknown-unknown-elf",
-      "-filetype",
-      "-main-file-name",
-      "-target-cpu",
-      "-target-feature",
-      "-target-feature",
-      "-target-feature",
-      "-I",
-      "include",
-      "-fdebug-compilation-dir=/data/data/com.termux/files/home/os",
-      "-dwarf-debug-producer",
-      "-I",
-      "include",
-      "-debug-info-kind=constructor",
-      "-dwarf-version=5",
-      "-mrelocation-model",
-      "-o",
-      "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/vector.o",
-      "-o",
-      "build/arch/arm64/boot/vector.o",
-      "/data/data/com.termux/files/usr/tmp/vector-0546f4.s"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "bject-file-name=/data/data/com.termux/files/home/os/build/arch/arm64/boot/vector.o"
-  },
-  {
-    "file": "arch/arm64/boot/bootc.c",
-    "arguments": [
-      "aarch64-linux-android-clang",
-      "-march=armv8-a",
-      "-mgeneral-regs-only",
-      "-ffreestanding",
-      "-fno-builtin",
-      "-fno-PIC",
-      "-fno-PIE",
-      "-fno-stack-protector",
-      "-O0",
-      "-Wall",
-      "-g",
-      "-Iarch/arm64/include",
-      "-I/data/data/com.termux/files/home/os/include",
-      "-I/data/data/com.termux/files/home/os/arch/arm64/include",
-      "-c",
-      "arch/arm64/boot/bootc.c",
-      "-o",
-      "build/arch/arm64/boot/bootc.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/arch/arm64/boot/bootc.o"
-  },
-  {
-    "file": "arch/arm64/boot/bootc.c",
-    "arguments": [
-      "clang",
-      "--target=aarch64-linux-android24",
-      "-march=armv8-a",
-      "-mgeneral-regs-only",
-      "-ffreestanding",
-      "-fno-builtin",
-      "-fno-PIC",
-      "-fno-PIE",
-      "-fno-stack-protector",
-      "-O0",
-      "-Wall",
-      "-g",
-      "-Iarch/arm64/include",
-      "-I/data/data/com.termux/files/home/os/include",
-      "-I/data/data/com.termux/files/home/os/arch/arm64/include",
-      "-c",
-      "arch/arm64/boot/bootc.c",
-      "-o",
-      "build/arch/arm64/boot/bootc.o"
-    ],
-    "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/arch/arm64/boot/bootc.o"
-  },
-  {
-    "file": "kernel/main.c",
+    "file": "kernel/slab.c",
     "arguments": [
       "aarch64-linux-android-clang",
       "-Wall",
@@ -263,15 +18,15 @@
       "-I/data/data/com.termux/files/home/os/include",
       "-I/data/data/com.termux/files/home/os/arch/arm64/include",
       "-c",
-      "kernel/main.c",
+      "kernel/slab.c",
       "-o",
-      "build/kernel/main.o"
+      "build/kernel/slab.o"
     ],
     "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/kernel/main.o"
+    "output": "build/kernel/slab.o"
   },
   {
-    "file": "kernel/main.c",
+    "file": "kernel/slab.c",
     "arguments": [
       "clang",
       "--target=aarch64-linux-android24",
@@ -290,11 +45,11 @@
       "-I/data/data/com.termux/files/home/os/include",
       "-I/data/data/com.termux/files/home/os/arch/arm64/include",
       "-c",
-      "kernel/main.c",
+      "kernel/slab.c",
       "-o",
-      "build/kernel/main.o"
+      "build/kernel/slab.o"
     ],
     "directory": "/data/data/com.termux/files/home/os",
-    "output": "build/kernel/main.o"
+    "output": "build/kernel/slab.o"
   }
 ]

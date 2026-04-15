@@ -15,6 +15,7 @@ VIRT_BASE = 0xffff800000000000;
 el1_stack_top_phys = el1_stack_top - 0xffff800000000000  ;
 el2_stack_top_phys = el2_stack_top - 0xffff800000000000  ;
 el3_stack_top_phys = el3_stack_top - 0xffff800000000000  ;
+kernel_end =  __kernel_end - VIRT_BASE;
 /* ==============================================
    LLD 规范版内核链接脚本
    特性：严格遵循 LLD 文档，无单位解析错误，覆盖核心语法
@@ -98,6 +99,8 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
         __bss_end = .;      /* 符号赋值：定义BSS结束 */
+        . = ALIGN(4096);
+        __kernel_end = .;
 
 
     } >KERNEL_VIRT

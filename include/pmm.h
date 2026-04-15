@@ -1,6 +1,65 @@
 #ifndef BUDDY_H
 #define BUDDY_H
 
+typedef unsigned long u64;
+typedef unsigned int u32;
+typedef unsigned short u16;
+typedef unsigned char u8;
+typedef unsigned long phys_addr_t;
+typedef unsigned long size_t;
+
+/* ============================================================
+ * 1. 可配置参数
+ * ============================================================
+ */
+
+#define PAGE_SHIFT 12UL
+#define PAGE_SIZE (1UL << PAGE_SHIFT) /* 4096 bytes */
+#define PAGE_MASK (~(PAGE_SIZE - 1UL))
+
+/* 可修改的物理内存管理范围 */
+#define PHYS_MEM_START 0x40241000
+#define PHYS_MEM_END 0x4FFFFFFFUL
+
+/* order 0 ~ 10 : 1页 ~ 1024页 */
+#define MAX_ORDER 10U
+#define NR_ORDERS (MAX_ORDER + 1U)
+
+/*
+ * 总页数：
+ * 0x80000000 ~ 0x8FFFFFFF 为 256MB
+ * 256MB / 4KB = 65536 pages
+ */
+#define PHYS_MEM_SIZE (PHYS_MEM_END - PHYS_MEM_START + 1UL)
+#define TOTAL_PAGES (PHYS_MEM_SIZE >> PAGE_SHIFT)
+
+/*
+ * 基本健壮性检查：
+ * 若区间不是页对齐，会向下/向上裁剪才合理。
+ * 这里直接要求宏配置满足页对齐。
+ */
+#if ((PHYS_MEM_START & (PAGE_SIZE - 1UL)) != 0)
+#error "PHYS_MEM_START must be page aligned"
+#endif
+
+#if (((PHYS_MEM_END + 1UL) & (PAGE_SIZE - 1UL)) != 0)
+#error "PHYS_MEM_END+1 must be page aligned"
+#endif
+
+/* ============================================================
+ * 2. 双向链表
+ * ============================================================
+ */
+
+struct list_head {
+  struct list_head *next;
+  struct list_head *prev;
+};
+
+static void INIT_LIST_HEAD(struct list_head *list) {
+  list->next = list;
+  list->prev = list;
+}
 typedef unsigned long phys_addr_t;
 
 void buddy_init(void);
@@ -11,13 +70,13 @@ unsigned int buddy_nr_free_blocks(unsigned int order);
 unsigned int buddy_nr_free_pages_total(void);
 
 enum buddy_error {
-    BUDDY_OK = 0,
-    BUDDY_ERR_BAD_ORDER,
-    BUDDY_ERR_OUT_OF_RANGE,
-    BUDDY_ERR_UNALIGNED,
-    BUDDY_ERR_DOUBLE_FREE,
-    BUDDY_ERR_NOT_ALLOCATED,
-    BUDDY_ERR_NO_MEMORY,
+  BUDDY_OK = 0,
+  BUDDY_ERR_BAD_ORDER,
+  BUDDY_ERR_OUT_OF_RANGE,
+  BUDDY_ERR_UNALIGNED,
+  BUDDY_ERR_DOUBLE_FREE,
+  BUDDY_ERR_NOT_ALLOCATED,
+  BUDDY_ERR_NO_MEMORY,
 };
 
 enum buddy_error buddy_get_last_error(void);
