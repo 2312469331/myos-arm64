@@ -15,7 +15,6 @@
 #define PHYS_BASE 0x40000000UL
 #define VIRT_BASE 0xffff800000000000UL
 #define LINEAR_MAP_BASE 0xFFFF800000000000UL // 线性分配区地址基地址
-#define L3_TABLE_MAP_SIZE (512 * 4096)       // 每个L3表映射2MB
 // 从链接脚本导入的符号
 // 在 bootc.c 中定义函数指针类型和获取函数
 typedef uint64_t (*get_ttbr1_fn_t)(void);
@@ -52,7 +51,7 @@ void main(void) {
   printk("===============================================\n");
   printk("Version: 1.0.0\n");
   printk("Architecture: ARM64\n");
-  printk("Memory: 128MB (0x40000000-0x47ffffff)\n");
+  printk("Memory: 256MB (0x40000000-0x4fffffff)\n");
   printk("===============================================\n");
   printk("\n");
   buddy_init(); // 测试伙伴系统
@@ -212,13 +211,14 @@ void test_kmalloc(void) {
   void *ptr4 = kmalloc(1024);
   void *ptr5 = kmalloc(4096);
   void *ptr6 = kmalloc(8192);
-
+  void *ptr7 = kmalloc(65536);
   printk("[KMALLOC TEST]  8 bytes: %p\n", ptr1);
   printk("[KMALLOC TEST]  64 bytes: %p\n", ptr2);
   printk("[KMALLOC TEST]  512 bytes: %p\n", ptr3);
   printk("[KMALLOC TEST]  1024 bytes: %p\n", ptr4);
   printk("[KMALLOC TEST]  4096 bytes: %p\n", ptr5);
   printk("[KMALLOC TEST]  8192 bytes: %p\n", ptr6);
+  printk("[KMALLOC TEST]  65536 bytes: %p\n", ptr7);
 
   // 测试2: 写入数据并验证
   printk("\n[KMALLOC TEST] Test 2: Write and verify data\n");
@@ -254,6 +254,8 @@ void test_kmalloc(void) {
     kfree(ptr5);
   if (ptr6)
     kfree(ptr6);
+  if (ptr7)
+    kfree(ptr7);
   printk("[KMALLOC TEST]  All allocations freed\n");
 
   // 测试4: 大量小内存分配

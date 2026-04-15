@@ -53,7 +53,7 @@ CFLAGS := -Wall -Wextra \
           -fno-PIC -fno-PIE \
           -g
 # 3. 最终编译/链接选项
- CFLAGS += $(INCLUDES) 
+CFLAGS += $(INCLUDES) 
 ASFLAGS := -Iinclude \
            --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
            -g
@@ -95,15 +95,15 @@ else ifeq ($(OS),Windows_NT)
                -nostartfiles \
                -fno-stack-protector \
                -mgeneral-regs-only \
-               -Iinclude \
+               $(INCLUDES) \
                 -fno-PIC -fno-PIE \
     	       -g
-    ASFLAGS := -Iinclude -g
+    ASFLAGS := $(INCLUDES) -g
     BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
     BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
     BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
-    BOOT_CFLAGS += -Iinclude
-    LDFLAGS := -T arch/arm64/boot/link.ld \
+    BOOT_CFLAGS += $(INCLUDES)
+    LDFLAGS := -T arch/$(ARCH)/boot/link.ld \
                -nostdlib
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
@@ -143,6 +143,7 @@ endif
          kernel/printk.c \
          kernel/libc.c \
          kernel/slab.c \
+         kernel/mmu.c \
          $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
