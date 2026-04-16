@@ -2,6 +2,7 @@
 #include <libc.h>
 #include "types.h"
 #include "mmu.h"
+#include "pmm.h"
 
 /* =========================================================
  * slab 元数据

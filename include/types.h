@@ -71,5 +71,9 @@ typedef unsigned char bool;
 #define true  1
 #define false 0
 #endif
+#ifndef uintptr_t
+typedef uint64_t            uintptr_t;
+typedef int64_t             intptr_t;
+#endif
 #endif // __TYPES_H__
 

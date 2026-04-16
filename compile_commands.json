@@ -459,5 +459,97 @@
    "build/driver/fdt/fdt_addresses.o"
   ],
   "file": "driver/fdt/fdt_addresses.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/include",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/pgtbl.c",
+   "-o",
+   "build/kernel/pgtbl.o"
+  ],
+  "file": "kernel/pgtbl.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/include",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/ds/rbtree.c",
+   "-o",
+   "build/kernel/ds/rbtree.o"
+  ],
+  "file": "kernel/ds/rbtree.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/include",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/sync/mutex.c",
+   "-o",
+   "build/kernel/sync/mutex.o"
+  ],
+  "file": "kernel/sync/mutex.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-ffreestanding",
+   "-nostdlib",
+   "-nostartfiles",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/include",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-c",
+   "kernel/sync/semaphore.c",
+   "-o",
+   "build/kernel/sync/semaphore.o"
+  ],
+  "file": "kernel/sync/semaphore.c"
  }
 ]

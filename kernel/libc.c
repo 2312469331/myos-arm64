@@ -43,11 +43,7 @@ void *memcpy(void *dst, const void *src, size_t n) {
 }
 
 void *memset(void *dst, int c, size_t n) {
-  unsigned char *pdst = (unsigned char *)dst;
-  unsigned char val = (unsigned char)c;
-  for (size_t i = 0; i < n; i++)
-    pdst[i] = val;
-  return dst;
+  return __builtin_memset(dst, c, n);
 }
 
 // 新增：memchr 实现（内存中查找字符）

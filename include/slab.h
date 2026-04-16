@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "pmm.h"
+#include <types.h>
 
 /* =========================================================
  * 基本常量
