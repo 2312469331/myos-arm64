@@ -1,7 +1,7 @@
 #ifndef __UART_H__
 #define __UART_H__
 
-#include <stdbool.h>
+#include "types.h"
 #include <stdint.h>
 
 // ========================= 平台配置（QEMU virt ARM） =========================

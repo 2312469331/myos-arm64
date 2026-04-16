@@ -103,9 +103,7 @@ static BOOT_CODE void init_l3_table(void) {
 
   for (uint64_t table_idx = 0; table_idx < L3_TABLES_NEEDED; table_idx++) {
     for (uint64_t page_idx = 0; page_idx < TABLE_SIZE; page_idx++) {
-
-      if (mapped_bytes < TOTAL_MEM_SIZE &&
-          !(table_idx == L3_TABLES_NEEDED - 1 && page_idx == 511)) {
+      if (mapped_bytes < TOTAL_MEM_SIZE ) {
         // 映射物理内存：基地址 + 当前已映射字节数
         uint64_t pa = PHYS_BASE + mapped_bytes;
         l3_tables[table_idx][page_idx] = mem_attr | (pa & ~0xFFFUL);
@@ -116,6 +114,18 @@ static BOOT_CODE void init_l3_table(void) {
         l3_tables[table_idx][page_idx] = dev_attr | (uart_pa & ~0xFFFUL);
       }
     }
+    //   if (mapped_bytes < TOTAL_MEM_SIZE &&
+    //       !(table_idx == L3_TABLES_NEEDED - 1 && page_idx == 511)) {
+    //     // 映射物理内存：基地址 + 当前已映射字节数
+    //     uint64_t pa = PHYS_BASE + mapped_bytes;
+    //     l3_tables[table_idx][page_idx] = mem_attr | (pa & ~0xFFFUL);
+    //     mapped_bytes += 4096;
+    //   } else if (table_idx == L3_TABLES_NEEDED - 1 && page_idx == 511) {
+    //     // 兜底处理：在最后一张L3表的最后一个槽位塞入 UART0
+    //     uint64_t uart_pa = 0x09000000UL;
+    //     l3_tables[table_idx][page_idx] = dev_attr | (uart_pa & ~0xFFFUL);
+    //   }
+    // }
   }
 }
 
