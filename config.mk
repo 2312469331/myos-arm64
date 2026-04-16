@@ -7,7 +7,7 @@ CONFIG_EXCEPTION ?= y# 异常向量表 + 同步异常处理
 CONFIG_GIC       ?= y# GICv2中断控制器
 CONFIG_IRQ       ?= y# 外设中断注册（依赖CONFIG_GIC）
 CONFIG_UART	 ?= y# 外设中断注册（依赖CONFIG_GIC）
-CONFIG_FDT 	 ?= n# 设备树解析（libfdt 裸机版）
+CONFIG_FDT 	 ?= y# 设备树解析（libfdt 裸机版）
 CONFIG_TIMER  ?= y
 $(info CONFIG_EXCEPTION = [$(CONFIG_EXCEPTION)])
 # 2. 条件加入源码（根据配置自动生成 SRC_ASM/SRC_C）
