@@ -15,11 +15,11 @@
 #define L1_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE) >> 30) & 0x1FF)
 #define L2_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE) >> 21) & 0x1FF)
 #define L3_INDEX_BASE (((KERNEL_VIRT_BASE + PHYS_BASE) >> 12) & 0x1FF)
-
+#define UART_PAGE_NEEDED 1
 /* 4. 自动计算各级页表数量（核心逻辑） */
 // L3: 总内存 / 每个L3表映射的大小 (2MB)
 #define L3_TABLES_NEEDED                                                       \
-  DIV_ROUND_UP(TOTAL_MEM_SIZE + L3_INDEX_BASE * 4096, L3_TABLE_MAP_SIZE)
+  DIV_ROUND_UP(TOTAL_MEM_SIZE + L3_INDEX_BASE * 4096+UART_PAGE_NEEDED*4096, L3_TABLE_MAP_SIZE)
 // L2: 需要多少个L2表 = 总L3表数 / 512 (向上取整)
 #define L2_TABLES_NEEDED                                                       \
   DIV_ROUND_UP(L3_TABLES_NEEDED + L2_INDEX_BASE, TABLE_SIZE)

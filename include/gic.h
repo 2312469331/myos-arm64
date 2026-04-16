@@ -1,7 +1,6 @@
 #ifndef __GIC_H__
 #define __GIC_H__
-
-#include <stdbool.h> // 新增：定义 bool 类型
+#include "types.h"
 #include <stdint.h>
 
 // QEMU virt平台 GICv2 基地址
