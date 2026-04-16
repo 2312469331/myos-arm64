@@ -52,7 +52,19 @@ static inline void list_del(struct list_head *entry) {
 }
 
 // 容器_of 宏，用于从链表节点获取包含它的结构体
+#ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t)&(((TYPE *)0)->MEMBER))
+#endif
 #define container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof(type, member)))
+
+// 遍历链表
+#define list_for_each(pos, head) \
+    for (pos = (head)->next; pos != (head); pos = pos->next)
+
+// 遍历链表并获取包含节点的结构体
+#define list_for_each_entry(pos, head, member) \
+    for (pos = container_of((head)->next, typeof(*pos), member); \
+         &pos->member != (head); \
+         pos = container_of(pos->member.next, typeof(*pos), member))
 
 #endif /* __LIST_H__ */

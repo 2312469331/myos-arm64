@@ -137,17 +137,20 @@ endif
  SRC_ASM = arch/arm64/boot/boot.S \
            $(SRC_ASM_CONFIG)   # 来自 config.mk 的条件汇编文件
  SRC_C = arch/arm64/boot/bootc.c \
-         kernel/main.c \
-         kernel/irq.c \
-         kernel/pmm.c \
-         kernel/printk.c \
-         kernel/libc.c \
-         kernel/slab.c \
-         kernel/mmu.c \
-         kernel/ds/rbtree.c \
-         kernel/sync/mutex.c \
-         kernel/sync/semaphore.c \
-         $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
+                kernel/main.c \
+                kernel/irq.c \
+                kernel/pmm.c \
+                kernel/printk.c \
+                kernel/libc.c \
+                kernel/slab.c \
+                kernel/mmu.c \
+                kernel/pgtbl.c \
+                kernel/vmalloc.c \
+                kernel/page_fault.c \
+                kernel/ds/rbtree.c \
+                kernel/sync/mutex.c \
+                kernel/sync/semaphore.c \
+                $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
