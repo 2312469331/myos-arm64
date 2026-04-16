@@ -1,24 +1,16 @@
 #ifndef BUDDY_H
 #define BUDDY_H
 
-typedef unsigned long u64;
-typedef unsigned int u32;
-typedef unsigned short u16;
-typedef unsigned char u8;
-typedef unsigned long phys_addr_t;
-typedef unsigned long size_t;
+#include <mm_defs.h>
+#include <ds/list.h>
 
 /* ============================================================
  * 1. 可配置参数
  * ============================================================
  */
 
-#define PAGE_SHIFT 12UL
-#define PAGE_SIZE (1UL << PAGE_SHIFT) /* 4096 bytes */
-#define PAGE_MASK (~(PAGE_SIZE - 1UL))
-
 /* 可修改的物理内存管理范围 */
-#define PHYS_MEM_START 0x40241000
+#define PHYS_MEM_START 0x40288000
 #define PHYS_MEM_END 0x4FFFFFFFUL
 
 /* order 0 ~ 10 : 1页 ~ 1024页 */
@@ -50,17 +42,6 @@ typedef unsigned long size_t;
  * 2. 双向链表
  * ============================================================
  */
-
-struct list_head {
-  struct list_head *next;
-  struct list_head *prev;
-};
-
-static void INIT_LIST_HEAD(struct list_head *list) {
-  list->next = list;
-  list->prev = list;
-}
-typedef unsigned long phys_addr_t;
 
 void buddy_init(void);
 phys_addr_t alloc_phys_pages(unsigned int order);

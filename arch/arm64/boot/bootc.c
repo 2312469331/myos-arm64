@@ -4,7 +4,7 @@
  */
 #include <bootc.h>
 #include <types.h>
-/* 6. 自动声明页表数组（完全动态） */
+/* 自动声明页表数组（完全动态） */
 // 注意：这里 ttbr0_l0/ttbr1_l0 是L0表，虽然只有1个，但维度保持 [数量][条目数]
 // 一致
 uint64_t ttbr0_l0[L0_TABLES_NEEDED][TABLE_SIZE]

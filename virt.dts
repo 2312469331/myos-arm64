@@ -9,7 +9,7 @@
 	compatible = "linux,dummy-virt";
 
 	memory@40000000 {
-		reg = <0x00 0x40000000 0x00 0x8000000>;
+		reg = <0x00 0x40000000 0x00 0x10000000>;
 		device_type = "memory";
 	};
 
@@ -18,7 +18,7 @@
 		ranges = <0x00 0x00 0xc000000 0x2000000>;
 		#address-cells = <0x01>;
 		#size-cells = <0x01>;
-		compatible = "qemu,platform", "simple-bus";
+		compatible = "qemu,platform\0simple-bus";
 	};
 
 	fw-cfg@9020000 {
@@ -274,7 +274,7 @@
 		interrupts = <0x00 0x00 0x04>;
 		gpio-controller;
 		#gpio-cells = <0x02>;
-		compatible = "arm,pl061", "arm,primecell";
+		compatible = "arm,pl061\0arm,primecell";
 		reg = <0x00 0x90b0000 0x00 0x1000>;
 	};
 
@@ -295,7 +295,7 @@
 		interrupts = <0x00 0x07 0x04>;
 		gpio-controller;
 		#gpio-cells = <0x02>;
-		compatible = "arm,pl061", "arm,primecell";
+		compatible = "arm,pl061\0arm,primecell";
 		reg = <0x00 0x9030000 0x00 0x1000>;
 	};
 
@@ -320,7 +320,7 @@
 		clocks = <0x8000>;
 		interrupts = <0x00 0x02 0x04>;
 		reg = <0x00 0x9010000 0x00 0x1000>;
-		compatible = "arm,pl031", "arm,primecell";
+		compatible = "arm,pl031\0arm,primecell";
 	};
 
 	secram@e000000 {
@@ -333,19 +333,19 @@
 	pl011@9040000 {
 		secure-status = "okay";
 		status = "disabled";
-		clock-names = "uartclk", "apb_pclk";
+		clock-names = "uartclk\0apb_pclk";
 		clocks = <0x8000 0x8000>;
 		interrupts = <0x00 0x08 0x04>;
 		reg = <0x00 0x9040000 0x00 0x1000>;
-		compatible = "arm,pl011", "arm,primecell";
+		compatible = "arm,pl011\0arm,primecell";
 	};
 
 	pl011@9000000 {
-		clock-names = "uartclk", "apb_pclk";
+		clock-names = "uartclk\0apb_pclk";
 		clocks = <0x8000 0x8000>;
 		interrupts = <0x00 0x01 0x04>;
 		reg = <0x00 0x9000000 0x00 0x1000>;
-		compatible = "arm,pl011", "arm,primecell";
+		compatible = "arm,pl011\0arm,primecell";
 	};
 
 	pmu {
@@ -414,7 +414,7 @@
 	timer {
 		interrupts = <0x01 0x0d 0x104 0x01 0x0e 0x104 0x01 0x0b 0x104 0x01 0x0a 0x104>;
 		always-on;
-		compatible = "arm,armv8-timer", "arm,armv7-timer";
+		compatible = "arm,armv8-timer\0arm,armv7-timer";
 	};
 
 	apb-pclk {
@@ -432,13 +432,13 @@
 
 	secure-chosen {
 		stdout-path = "/pl011@9040000";
-		rng-seed = <0xd1d67c9 0x1ff60a64 0x9e0b7438 0xd5608136 0xaaef94b8 0xc571eac3 0x663019f9 0x193cf3a0>;
-		kaslr-seed = <0x1f330d4a 0x9f3bcaa0>;
+		rng-seed = <0x9e5a712e 0x23cd4508 0xeefc1ab9 0x9363b508 0x3c4e585 0xf0e9d688 0x9f012815 0x16aa6a28>;
+		kaslr-seed = <0xc356bbf 0x88a40599>;
 	};
 
 	chosen {
 		stdout-path = "/pl011@9000000";
-		rng-seed = <0x347a426f 0x6e73f41d 0x98052275 0xa18a2546 0x9de2dba1 0x5bdf92cd 0x46df4285 0x1b9b5c2b>;
-		kaslr-seed = <0x64e62545 0xe9e5592c>;
+		rng-seed = <0x6d2f1303 0x50dde862 0x14da60dd 0xf3f0091d 0xf1eedf29 0xf9393fc6 0xef02c5d9 0x5fb904d4>;
+		kaslr-seed = <0xf7ffb83e 0x3466650d>;
 	};
 };

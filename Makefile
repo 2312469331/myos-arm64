@@ -144,6 +144,9 @@ endif
          kernel/libc.c \
          kernel/slab.c \
          kernel/mmu.c \
+         kernel/ds/rbtree.c \
+         kernel/sync/mutex.c \
+         kernel/sync/semaphore.c \
          $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
@@ -180,32 +183,37 @@ $(TARGET).img: $(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
 
 # ======================
-# 你要的：IMG 启动 QEMU
+# IMG 启动 QEMU
 # ======================
-
 # 正常运行
-run: all
+run: all dtb
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
+		-dtb virt.dtb \
 		-nographic
 
 # 串口独立调试
-serial: all
+serial: all dtb
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).img \
+		-dtb virt.dtb \
 		-serial pty -daemonize -display none
 
 # GDB 阻塞等待调试
-debug: all
+debug: all dtb
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
 		-nographic -s -S
 
 # GDB 不阻塞直接运行
-debug-no-suspend: all
+debug-no-suspend: all dtb
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
+		-dtb virt.dtb \
 		-nographic -s
+
+# 获取设备树起始地址
+DTB_ADDR = 0x40000000
 
 # 导出设备树
 .PHONY: dtb
@@ -219,11 +227,33 @@ dtb:
 	@echo "🔄 Converting DTB to DTS..."
 	$(DTC) -I dtb -O dts -o virt.dts virt.dtb
 	@echo "✅ Done: virt.dtb (binary) + virt.dts (source) generated"
+	@echo "📍 DTB will be loaded at address: $(DTB_ADDR)"
 
-.PHONY: debug debug-no-suspend dtb clean-dtb clean
+.PHONY: debug debug-no-suspend dtb clean-dtb clean readelf readelf-l readelf-S readelf-s
 clean-dtb:
 	rm -f virt.dtb virt.dts
 
 clean:
 	rm -rf build/*
+
+# 查看 ELF 文件段信息 (-l)
+readelf-l:
+	$(CROSS_COMPILE)readelf -l $(TARGET).elf
+
+# 查看 ELF 文件节信息 (-S)
+readelf-S:
+	$(CROSS_COMPILE)readelf -S $(TARGET).elf
+
+# 查看 ELF 文件符号表 (-s)
+readelf-s:
+	$(CROSS_COMPILE)readelf -s $(TARGET).elf
+
+# 查看 ELF 文件所有信息
+readelf:
+	@echo "📋 查看 ELF 文件段信息 (-l)"
+	@$(MAKE) readelf-l
+	@echo "\n📋 查看 ELF 文件节信息 (-S)"
+	@$(MAKE) readelf-S
+	@echo "\n📋 查看 ELF 文件符号表 (-s)"
+	@$(MAKE) readelf-s
 

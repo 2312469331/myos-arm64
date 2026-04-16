@@ -6,8 +6,8 @@
  * Copyright (C) 2006 David Gibson, IBM Corporation.
  */
 
-#include "libc.h"
-#include "types.h"
+#include <libc.h>
+#include <types.h>
 #include <fdt.h>
 #include <libfdt_env.h>
 #ifdef __cplusplus

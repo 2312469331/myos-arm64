@@ -3,7 +3,7 @@
  *
  * 特点：
  *  - 4KB 页大小
- *  - 管理物理地址范围默认：0x80000000 ~ 0x8FFFFFFF
+ *  - 管理物理地址范围默认：
  *  - order: 0 ~ 10（1页 ~ 1024页）
  *  - 纯 C，无 libc、无 OS 依赖
  *  - 适用于裸机内核物理页管理：页表、DMA、内核堆底层页分配
@@ -13,48 +13,11 @@
  *  - free_phys_pages(pa, order) 释放对应块，并自动尝试与伙伴合并
  *  - 失败时 alloc 返回 0
  *
- * 作者说明：
- *  本实现强调教学可读性，适合 OS 学习与裸机实验。
+ * 作者说明：666
  */
 #include <pmm.h>
 
-static int list_empty(const struct list_head *head) {
-  return (head->next == head);
-}
-
-static void __list_add(struct list_head *node, struct list_head *prev,
-                       struct list_head *next) {
-  next->prev = node;
-  node->next = next;
-  node->prev = prev;
-  prev->next = node;
-}
-
-static void list_add(struct list_head *node, struct list_head *head) {
-  /* 插入到头部后面 */
-  __list_add(node, head, head->next);
-}
-
-static void list_add_tail(struct list_head *node, struct list_head *head) {
-  /* 插入到尾部前面 */
-  __list_add(node, head->prev, head);
-}
-
-static void __list_del(struct list_head *prev, struct list_head *next) {
-  next->prev = prev;
-  prev->next = next;
-}
-
-static void list_del(struct list_head *entry) {
-  __list_del(entry->prev, entry->next);
-  entry->next = entry;
-  entry->prev = entry;
-}
-
-/* container_of 的简单替代 */
-#define offsetof(TYPE, MEMBER) ((size_t)&(((TYPE *)0)->MEMBER))
-#define container_of(ptr, type, member)                                        \
-  ((type *)((char *)(ptr) - offsetof(type, member)))
+/* 链表操作函数和 container_of 宏已在 list.h 中定义 */
 
 /* ============================================================
  * 3. 页面元数据
@@ -70,20 +33,7 @@ static void list_del(struct list_head *entry) {
 #define PG_ALLOCATED (1UL << 2) /* 块已分配（仅首页使用此标志即可） */
 #define PG_HEAD (1UL << 3)      /* 表示这是一个块首页 */
 
-/*
- * struct page
- *
- * order   : 当前块的阶，仅对块首页有意义
- * private : 预留字段，这里可存调试信息/页框索引/所属用途等
- * flags   : 状态位
- * node    : 挂入 free_area[order] 的链表节点
- */
-struct page {
-  u16 order;
-  u16 private;
-  u32 flags;
-  struct list_head node;
-};
+// struct page 已在 mm_defs.h 中定义
 
 struct free_area {
   struct list_head free_list;
