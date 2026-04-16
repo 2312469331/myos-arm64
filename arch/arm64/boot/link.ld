@@ -8,7 +8,7 @@ OUTPUT_FORMAT(elf64-littleaarch64)
 ENTRY(_start) /* 入口点 */
 
 /* 定义物理内存起始地址 */
-PHYS_BASE = 0x40000000;
+PHYS_BASE = 0x40200000;
 /* 定义虚拟内存高地址偏移 (Kernel Base) */
 VIRT_BASE = 0xffff800000000000;
 /* 方法1：直接基于 VIRT_BASE/PHYS_BASE 计算（简单直观） */
@@ -24,12 +24,12 @@ kernel_end =  __kernel_end - VIRT_BASE;
 
 /* ---------------- 1. 内存区域定义 (MEMORY) ---------------- */
 /* 规范：ORIGIN/LENGTH 必须是纯数值，禁止使用 1G/2M 等单位 */
-/* 物理内存基址 & 长度：0x40000000 开始，2MB = 2097152 字节 */
+/* 物理内存基址 & 长度：0x40200000 开始，2MB = 2097152 字节 */
 /* 虚拟内存基址 & 长度：高地址（内核虚拟空间），1GB = 1073741824 字节 */
 MEMORY
 {
   /* 物理内存 0x40000000 ~ 0x140000000，共 4GB */
-    BOOT_PHYS (rwx) : ORIGIN = 0x40000000, LENGTH = 0x100000000
+    BOOT_PHYS (rwx) : ORIGIN = 0x40200000, LENGTH = 0x100000000-0x200000
     /* 虚拟内存 0xFFFF000000000000 ~ 0xFFFF000100000000，共 4GB */
     KERNEL_VIRT (rwx) : ORIGIN = 0xFFFF800000000000 + PHYS_BASE, LENGTH = 0x100000000
 }
@@ -101,7 +101,6 @@ SECTIONS
         __bss_end = .;      /* 符号赋值：定义BSS结束 */
         . = ALIGN(4096);
         __kernel_end = .;
-
 
     } >KERNEL_VIRT
 

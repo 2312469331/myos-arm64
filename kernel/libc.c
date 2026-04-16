@@ -74,3 +74,12 @@ char *strrchr(const char *s, int c) {
   return last;
 }
 
+// 新增：strcmp 实现（字符串比较）
+int strcmp(const char *s1, const char *s2) {
+  while (*s1 && *s2 && *s1 == *s2) {
+    s1++;
+    s2++;
+  }
+  return (unsigned char)*s1 - (unsigned char)*s2;
+}
+

@@ -7,6 +7,8 @@
  * Copyright 2012 Kim Phillips, Freescale Semiconductor.
  */
 
+#include <libfdt_env.h>
+
 #ifndef __ASSEMBLER__
 
 struct fdt_header {

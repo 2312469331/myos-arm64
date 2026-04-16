@@ -11,6 +11,9 @@
  * EL3 入口 (Secure Monitor)
 * ========================================================= */
 _start:
+	// 0. 保存 QEMU 传递的 DTB 地址 (x0 寄存器)
+	mov x21, x0
+	
 	// 1. 初始化 EL3 栈指针 (使用链接脚本符号)
 	ldr x0, =el3_stack_top_phys
 	mov sp, x0
@@ -136,13 +139,14 @@ el1_entry:
 /* ==========================================
        阶段 7: 跳转到 main (虚拟地址)
        ========================================== */
-	ldr x0, =main
+	ldr x1, =main
+	mov x0, x21  // 将 DTB 地址传递给 main 函数
 
 	// 开启 MMU 代码...
 	tlbi vmalle1
 	dsb  sy
 	isb
-	blr  x0
+	blr  x1
 
 	// 死循环
 hang:
