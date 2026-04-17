@@ -10,6 +10,9 @@
 #include <libc.h>
 #include <libfdt.h>
 #include <vmalloc.h>
+#include <vma.h>
+// #include <a-profile/gicv2.h>    // GIC 中断控制器
+// #include <a-profile/armv8a.h> 
 // 计算UART虚拟地址：在最后一个L3表的最后一项
 // L3表数量 = (内核大小 + 2MB - 1) / 2MB
 #define VIRT_BASE 0xffff800000000000UL
@@ -82,8 +85,11 @@ void main(void *dtb) {
   // 初始化slab分配器
   slab_init();
 
-  // 初始化vmalloc
-  vmalloc_init();
+  // 初始化vmap管理器
+  vmap_init();
+
+  // // 初始化vmalloc
+  // vmalloc_init();
 
   // 测试kmalloc功能
   test_kmalloc();
@@ -546,79 +552,79 @@ void test_fdt(void) {
   printk("[FDT TEST] FDT test completed!\n");
 }
 
-// 测试vmalloc功能
-void test_vmalloc(void) {
-  printk("\n[VMALLOC TEST] Starting vmalloc test...\n");
+// // 测试vmalloc功能
+// void test_vmalloc(void) {
+//   printk("\n[VMALLOC TEST] Starting vmalloc test...\n");
 
-  // 测试1: 分配各种大小的内存
-  printk("[VMALLOC TEST] Test 1: Allocate various sizes\n");
-  void *ptr1 = vmalloc(8192);
-  void *ptr2 = vmalloc(16384);
-  void *ptr3 = vmalloc(32768);
-  void *ptr4 = vmalloc(65536);
-  void *ptr5 = vmalloc(131072);
-  printk("[VMALLOC TEST]  8KB: %p\n", ptr1);
-  printk("[VMALLOC TEST]  16KB: %p\n", ptr2);
-  printk("[VMALLOC TEST]  32KB: %p\n", ptr3);
-  printk("[VMALLOC TEST]  64KB: %p\n", ptr4);
-  printk("[VMALLOC TEST]  128KB: %p\n", ptr5);
+//   // 测试1: 分配各种大小的内存
+//   printk("[VMALLOC TEST] Test 1: Allocate various sizes\n");
+//   void *ptr1 = vmalloc(8192);
+//   void *ptr2 = vmalloc(16384);
+//   void *ptr3 = vmalloc(32768);
+//   void *ptr4 = vmalloc(65536);
+//   void *ptr5 = vmalloc(131072);
+//   printk("[VMALLOC TEST]  8KB: %p\n", ptr1);
+//   printk("[VMALLOC TEST]  16KB: %p\n", ptr2);
+//   printk("[VMALLOC TEST]  32KB: %p\n", ptr3);
+//   printk("[VMALLOC TEST]  64KB: %p\n", ptr4);
+//   printk("[VMALLOC TEST]  128KB: %p\n", ptr5);
 
-  // 测试2: 写入数据并验证
-  printk("\n[VMALLOC TEST] Test 2: Write and verify data\n");
-  if (ptr1) {
-    memset(ptr1, 0xAB, 8192);
-    printk("[VMALLOC TEST]  8KB: written 0xAB pattern\n");
-  }
+//   // 测试2: 写入数据并验证
+//   printk("\n[VMALLOC TEST] Test 2: Write and verify data\n");
+//   if (ptr1) {
+//     memset(ptr1, 0xAB, 8192);
+//     printk("[VMALLOC TEST]  8KB: written 0xAB pattern\n");
+//   }
 
-  if (ptr2) {
-    for (int i = 0; i < 16384 / 4; i++) {
-      ((uint32_t *)ptr2)[i] = i;
-    }
-    printk("[VMALLOC TEST]  16KB: written sequential data\n");
-  }
+//   if (ptr2) {
+//     for (int i = 0; i < 16384 / 4; i++) {
+//       ((uint32_t *)ptr2)[i] = i;
+//     }
+//     printk("[VMALLOC TEST]  16KB: written sequential data\n");
+//   }
 
-  // 测试3: 释放内存
-  printk("\n[VMALLOC TEST] Test 3: Free allocated memory\n");
-  if (ptr1)
-    vfree(ptr1);
-  if (ptr2)
-    vfree(ptr2);
-  if (ptr3)
-    vfree(ptr3);
-  if (ptr4)
-    vfree(ptr4);
-  if (ptr5)
-    vfree(ptr5);
-  printk("[VMALLOC TEST]  All allocations freed\n");
+//   // 测试3: 释放内存
+//   printk("\n[VMALLOC TEST] Test 3: Free allocated memory\n");
+//   if (ptr1)
+//     vfree(ptr1);
+//   if (ptr2)
+//     vfree(ptr2);
+//   if (ptr3)
+//     vfree(ptr3);
+//   if (ptr4)
+//     vfree(ptr4);
+//   if (ptr5)
+//     vfree(ptr5);
+//   printk("[VMALLOC TEST]  All allocations freed\n");
 
-  // 测试4: 大量小内存分配
-  printk("\n[VMALLOC TEST] Test 4: Allocate 100 small blocks (8KB each)\n");
-  void *small_ptrs[100];
-  int allocated = 0;
+//   // 测试4: 大量小内存分配
+//   printk("\n[VMALLOC TEST] Test 4: Allocate 100 small blocks (8KB each)\n");
+//   void *small_ptrs[100];
+//   int allocated = 0;
 
-  for (int i = 0; i < 100; i++) {
-    small_ptrs[i] = vmalloc(8192);
-    if (small_ptrs[i]) {
-      allocated++;
-      if ((i + 1) % 20 == 0) {
-        printk("[VMALLOC TEST]  Allocated %d/100 blocks...\n", i + 1);
-      }
-    }
-  }
+//   for (int i = 0; i < 100; i++) {
+//     small_ptrs[i] = vmalloc(8192);
+//     if (small_ptrs[i]) {
+//       allocated++;
+//       if ((i + 1) % 20 == 0) {
+//         printk("[VMALLOC TEST]  Allocated %d/100 blocks...\n", i + 1);
+//       }
+//     }
+//   }
 
-  printk("[VMALLOC TEST]  Successfully allocated %d/100 blocks\n", allocated);
+//   printk("[VMALLOC TEST]  Successfully allocated %d/100 blocks\n", allocated);
 
-  // 释放小内存块
-  for (int i = 0; i < allocated; i++) {
-    if (small_ptrs[i]) {
-      vfree(small_ptrs[i]);
-    }
-  }
-  printk("[VMALLOC TEST]  All small blocks freed\n");
+//   // 释放小内存块
+//   for (int i = 0; i < allocated; i++) {
+//     if (small_ptrs[i]) {
+//       vfree(small_ptrs[i]);
+//     }
+//   }
+//   printk("[VMALLOC TEST]  All small blocks freed\n");
 
-  // 测试5: 打印vmalloc区域信息
-  printk("\n[VMALLOC TEST] Test 5: Print vmalloc areas\n");
-  vmalloc_print_areas();
+//   // 测试5: 打印vmalloc区域信息
+//   printk("\n[VMALLOC TEST] Test 5: Print vmalloc areas\n");
+//   vmalloc_print_areas();
 
-  printk("\n[VMALLOC TEST] All tests completed!\n");
-}
+//   printk("\n[VMALLOC TEST] All tests completed!\n");
+// }

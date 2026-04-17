@@ -25,9 +25,59 @@ QEMU_BASE_ARGS	:= \
  # 项目根目录绝对路径（避免相对路径问题）
  ROOT_DIR := $(CURDIR)
  # 1. 动态头文件搜索路径（-I）
- # 通用头文件 + 架构专属头文件
- INCLUDES := -I$(ROOT_DIR)/include
- INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/include
+# 通用头文件 + 架构专属头文件
+INCLUDES := -I$(ROOT_DIR)/include
+INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/Include
+# ARM64 架构特定头文件
+ifeq ($(ARCH),arm64)
+INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/Core/Include
+INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/Core/Include/a-profile
+INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/device/ARMCA53/Include
+endif
+
+# ============================================================
+# 通用编译选项：所有环境共用
+# ============================================================
+# 核心编译选项：彻底关闭 PIC/PIE、GOT、CRT
+CFLAGS := -Wall -Wextra \
+          -O0 \
+          -ffreestanding \
+          -nostdlib \
+          -nostartfiles \
+          -fno-stack-protector \
+          -mgeneral-regs-only \
+          -fno-PIC -fno-PIE \
+          -g
+# 追加包含路径
+CFLAGS += $(INCLUDES)
+
+# 汇编选项
+ASFLAGS := $(INCLUDES) -g
+
+# Boot 段编译配置（已彻底关闭 -fPIC）
+BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
+BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
+BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
+BOOT_CFLAGS += $(INCLUDES)
+
+# 链接器选项：彻底排除系统 CRT、强制入口 _start
+LDFLAGS := -T arch/arm64/boot/link.ld \
+           -nostdlib \
+           -static \
+           -e _start
+
+# ARM64 架构特定编译选项
+ifeq ($(ARCH),arm64)
+# RTE 宏定义
+CFLAGS += -D_RTE_
+# ARM64 特定优化
+CFLAGS += -mcpu=cortex-a53 -march=armv8-a
+ASFLAGS += -mcpu=cortex-a53 -march=armv8-a
+endif
+
+# ============================================================
+# 环境特定配置
+# ============================================================
 # 检测是否在Termux环境中
 ifeq ($(shell uname -o), Android)
     # --- Termux 环境配置 ---
@@ -38,47 +88,13 @@ ifeq ($(shell uname -o), Android)
     OBJCOPY := llvm-objcopy
     OBJDUMP := llvm-objdump
     QEMU    := qemu-system-aarch64
-
-# ============================================================
-# 核心编译选项：彻底关闭 PIC/PIE、GOT、CRT
-# ============================================================
-CFLAGS := -Wall -Wextra \
-          -O0 \
-          --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
-          -ffreestanding \
-          -nostdlib \
-          -static \
-          -fno-stack-protector \
-          -mgeneral-regs-only \
-          -fno-PIC -fno-PIE \
-          -g
-# 3. 最终编译/链接选项
-CFLAGS += $(INCLUDES) 
-ASFLAGS := -Iinclude \
-           --target=aarch64-elf -mcpu=cortex-a53 -march=armv8-a \
-           -g
-
-# ============================================================
-# 链接器选项：彻底排除系统 CRT、强制入口 _start
-# ============================================================
-LDFLAGS := -fuse-ld=lld \
-           -T arch/arm64/boot/link.ld \
-           -nostdlib \
-           -nodefaultlibs \
-           -static \
-           -e _start \
-           -Wl,--build-id=none \
-           -Wl,--no-dynamic-linker
-
-# ============================================================
-# Boot 段编译配置（已彻底关闭 -fPIC）
-# ============================================================
-BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
-BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
-BOOT_CFLAGS += -Iarch/arm64/include
-# 3. 最终编译/链接选项
-BOOT_CFLAGS+= $(INCLUDES)
+    # Termux 特定链接器选项
+    LDFLAGS += -fuse-ld=lld \
+               -Wl,--build-id=none \
+               -Wl,--no-dynamic-linker
+    # Termux 特定编译选项
+    CFLAGS += --target=aarch64-elf
+    ASFLAGS += --target=aarch64-elf
 else ifeq ($(OS),Windows_NT)
     # --- x86_64 Windows 主机环境配置 ---
     CROSS_COMPILE := aarch64-none-elf-
@@ -88,23 +104,6 @@ else ifeq ($(OS),Windows_NT)
     OBJCOPY := $(CROSS_COMPILE)objcopy
     OBJDUMP := $(CROSS_COMPILE)objdump
     QEMU    := qemu-system-aarch64
-
-    CFLAGS  := -Wall -Wextra \
-               -ffreestanding \
-               -nostdlib \
-               -nostartfiles \
-               -fno-stack-protector \
-               -mgeneral-regs-only \
-               $(INCLUDES) \
-                -fno-PIC -fno-PIE \
-    	       -g
-    ASFLAGS := $(INCLUDES) -g
-    BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
-    BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-    BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
-    BOOT_CFLAGS += $(INCLUDES)
-    LDFLAGS := -T arch/$(ARCH)/boot/link.ld \
-               -nostdlib
 else
     # --- x86_64 Ubuntu 主机环境配置 ---
     CROSS_COMPILE := aarch64-linux-gnu-
@@ -114,22 +113,6 @@ else
     OBJCOPY := $(CROSS_COMPILE)objcopy
     OBJDUMP := $(CROSS_COMPILE)objdump
     QEMU    := qemu-system-aarch64
-
-    CFLAGS  := -Wall -Wextra \
-               -ffreestanding \
-               -nostdlib \
-               -nostartfiles \
-               -fno-stack-protector \
-               -mgeneral-regs-only \
-               -Iinclude \
-    	       -g
-    ASFLAGS := -Iinclude -g
-    BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
-    BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-    BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
-    BOOT_CFLAGS += -Iinclude
-    LDFLAGS := -T arch/arm64/boot/link.ld \
-               -nostdlib
 endif
 # =========================
  # 源码配置（合并 config.mk 配置）
@@ -147,10 +130,18 @@ endif
                 kernel/pgtbl.c \
                 kernel/vmalloc.c \
                 kernel/page_fault.c \
+                kernel/vma.c \
                 kernel/ds/rbtree.c \
                 kernel/sync/mutex.c \
                 kernel/sync/semaphore.c \
                 $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
+
+# ARM64 架构特定源文件
+ifeq ($(ARCH),arm64)
+SRC_C += arch/arm64/Core/Source/irq_ctrl_gic.c
+SRC_C += arch/arm64/device/ARMCA53/Source/startup_ARMCA53.c
+SRC_C += arch/arm64/device/ARMCA53/Source/system_ARMCA53.c
+endif
 
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \

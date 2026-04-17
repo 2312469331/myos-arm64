@@ -9,10 +9,6 @@
  * ============================================================
  */
 
-/* 可修改的物理内存管理范围 */
-#define PHYS_MEM_START 0x40288000
-#define PHYS_MEM_END 0x4FFFFFFFUL
-
 /* order 0 ~ 10 : 1页 ~ 1024页 */
 #define MAX_ORDER 10U
 #define NR_ORDERS (MAX_ORDER + 1U)
