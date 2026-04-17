@@ -48,8 +48,15 @@ SECTIONS
         . = ALIGN(4096);    /* 4K 对齐，符合 LLD 段对齐规则 */
     } > BOOT_PHYS
 
+    /* 3.1.1 RESET 段：异常向量表 */
+    .reset :
+    {
+        KEEP(*(RESET))  /* 保留异常向量表 */
+        . = ALIGN(6144);    /* 3 * 2048 字节对齐，确保容纳三个向量表 */
+    } > BOOT_PHYS
+
     /* 计算页表段的物理地址 */
-    pagetable_lma = ADDR(.boot) + SIZEOF(.boot);
+    pagetable_lma = ADDR(.reset) + SIZEOF(.reset);
 
     /* 3.1.1 页表段：物理地址，用于 MMU 页表初始化 */
     .pagetable : AT(pagetable_lma)

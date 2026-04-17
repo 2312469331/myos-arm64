@@ -4,6 +4,7 @@
 #include <types.h>
 #include <ds/list.h>
 
+
 // 基本数据类型定义
 typedef unsigned long u64;
 typedef unsigned int u32;
@@ -13,10 +14,15 @@ typedef unsigned long phys_addr_t;
 typedef unsigned long size_t;
 
 // 地址空间布局宏定义
+/* 可修改的物理内存管理范围 */
+#define PHYS_MEM_START 0x40288000
+#define PHYS_MEM_END 0x4FFFFFFFUL
+/* 可修改的虚拟内存管理范围 */
+#define VIRT_START      0xffff000000000000UL  // 用户空间起始地址
 #define USER_SPACE_SIZE       (0x8000000000UL)  // 用户空间大小：512GB
-#define KERNEL_SPACE_START   (0xffff800000000000UL)  // 内核空间起始地址
-#define KERNEL_SPACE_SIZE    (0x8000000000UL)  // 内核空间大小：512GB
-#define VMALLOC_START        (KERNEL_SPACE_START + 0x2000000000UL)  // 虚拟内存分配区起始地址
+#define KERNEL_SPACE_START   (0xffff800000000000UL)  // 内核线性映射区起始地址
+#define KERNEL_SPACE_SIZE    (0x8000000000UL)  // 内核线性映射区大小：512GB
+#define VMALLOC_START        VIRT_START // 虚拟内存分配区起始地址
 #define VMALLOC_SIZE         (0x1000000000UL)  // 虚拟内存分配区大小：64GB
 #define PAGE_SIZE            (4096UL)  // 页大小：4KB
 #define PAGE_SHIFT           (12)  // 页大小移位
@@ -42,20 +48,19 @@ struct page {
     struct list_head node;  // 挂入 free_area[order] 的链表节点
     uint64_t ref_count;  // 引用计数
     void *virtual_address;  // 虚拟地址（如果已映射）
-    struct mm_struct *mm;  // 所属内存管理结构
 };
 
-// 虚拟内存区域
-struct vma_area {
-    uint64_t start;  // 起始地址
-    uint64_t end;  // 结束地址
-    uint64_t flags;  // 权限标志
-    struct mm_struct *mm;  // 所属内存管理结构
-    struct list_head list;  // 链表节点
-    void *private_data;  // 私有数据（如文件指针）
-};
+
+
+// struct vmap_area {
+//     unsigned long va_start;
+//     unsigned long va_end;
+//     struct rb_node rb_node;   // 红黑树，快速找空闲虚拟地址
+//     struct vm_struct *vm;     // 指向上面的 vm_struct
+// };
 
 #include <sync/spinlock.h>
+
 
 // 内存管理结构
 struct mm_struct {
