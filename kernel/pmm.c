@@ -58,15 +58,15 @@ static void buddy_set_error(enum buddy_error err) { buddy_last_error = err; }
  */
 
 static unsigned long pa_to_pfn(phys_addr_t pa) {
-  return (unsigned long)((pa - PHYS_MEM_START) >> PAGE_SHIFT);
+  return (unsigned long)((pa - BUDDY_MEM_START) >> PAGE_SHIFT);
 }
 
 static phys_addr_t pfn_to_pa(unsigned long pfn) {
-  return (phys_addr_t)(PHYS_MEM_START + (pfn << PAGE_SHIFT));
+  return (phys_addr_t)(BUDDY_MEM_START + (pfn << PAGE_SHIFT));
 }
 
 static int pa_in_range(phys_addr_t pa) {
-  return (pa >= PHYS_MEM_START) && (pa <= PHYS_MEM_END);
+  return (pa >= BUDDY_MEM_START) && (pa <= BUDDY_MEM_END);
 }
 
 static int valid_order(unsigned int order) { return (order <= MAX_ORDER); }
