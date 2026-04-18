@@ -15,8 +15,8 @@ typedef unsigned long size_t;
 
 // 地址空间布局宏定义
 /* 可修改的物理内存管理范围 */
-#define PHYS_MEM_START 0x40288000
-#define PHYS_MEM_END 0x4FFFFFFFUL
+#define BUDDY_MEM_START 0x4058b000
+#define BUDDY_MEM_END 0x4FFFFFFFUL
 /* 可修改的虚拟内存管理范围 */
 #define VIRT_START      0xffff000000000000UL  // 用户空间起始地址
 #define USER_SPACE_SIZE       (0x8000000000UL)  // 用户空间大小：512GB

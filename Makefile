@@ -21,7 +21,7 @@ QEMU_BASE_ARGS	:= \
 
 # ---------------------------------------------------
 # 架构变量，可通过命令行指定：make ARCH=arm64 或 make ARCH=x86_64
- ARCH ?= arm64
+ ARCH = arm64
  # 项目根目录绝对路径（避免相对路径问题）
  ROOT_DIR := $(CURDIR)
  # 1. 动态头文件搜索路径（-I）
@@ -126,7 +126,6 @@ endif
                 kernel/pgtbl.c \
                 kernel/vmalloc.c \
                 kernel/page_fault.c \
-                kernel/vma.c \
                 kernel/ds/rbtree.c \
                 kernel/sync/mutex.c \
                 kernel/sync/semaphore.c \

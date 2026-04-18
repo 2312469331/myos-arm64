@@ -9,7 +9,20 @@
 #include <slab.h>
 #include <timer.h>
 #include <uart.h>
-#include <vma.h>
+#include <vmalloc.h>
+
+// // 测试 naked 属性
+// __attribute__((naked)) void test_naked_attribute(void) {
+//     __asm__ volatile (
+//         "mov x0, #42          \n"
+//         "ret                  \n"
+//     );
+// }
+
+// __attribute__((naked,noreturn)) void test_noreturn(void) {
+//     __asm__ volatile ("b .");  // 死循环
+// }
+
 // #include <a-profile/gicv2.h>    // GIC 中断控制器
 // #include <a-profile/armv8a.h>
 // 计算UART虚拟地址：在最后一个L3表的最后一项
@@ -96,6 +109,9 @@ void main(void *dtb) {
 
   // 测试vmalloc功能
   test_vmalloc();
+
+  // 测试 naked 属性（AArch64 不支持）
+  // test_naked_attribute();
 
   uart_test();
   gic_test();
@@ -456,7 +472,7 @@ static void parse_node_properties(void *fdt, int node_offset) {
               fdt64_to_cpu(*(const fdt64_t *)((const char *)prop_value + i));
           uint64_t size = fdt64_to_cpu(
               *(const fdt64_t *)((const char *)prop_value + i + 8));
-          printk("%lx (%lx) ", addr, size);
+          printk("0x%lx (0x%lx) ", addr, size);
         }
       }
       printk("\n");
@@ -481,13 +497,13 @@ static void parse_node_properties(void *fdt, int node_offset) {
         printk("\n");
       }
     } else if (prop_len == 4) {
-      // 32位整数属性
+      // 32 位整数属性
       uint32_t value = fdt32_to_cpu(*(const fdt32_t *)prop_value);
-      printk("[FDT TEST]       Value: %d (%x)\n", value, value);
+      printk("[FDT TEST]       Value: %d (0x%x)\n", value, value);
     } else if (prop_len == 8) {
-      // 64位整数属性
+      // 64 位整数属性
       uint64_t value = fdt64_to_cpu(*(const fdt64_t *)prop_value);
-      printk("[FDT TEST]       Value: %llu (%lx)\n", value, value);
+      printk("[FDT TEST]       Value: %llu (0x%lx)\n", value, value);
     } else if (prop_len > 0 &&
                ((const char *)prop_value)[prop_len - 1] == '\0') {
       // 字符串属性

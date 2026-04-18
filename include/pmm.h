@@ -18,7 +18,7 @@
  * 0x80000000 ~ 0x8FFFFFFF 为 256MB
  * 256MB / 4KB = 65536 pages
  */
-#define PHYS_MEM_SIZE (PHYS_MEM_END - PHYS_MEM_START + 1UL)
+#define PHYS_MEM_SIZE (BUDDY_MEM_END - BUDDY_MEM_START + 1UL)
 #define TOTAL_PAGES (PHYS_MEM_SIZE >> PAGE_SHIFT)
 
 /*
@@ -26,12 +26,12 @@
  * 若区间不是页对齐，会向下/向上裁剪才合理。
  * 这里直接要求宏配置满足页对齐。
  */
-#if ((PHYS_MEM_START & (PAGE_SIZE - 1UL)) != 0)
-#error "PHYS_MEM_START must be page aligned"
+#if ((BUDDY_MEM_START & (PAGE_SIZE - 1UL)) != 0)
+#error "BUDDY_MEM_START must be page aligned"
 #endif
 
-#if (((PHYS_MEM_END + 1UL) & (PAGE_SIZE - 1UL)) != 0)
-#error "PHYS_MEM_END+1 must be page aligned"
+#if (((BUDDY_MEM_END + 1UL) & (PAGE_SIZE - 1UL)) != 0)
+#error "BUDDY_MEM_END+1 must be page aligned"
 #endif
 
 /* ============================================================
