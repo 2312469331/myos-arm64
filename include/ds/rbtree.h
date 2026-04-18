@@ -3,42 +3,37 @@
 
 #include <types.h>
 
-// 红黑树节点颜色
-enum rb_color {
-    RB_RED,
-    RB_BLACK
-};
+enum rb_color { RB_RED, RB_BLACK };
 
-// 红黑树节点结构
+// 纯链接节点，无数据
 typedef struct rb_node {
-    struct rb_node *parent;
-    struct rb_node *left;
-    struct rb_node *right;
-    enum rb_color color;
-    void *key;
-    void *value;
+  struct rb_node *parent;
+  struct rb_node *left;
+  struct rb_node *right;
+  enum rb_color color;
 } rb_node_t;
 
-// 红黑树结构
 typedef struct rb_tree {
-    struct rb_node *root;
-    struct rb_node *nil;
-    int (*compare)(const void *key1, const void *key2);
+  struct rb_node *root;
+  struct rb_node *nil;
+  // 比较函数：直接比较两个 rb_node 所在结构体的 key
+  int (*compare)(rb_node_t *a, rb_node_t *b);
 } rb_tree_t;
 
-// 初始化红黑树
-void rb_tree_init(rb_tree_t *tree, int (*compare)(const void *key1, const void *key2));
+// 初始化
+void rb_tree_init(rb_tree_t *tree, int (*compare)(rb_node_t *a, rb_node_t *b));
 
-// 查找节点
-rb_node_t *rb_tree_search(rb_tree_t *tree, const void *key);
+// 查找：根据比较函数查找
+rb_node_t *rb_tree_search(rb_tree_t *tree, rb_node_t *key_node);
 
-// 插入节点
-int rb_tree_insert(rb_tree_t *tree, void *key, void *value);
+// 插入：直接插节点
+void rb_tree_insert(rb_tree_t *tree, rb_node_t *node);
 
-// 删除节点
-int rb_tree_delete(rb_tree_t *tree, const void *key);
+// 删除：直接删节点
+void rb_tree_delete(rb_tree_t *tree, rb_node_t *node);
 
-// 遍历节点（中序遍历）
-void rb_tree_inorder(rb_tree_t *tree, void (*visit)(rb_node_t *node, void *data), void *data);
+// 遍历
+void rb_tree_inorder(rb_tree_t *tree,
+                     void (*visit)(rb_node_t *node, void *data), void *data);
 
-#endif /* __RBTREE_H__ */
+#endif
