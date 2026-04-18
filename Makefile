@@ -27,7 +27,7 @@ QEMU_BASE_ARGS	:= \
  # 1. 动态头文件搜索路径（-I）
 # 通用头文件 + 架构专属头文件
 INCLUDES := -I$(ROOT_DIR)/include
-INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/Include
+INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/include
 # ARM64 架构特定头文件
 ifeq ($(ARCH),arm64)
 INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/Core/Include
@@ -43,7 +43,6 @@ CFLAGS := -Wall -Wextra \
           -O0 \
           -ffreestanding \
           -nostdlib \
-          -nostartfiles \
           -fno-stack-protector \
           -mgeneral-regs-only \
           -fno-PIC -fno-PIE \
@@ -92,9 +91,6 @@ ifeq ($(shell uname -o), Android)
     LDFLAGS += -fuse-ld=lld \
                -Wl,--build-id=none \
                -Wl,--no-dynamic-linker
-    # Termux 特定编译选项
-    CFLAGS += --target=aarch64-elf
-    ASFLAGS += --target=aarch64-elf
 else ifeq ($(OS),Windows_NT)
     # --- x86_64 Windows 主机环境配置 ---
     CROSS_COMPILE := aarch64-none-elf-

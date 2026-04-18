@@ -1,18 +1,17 @@
+#include <bootc.h>
 #include <exception.h>
 #include <gic.h>
 #include <irq.h>
+#include <libc.h>
+#include <libfdt.h>
 #include <pmm.h>
 #include <printk.h>
 #include <slab.h>
 #include <timer.h>
 #include <uart.h>
-#include <bootc.h>
-#include <libc.h>
-#include <libfdt.h>
-#include <vmalloc.h>
 #include <vma.h>
 // #include <a-profile/gicv2.h>    // GIC 中断控制器
-// #include <a-profile/armv8a.h> 
+// #include <a-profile/armv8a.h>
 // 计算UART虚拟地址：在最后一个L3表的最后一项
 // L3表数量 = (内核大小 + 2MB - 1) / 2MB
 #define VIRT_BASE 0xffff800000000000UL
@@ -45,7 +44,7 @@ void *dtb_base = NULL; // 全局变量，保存 DTB 地址
 
 void main(void *dtb) {
   dtb_base = dtb; // 保存 DTB 地址
-  
+
   if (L3_TABLES_NEEDED > 0) {
     uint64_t last_table_idx = L3_TABLES_NEEDED - 1;
     uint64_t uart_va = VIRT_BASE + PHYS_BASE +
@@ -64,7 +63,8 @@ void main(void *dtb) {
   printk("===============================================\n");
   printk("\n");
   test_fdt();
-  while (1);
+  while (1)
+    ;
   buddy_init(); // 测试伙伴系统
   // 全面测试伙伴系统性能和完整性
   test_buddy_system();
@@ -415,132 +415,141 @@ void uart_irq_callback(uint32_t irq) {
 }
 // 解析节点属性
 static void parse_node_properties(void *fdt, int node_offset) {
-    const char *name = fdt_get_name(fdt, node_offset, NULL);
-    if (!name) return;
-    
-    printk("[FDT TEST]   Node: %s\n", name);
-    
-    // 遍历所有属性
-    int prop_offset = fdt_first_property_offset(fdt, node_offset);
-    while (prop_offset >= 0) {
-        const struct fdt_property *prop = fdt_offset_ptr(fdt, prop_offset, sizeof(*prop));
-        if (!prop) break;
-        
-        const char *prop_name = fdt_string(fdt, fdt32_to_cpu(prop->nameoff));
-        int prop_len = fdt32_to_cpu(prop->len);
-        const void *prop_value = prop + 1;
-        
-        printk("[FDT TEST]     Property: %s (length: %d)\n", prop_name, prop_len);
-        
-        // 特殊处理一些常见属性
-        if (strcmp(prop_name, "compatible") == 0) {
-            // 兼容属性是字符串列表
-            int count = fdt_stringlist_count(fdt, node_offset, "compatible");
-            for (int i = 0; i < count; i++) {
-                int len;
-                const char *compatible = fdt_stringlist_get(fdt, node_offset, "compatible", i, &len);
-                if (compatible) {
-                    printk("[FDT TEST]       Compatible: %s\n", compatible);
-                }
-            }
-        } else if (strcmp(prop_name, "reg") == 0) {
-            // reg 属性是地址和大小的列表
-            printk("[FDT TEST]       Reg: ");
-            for (int i = 0; i < prop_len; i += 8) {
-                if (i + 8 <= prop_len) {
-                    uint64_t addr = fdt64_to_cpu(*(const fdt64_t *)((const char *)prop_value + i));
-                    uint64_t size = fdt64_to_cpu(*(const fdt64_t *)((const char *)prop_value + i + 8));
-                    printk("%lx (%lx) ", addr, size);
-                }
-            }
-            printk("\n");
-        } else if (strcmp(prop_name, "interrupts") == 0) {
-            // 中断属性
-            printk("[FDT TEST]       Interrupts: ");
-            for (int i = 0; i < prop_len; i += 4) {
-                if (i + 4 <= prop_len) {
-                    uint32_t irq = fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i));
-                    printk("%d ", irq);
-                }
-            }
-            printk("\n");
-        } else if (strcmp(prop_name, "status") == 0) {
-            // 状态属性
-            if (prop_len > 0) {
-                printk("[FDT TEST]       Status: ");
-                for (int i = 0; i < prop_len; i++) {
-                    uart_putc(((const char *)prop_value)[i]);
-                }
-                printk("\n");
-            }
-        } else if (prop_len == 4) {
-            // 32位整数属性
-            uint32_t value = fdt32_to_cpu(*(const fdt32_t *)prop_value);
-            printk("[FDT TEST]       Value: %d (%x)\n", value, value);
-        } else if (prop_len == 8) {
-            // 64位整数属性
-            uint64_t value = fdt64_to_cpu(*(const fdt64_t *)prop_value);
-            printk("[FDT TEST]       Value: %llu (%lx)\n", value, value);
-        } else if (prop_len > 0 && ((const char *)prop_value)[prop_len - 1] == '\0') {
-            // 字符串属性
-            printk("[FDT TEST]       Value: \"%s\"\n", (const char *)prop_value);
-        } else {
-            // 其他类型的属性，显示原始字节
-            printk("[FDT TEST]       Raw bytes: ");
-            for (int i = 0; i < prop_len && i < 16; i++) {
-                uint8_t byte = ((const unsigned char *)prop_value)[i];
-                printk("%02x ", byte);
-            }
-            if (prop_len > 16) {
-                printk("... (truncated)");
-            }
-            printk("\n");
+  const char *name = fdt_get_name(fdt, node_offset, NULL);
+  if (!name)
+    return;
+
+  printk("[FDT TEST]   Node: %s\n", name);
+
+  // 遍历所有属性
+  int prop_offset = fdt_first_property_offset(fdt, node_offset);
+  while (prop_offset >= 0) {
+    const struct fdt_property *prop =
+        fdt_offset_ptr(fdt, prop_offset, sizeof(*prop));
+    if (!prop)
+      break;
+
+    const char *prop_name = fdt_string(fdt, fdt32_to_cpu(prop->nameoff));
+    int prop_len = fdt32_to_cpu(prop->len);
+    const void *prop_value = prop + 1;
+
+    printk("[FDT TEST]     Property: %s (length: %d)\n", prop_name, prop_len);
+
+    // 特殊处理一些常见属性
+    if (strcmp(prop_name, "compatible") == 0) {
+      // 兼容属性是字符串列表
+      int count = fdt_stringlist_count(fdt, node_offset, "compatible");
+      for (int i = 0; i < count; i++) {
+        int len;
+        const char *compatible =
+            fdt_stringlist_get(fdt, node_offset, "compatible", i, &len);
+        if (compatible) {
+          printk("[FDT TEST]       Compatible: %s\n", compatible);
         }
-        
-        prop_offset = fdt_next_property_offset(fdt, prop_offset);
+      }
+    } else if (strcmp(prop_name, "reg") == 0) {
+      // reg 属性是地址和大小的列表
+      printk("[FDT TEST]       Reg: ");
+      for (int i = 0; i < prop_len; i += 8) {
+        if (i + 8 <= prop_len) {
+          uint64_t addr =
+              fdt64_to_cpu(*(const fdt64_t *)((const char *)prop_value + i));
+          uint64_t size = fdt64_to_cpu(
+              *(const fdt64_t *)((const char *)prop_value + i + 8));
+          printk("%lx (%lx) ", addr, size);
+        }
+      }
+      printk("\n");
+    } else if (strcmp(prop_name, "interrupts") == 0) {
+      // 中断属性
+      printk("[FDT TEST]       Interrupts: ");
+      for (int i = 0; i < prop_len; i += 4) {
+        if (i + 4 <= prop_len) {
+          uint32_t irq =
+              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i));
+          printk("%d ", irq);
+        }
+      }
+      printk("\n");
+    } else if (strcmp(prop_name, "status") == 0) {
+      // 状态属性
+      if (prop_len > 0) {
+        printk("[FDT TEST]       Status: ");
+        for (int i = 0; i < prop_len; i++) {
+          uart_putc(((const char *)prop_value)[i]);
+        }
+        printk("\n");
+      }
+    } else if (prop_len == 4) {
+      // 32位整数属性
+      uint32_t value = fdt32_to_cpu(*(const fdt32_t *)prop_value);
+      printk("[FDT TEST]       Value: %d (%x)\n", value, value);
+    } else if (prop_len == 8) {
+      // 64位整数属性
+      uint64_t value = fdt64_to_cpu(*(const fdt64_t *)prop_value);
+      printk("[FDT TEST]       Value: %llu (%lx)\n", value, value);
+    } else if (prop_len > 0 &&
+               ((const char *)prop_value)[prop_len - 1] == '\0') {
+      // 字符串属性
+      printk("[FDT TEST]       Value: \"%s\"\n", (const char *)prop_value);
+    } else {
+      // 其他类型的属性，显示原始字节
+      printk("[FDT TEST]       Raw bytes: ");
+      for (int i = 0; i < prop_len && i < 16; i++) {
+        uint8_t byte = ((const unsigned char *)prop_value)[i];
+        printk("%02x ", byte);
+      }
+      if (prop_len > 16) {
+        printk("... (truncated)");
+      }
+      printk("\n");
     }
+
+    prop_offset = fdt_next_property_offset(fdt, prop_offset);
+  }
 }
 // FDT 测试函数
 void test_fdt(void) {
   printk("\n[FDT TEST] Starting FDT test...\n");
-  
+
   // 确定 DTB 地址
   uint64_t dtb_phys;
   if (dtb_base == NULL || (uint64_t)dtb_base == 0) {
-    printk("[FDT TEST] DTB address is 0 (bare-metal boot), using default address (0x40000000)\n");
+    printk("[FDT TEST] DTB address is 0 (bare-metal boot), using default "
+           "address (0x40000000)\n");
     dtb_phys = 0x40000000; // 默认 DTB 物理地址
   } else {
     dtb_phys = (uint64_t)dtb_base;
   }
-  
+
   // 转换为虚拟地址
   void *fdt = (void *)(VIRT_BASE + dtb_phys);
-  
+
   printk("[FDT TEST] DTB physical address: %lx\n", dtb_phys);
   printk("[FDT TEST] DTB virtual address: %lx\n", (uint64_t)fdt);
-  
+
   // 验证 FDT 头部
   int ret = fdt_check_header(fdt);
   if (ret != 0) {
     printk("[FDT TEST] ERROR: Invalid FDT header: %d\n", ret);
     return;
   }
-  
+
   printk("[FDT TEST] FDT header is valid\n");
-  
+
   // 获取根节点偏移量
   int root_offset = fdt_path_offset(fdt, "/");
   if (root_offset < 0) {
     printk("[FDT TEST] ERROR: Failed to find root node: %d\n", root_offset);
     return;
   }
-  
+
   printk("[FDT TEST] Root node found at offset: %d\n", root_offset);
-  
+
   // 解析根节点属性
   printk("[FDT TEST] Root node properties:\n");
   parse_node_properties(fdt, root_offset);
-  
+
   // 遍历子节点
   printk("[FDT TEST] Child nodes:\n");
   int node_offset = fdt_first_subnode(fdt, root_offset);
@@ -548,7 +557,7 @@ void test_fdt(void) {
     parse_node_properties(fdt, node_offset);
     node_offset = fdt_next_subnode(fdt, node_offset);
   }
-  
+
   printk("[FDT TEST] FDT test completed!\n");
 }
 
@@ -612,7 +621,8 @@ void test_fdt(void) {
 //     }
 //   }
 
-//   printk("[VMALLOC TEST]  Successfully allocated %d/100 blocks\n", allocated);
+//   printk("[VMALLOC TEST]  Successfully allocated %d/100 blocks\n",
+//   allocated);
 
 //   // 释放小内存块
 //   for (int i = 0; i < allocated; i++) {
