@@ -1,21 +1,41 @@
 {
     "version": "0.2.0",
     "configurations": [
-   {
-            "name": "QEMU ARM64 LLDB 调试",
+//    {
+//             "name": "QEMU ARM64 LLDB 调试",
+//             "type": "lldb",
+//             "request": "attach",
+//             "program": "${workspaceFolder}/build/kernel.elf",
+//             "cwd": "${workspaceFolder}",
+//             "preLaunchTask": "ubuntu启动 QEMU 调试服务器",
+//             "targetCreateCommands": [
+//                 "target create ${workspaceFolder}/build/kernel.elf"
+//             ],
+//             "processCreateCommands": [
+//                 "gdb-remote localhost:1234"
+//             ],
+//             "gracefulShutdown": "./tools/stop-qemu.sh",
+//         },
+        {
+            "name": "QEMU 调试（可重启/停止）",
             "type": "lldb",
             "request": "attach",
-            "program": "${workspaceFolder}/build/kernel.elf",
-            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/build/kernel.elf", // 你的内核 ELF 文件
+            "targetCreateCommands": ["target create ${workspaceFolder}/build/kernel.elf"],
+            "processCreateCommands": ["gdb-remote localhost:1234"], // QEMU gdbstub 端口
             "preLaunchTask": "ubuntu启动 QEMU 调试服务器",
-            "targetCreateCommands": [
-                "target create ${workspaceFolder}/build/kernel.elf"
+
+
+            // 👇 关键：只做调试连接，不杀进程！
+            "preRunCommands": [
+                "shell sleep 0.5"
             ],
-            "processCreateCommands": [
-                "gdb-remote localhost:1234"
-            ],
-            "gracefulShutdown": "./tools/stop-qemu.sh",
+
+            // 👇 关键：停止时只 detach，不杀 QEMU（交给 task 处理）
+            "preTerminateCommands": [],
+            "gracefulShutdown": "",
             "stopOnEntry": true
+
         },
 
         {

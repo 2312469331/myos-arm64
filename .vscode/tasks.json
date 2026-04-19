@@ -4,7 +4,7 @@
         {
             "label": "ubuntu启动 QEMU 调试服务器",
             "type": "shell",
-            "command": "gnome-terminal -- ./tools/debug_ubuntu.sh",
+            "command": "./tools/debug_ubuntu.sh",
             "args": [],
             "options": {
                 "cwd": "${workspaceFolder}"
