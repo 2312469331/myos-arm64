@@ -39,11 +39,18 @@ void *memmove(void *dst, const void *src, size_t n) {
 }
 
 void *memcpy(void *dst, const void *src, size_t n) {
-  return memmove(dst, src, n);
+  unsigned char *pdst = (unsigned char *)dst;
+  const unsigned char *psrc = (const unsigned char *)src;
+  for (size_t i = 0; i < n; i++)
+    pdst[i] = psrc[i];
+  return dst;
 }
 
 void *memset(void *dst, int c, size_t n) {
-  return __builtin_memset(dst, c, n);
+  unsigned char *pdst = (unsigned char *)dst;
+  for (size_t i = 0; i < n; i++)
+    pdst[i] = (unsigned char)c;
+  return dst;
 }
 
 // 新增：memchr 实现（内存中查找字符）
