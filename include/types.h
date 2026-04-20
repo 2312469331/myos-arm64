@@ -75,5 +75,8 @@ typedef unsigned char bool;
 typedef uint64_t            uintptr_t;
 typedef int64_t             intptr_t;
 #endif
+typedef struct {
+    int counter;
+} atomic_t;
 #endif // __TYPES_H__
 

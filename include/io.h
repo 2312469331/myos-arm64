@@ -1,16 +1,12 @@
 #ifndef __IO_H__
 #define __IO_H__
 
-#include "printk.h"
-#include "types.h"
+#include <printk.h>
+#include <types.h>
+#include <compiler.h>
 #ifdef __cplusplus
-extern "C" {
-#endif
 
-// 内存屏障：保证设备访问完成
-#define mb() __asm__ __volatile__("dsb sy; isb" ::: "memory")
-// 编译器屏障：禁止 GCC 重排/优化
-#define barrier() __asm__ __volatile__("" ::: "memory")
+#endif
 
 /**
  * io_read8/16/32 - 从设备地址读取

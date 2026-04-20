@@ -26,8 +26,10 @@ QEMU_BASE_ARGS	:= \
  ROOT_DIR := $(CURDIR)
  # 1. 动态头文件搜索路径（-I）
 # 通用头文件 + 架构专属头文件
-INCLUDES := -I$(ROOT_DIR)/include
-INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/include
+INCLUDES := -I$(ROOT_DIR)/arch/$(ARCH)/include
+INCLUDES += -I$(ROOT_DIR)/include
+INCLUDES += -I$(ROOT_DIR)
+
 # ARM64 架构特定头文件
 ifeq ($(ARCH),arm64)
 INCLUDES += -I$(ROOT_DIR)/arch/$(ARCH)/Core/Include
@@ -115,8 +117,7 @@ endif
  # =========================
  SRC_ASM = arch/arm64/boot/boot.S \
            $(SRC_ASM_CONFIG)   # 来自 config.mk 的条件汇编文件
- SRC_C = arch/arm64/boot/bootc.c \
-                kernel/main.c \
+ SRC_C = kernel/main.c \
                 kernel/irq.c \
                 kernel/pmm.c \
                 kernel/printk.c \
@@ -127,13 +128,17 @@ endif
                 kernel/vmalloc.c \
                 kernel/page_fault.c \
                 kernel/ds/rbtree.c \
-                kernel/sync/mutex.c \
+                kernel/sync/completion.c \
+                kernel/sync/rcupdate.c \
+                kernel/sync/rwsem.c \
+                kernel/sync/wait.c \
                 kernel/sync/semaphore.c \
                 $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # ARM64 架构特定源文件
 ifeq ($(ARCH),arm64)
-SRC_C += arch/arm64/Core/Source/irq_ctrl_gic.c
+SRC_C += arch/arm64/boot/bootc.c \
+         arch/arm64/Core/Source/irq_ctrl_gic.c
 SRC_C += arch/arm64/device/ARMCA53/Source/startup_ARMCA53.c
 SRC_C += arch/arm64/device/ARMCA53/Source/system_ARMCA53.c
 endif

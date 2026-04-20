@@ -4,3 +4,16 @@ build/
 *.bin
 *.img
 *.dtb
+build/
+*.d
+*.hex
+*.map
+*.dis
+*.a
+# IDE / 编辑器
+.marscode/
+.clangd/
+.cache/
+.idea/
+*.swp
+*.swo
