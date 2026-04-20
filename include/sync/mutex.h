@@ -1,35 +1,21 @@
-#ifndef __MUTEX_H__
-#define __MUTEX_H__
+#ifndef _LINUX_MUTEX_H
+#define _LINUX_MUTEX_H
 
-#include <types.h>
-#include <sync/spinlock.h>
+#include <sync/semaphore.h>
 
-// 互斥锁类型
-typedef struct mutex {
-    spinlock_t lock;
-    int locked;
-    int owner;
-} mutex_t;
+/* 本质上是封装了信号量，但限制 count=1，并增加 owner 调试信息 */
+struct mutex {
+    atomic_t count;       // 1:空闲, 0:被占用, 负数:有等待者
+    spinlock_t wait_lock; // 保护等待队列的自旋锁
+    struct wait_queue_head wait_list;
+    void *owner;          // 记录谁拿了锁，用于死锁检测
+};
 
-// 初始化互斥锁
-static inline void mutex_init(mutex_t *mutex) {
-    spin_lock_init(&mutex->lock);
-    mutex->locked = 0;
-    mutex->owner = -1;
-}
+#define MUTEX_INITIALIZER(name) \
+    { .count = ATOMIC_INIT(1), .wait_lock = SPIN_LOCK_UNLOCKED, \
+      .wait_list = __WAIT_QUEUE_HEAD_INITIALIZER(name.wait_list), .owner = NULL }
 
-// 获取互斥锁
-void mutex_lock(mutex_t *mutex);
+void mutex_lock(struct mutex *mtx);
+void mutex_unlock(struct mutex *mtx);
 
-// 释放互斥锁
-void mutex_unlock(mutex_t *mutex);
-
-// 尝试获取互斥锁
-int mutex_trylock(mutex_t *mutex);
-
-// 检查互斥锁是否被持有
-static inline int mutex_is_locked(mutex_t *mutex) {
-    return mutex->locked;
-}
-
-#endif /* __MUTEX_H__ */
+#endif

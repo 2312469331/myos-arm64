@@ -1,33 +1,19 @@
-#ifndef __SEMAPHORE_H__
-#define __SEMAPHORE_H__
+#ifndef _LINUX_SEMAPHORE_H
+#define _LINUX_SEMAPHORE_H
 
-#include <types.h>
+#include <ds/list.h>
+#include <sync/wait.h>
 #include <sync/spinlock.h>
 
-// 信号量类型
-typedef struct semaphore {
-    spinlock_t lock;
-    int count;
-} semaphore_t;
+struct semaphore {
+    atomic_t count;         // 计数器
+    struct wait_queue_head wait; // 等待队列
+};
 
-// 初始化信号量
-static inline void semaphore_init(semaphore_t *sem, int count) {
-    spin_lock_init(&sem->lock);
-    sem->count = count;
-}
+#define __SEMAPHORE_INITIALIZER(name, count) \
+    { .count = ATOMIC_INIT(count), .wait = __WAIT_QUEUE_HEAD_INITIALIZER(name.wait) }
 
-// P操作（获取信号量）
-void semaphore_down(semaphore_t *sem);
+void down(struct semaphore *sem);
+void up(struct semaphore *sem);
 
-// V操作（释放信号量）
-void semaphore_up(semaphore_t *sem);
-
-// 尝试获取信号量
-int semaphore_trydown(semaphore_t *sem);
-
-// 获取信号量当前值
-static inline int semaphore_get_value(semaphore_t *sem) {
-    return sem->count;
-}
-
-#endif /* __SEMAPHORE_H__ */
+#endif

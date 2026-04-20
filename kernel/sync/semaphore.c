@@ -1,34 +1,19 @@
-#include <sync/semaphore.h>
+#ifndef _LINUX_SEMAPHORE_H
+#define _LINUX_SEMAPHORE_H
 
-// P操作（获取信号量）
-void semaphore_down(semaphore_t *sem) {
-    while (1) {
-        spin_lock(&sem->lock);
-        if (sem->count > 0) {
-            sem->count--;
-            spin_unlock(&sem->lock);
-            break;
-        }
-        spin_unlock(&sem->lock);
-        // 这里应该实现线程调度，暂时使用忙等待
-    }
-}
+#include <ds/list.h>
+#include <sync/wait.h>
+#include <sync/spinlock.h>
 
-// V操作（释放信号量）
-void semaphore_up(semaphore_t *sem) {
-    spin_lock(&sem->lock);
-    sem->count++;
-    spin_unlock(&sem->lock);
-}
+struct semaphore {
+    atomic_t count;         // 计数器
+    struct wait_queue_head wait; // 等待队列
+};
 
-// 尝试获取信号量
-int semaphore_trydown(semaphore_t *sem) {
-    spin_lock(&sem->lock);
-    if (sem->count > 0) {
-        sem->count--;
-        spin_unlock(&sem->lock);
-        return 1;
-    }
-    spin_unlock(&sem->lock);
-    return 0;
-}
+#define __SEMAPHORE_INITIALIZER(name, count) \
+    { .count = ATOMIC_INIT(count), .wait = __WAIT_QUEUE_HEAD_INITIALIZER(name.wait) }
+
+void down(struct semaphore *sem);
+void up(struct semaphore *sem);
+
+#endif

@@ -134,7 +134,6 @@ struct page {
 ### 3.3 Spinlock API
 | Function | Signature |
 |----------|-----------|
-| spin_lock_init | `void spin_lock_init(spinlock_t *lock)` |
 | spin_lock | `void spin_lock(spinlock_t *lock)` |
 | spin_trylock | `int spin_trylock(spinlock_t *lock)` |
 | spin_unlock | `void spin_unlock(spinlock_t *lock)` |
