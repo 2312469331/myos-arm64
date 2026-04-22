@@ -956,5 +956,35 @@
    "build/kernel/sync/wait.o"
   ],
   "file": "kernel/sync/wait.c"
+ },
+ {
+  "directory": "C:\\Users\\chanpinkaifa\\Desktop\\product\\os\\myos-arm64",
+  "arguments": [
+   "aarch64-none-elf-gcc",
+   "-Wall",
+   "-Wextra",
+   "-O0",
+   "-ffreestanding",
+   "-nostdlib",
+   "-fno-stack-protector",
+   "-mgeneral-regs-only",
+   "-fno-PIC",
+   "-fno-PIE",
+   "-g",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/Core/Include",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/Core/Include/a-profile",
+   "-IC:/Users/chanpinkaifa/Desktop/product/os/myos-arm64/arch/arm64/device/ARMCA53/Include",
+   "-D_RTE_",
+   "-mcpu=cortex-a53",
+   "-march=armv8-a",
+   "-c",
+   "kernel/vmap.c",
+   "-o",
+   "build/kernel/vmap.o"
+  ],
+  "file": "kernel/vmap.c"
  }
 ]

@@ -36,12 +36,12 @@ static inline bool va_in_linear_map(const void *va) {
 }
 
 /* 页表操作函数 */
-static inline int arm64_map_one_page(uintptr_t va, phys_addr_t pa) {
+static inline int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
     // 设置 pgtbl 所需的全局变量
     linear_map_base = slab_linear_map_base;
     l0_table_pa = slab_l0_table_pa;
     
-    return pgtbl_map_one_page(va, pa);
+    return pgtbl_map_one_page(va, pa, prot);
 }
 
 static inline void arm64_unmap_one_page(uintptr_t va) {
@@ -52,12 +52,12 @@ static inline void arm64_unmap_one_page(uintptr_t va) {
     pgtbl_unmap_one_page(va);
 }
 
-static inline int arm64_map_range(uintptr_t va, phys_addr_t pa, size_t size) {
+static inline int arm64_map_range(uintptr_t va, phys_addr_t pa, size_t size, uint64_t prot) {
     // 设置 pgtbl 所需的全局变量
     linear_map_base = slab_linear_map_base;
     l0_table_pa = slab_l0_table_pa;
     
-    return pgtbl_map_range(va, pa, size);
+    return pgtbl_map_range(va, pa, size, prot);
 }
 
 static inline void arm64_unmap_range(uintptr_t va, size_t size) {

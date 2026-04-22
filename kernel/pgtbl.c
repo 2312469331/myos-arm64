@@ -5,7 +5,7 @@ uintptr_t linear_map_base;
 phys_addr_t l0_table_pa;
 
 /* 映射单个页面 */
-int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa) {
+int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
     pte_t *l0, *l1, *l2, *l3;
     phys_addr_t l1_pa, l2_pa, l3_pa;
     unsigned long idx0, idx1, idx2, idx3;
@@ -22,7 +22,7 @@ int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa) {
 
     /* 1. 检查/创建 L1 表 */
     if (!pte_present(l0[idx0])) {
-        l1_pa = alloc_phys_pages(0);
+        l1_pa = alloc_phys_pages(0, GFP_KERNEL);
         if (!l1_pa)
             return -1;
         l0[idx0] = ARM64_TABLE_PROT | l1_pa;
@@ -33,7 +33,7 @@ int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa) {
 
     /* 2. 检查/创建 L2 表 */
     if (!pte_present(l1[idx1])) {
-        l2_pa = alloc_phys_pages(0);
+        l2_pa = alloc_phys_pages(0, GFP_KERNEL);
         if (!l2_pa)
             return -1;
         l1[idx1] = ARM64_TABLE_PROT | l2_pa;
@@ -44,7 +44,7 @@ int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa) {
 
     /* 3. 检查/创建 L3 表 */
     if (!pte_present(l2[idx2])) {
-        l3_pa = alloc_phys_pages(0);
+        l3_pa = alloc_phys_pages(0, GFP_KERNEL);
         if (!l3_pa)
             return -1;
         l2[idx2] = ARM64_TABLE_PROT | l3_pa;
@@ -54,7 +54,7 @@ int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa) {
     l3 = (pte_t *)pgtbl_phys_to_virt(l3_pa);
 
     /* 4. 映射页面 */
-    l3[idx3] = ARM64_PAGE_PROT | pa;
+    l3[idx3] = prot | pa;
 
     return 0;
 }
@@ -117,12 +117,12 @@ void pgtbl_unmap_one_page(uintptr_t va) {
   }
 }
 
-int pgtbl_map_range(uintptr_t va, phys_addr_t pa, size_t size) {
+int pgtbl_map_range(uintptr_t va, phys_addr_t pa, size_t size, uint64_t prot) {
   size_t off, len;
 
   len = ((size + 4095) & ~4095);
   for (off = 0; off < len; off += 4096) {
-    if (pgtbl_map_one_page(va + off, pa + off))
+    if (pgtbl_map_one_page(va + off, pa + off, prot))
       return -1;
   }
   return 0;

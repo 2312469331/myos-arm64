@@ -23,9 +23,25 @@ extern "C" {
     fn kfree(ptr: *mut core::ffi::c_void);
     fn vmalloc(size: usize, prot: u32) -> *mut core::ffi::c_void;
     fn vfree(ptr: *mut core::ffi::c_void);
-    fn alloc_phys_pages(order: u32) -> u64;
+    fn alloc_phys_pages(order: u32, flags: u32) -> u64;
     fn free_phys_pages(paddr: u64, order: u32);
 }
+
+// ============================================================================
+// 内存分配标志
+// ============================================================================
+
+/// 常规内核分配，可以睡眠
+pub const GFP_KERNEL: u32 = 0x001;
+
+/// 原子分配，不能睡眠（中断/自旋锁）
+pub const GFP_ATOMIC: u32 = 0x002;
+
+/// 从 DMA 区域分配
+pub const GFP_DMA: u32 = 0x004;
+
+/// 高端内存
+pub const GFP_HIGHMEM: u32 = 0x008;
 
 // ============================================================================
 // 安全包装器 - 真正利用 Rust 的所有权系统和生命周期
@@ -166,7 +182,7 @@ impl PhysPage {
     /// # Returns
     /// * 成功返回 PhysPage 实例，失败返回 None
     pub fn new(order: u32) -> Option<Self> {
-        let paddr = unsafe { alloc_phys_pages(order) };
+        let paddr = unsafe { alloc_phys_pages(order, GFP_KERNEL) };
 
         if paddr == 0 {
             return None;
@@ -230,7 +246,7 @@ pub extern "C" fn rust_vfree(ptr: *mut core::ffi::c_void) {
 /// 物理页分配
 #[no_mangle]
 pub extern "C" fn rust_alloc_phys_pages(order: u32) -> u64 {
-    unsafe { alloc_phys_pages(order) }
+    unsafe { alloc_phys_pages(order, GFP_KERNEL) }
 }
 
 /// 物理页释放
