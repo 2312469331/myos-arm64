@@ -2,25 +2,18 @@
 
 / {
 	interrupt-parent = <0x8002>;
+	dma-coherent;
+	model = "linux,dummy-virt";
 	#size-cells = <0x02>;
 	#address-cells = <0x02>;
 	compatible = "linux,dummy-virt";
-
-	psci {
-		migrate = <0xc4000005>;
-		cpu_on = <0xc4000003>;
-		cpu_off = <0x84000002>;
-		cpu_suspend = <0xc4000001>;
-		method = "smc";
-		compatible = "arm,psci-0.2\0arm,psci";
-	};
 
 	memory@40000000 {
 		reg = <0x00 0x40000000 0x00 0x10000000>;
 		device_type = "memory";
 	};
 
-	platform@c000000 {
+	platform-bus@c000000 {
 		interrupt-parent = <0x8002>;
 		ranges = <0x00 0x00 0xc000000 0x2000000>;
 		#address-cells = <0x01>;
@@ -286,8 +279,6 @@
 	};
 
 	gpio-keys {
-		#address-cells = <0x01>;
-		#size-cells = <0x00>;
 		compatible = "gpio-keys";
 
 		poweroff {
@@ -314,7 +305,7 @@
 		#interrupt-cells = <0x01>;
 		ranges = <0x1000000 0x00 0x00 0x00 0x3eff0000 0x00 0x10000 0x2000000 0x00 0x10000000 0x00 0x10000000 0x00 0x2eff0000 0x3000000 0x80 0x00 0x80 0x00 0x80 0x00>;
 		reg = <0x40 0x10000000 0x00 0x10000000>;
-		msi-parent = <0x8003>;
+		msi-map = <0x00 0x8003 0x00 0x10000>;
 		dma-coherent;
 		bus-range = <0x00 0xff>;
 		linux,pci-domain = <0x00>;
@@ -332,6 +323,13 @@
 		compatible = "arm,pl031\0arm,primecell";
 	};
 
+	secram@e000000 {
+		secure-status = "okay";
+		status = "disabled";
+		reg = <0x00 0xe000000 0x00 0x1000000>;
+		device_type = "memory";
+	};
+
 	pl011@9040000 {
 		secure-status = "okay";
 		status = "disabled";
@@ -340,13 +338,6 @@
 		interrupts = <0x00 0x08 0x04>;
 		reg = <0x00 0x9040000 0x00 0x1000>;
 		compatible = "arm,pl011\0arm,primecell";
-	};
-
-	secram@e000000 {
-		secure-status = "okay";
-		status = "disabled";
-		reg = <0x00 0xe000000 0x00 0x1000000>;
-		device_type = "memory";
 	};
 
 	pl011@9000000 {
@@ -381,7 +372,7 @@
 		};
 	};
 
-	flash@0 {
+	flash@4000000 {
 		bank-width = <0x04>;
 		reg = <0x00 0x4000000 0x00 0x4000000>;
 		compatible = "cfi-flash";
@@ -434,13 +425,20 @@
 		compatible = "fixed-clock";
 	};
 
+	aliases {
+		serial1 = "/pl011@9040000";
+		serial0 = "/pl011@9000000";
+	};
+
 	secure-chosen {
 		stdout-path = "/pl011@9040000";
-		kaslr-seed = <0xc9fabc0a 0x87667b8>;
+		rng-seed = <0x505c55c0 0xc90d2a6d 0x376f0643 0x63c493e9 0x8d49b540 0xdcae3773 0x15e2240e 0x7d92efb4>;
+		kaslr-seed = <0x734bcf5c 0xd60fd084>;
 	};
 
 	chosen {
 		stdout-path = "/pl011@9000000";
-		kaslr-seed = <0x9715f7b4 0x41fe6ca0>;
+		rng-seed = <0x3ca32805 0x65c67093 0x3f2ba607 0x79cb5588 0x40bd0182 0x26c21852 0x81e539b 0x8cebe591>;
+		kaslr-seed = <0x60ebec0c 0x6e3b111d>;
 	};
 };

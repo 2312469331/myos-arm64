@@ -15,6 +15,10 @@ static inline void INIT_LIST_HEAD(struct list_head *list) {
     list->prev = list;
 }
 
+// 静态编译期初始化链表头
+#define LIST_HEAD(name) \
+    struct list_head name = { .next = &name, .prev = &name }
+
 // 检查链表是否为空
 static inline int list_empty(const struct list_head *head) {
     return head->next == head;
@@ -55,8 +59,12 @@ static inline void list_del(struct list_head *entry) {
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t)&(((TYPE *)0)->MEMBER))
 #endif
+// 1. 核心：container_of —— 通过成员指针找到整个结构体指针
 #define container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof(type, member)))
 
+// 2. list_entry 就是 container_of 的别名（内核原生定义）
+// 作用：通过链表节点 free_list，找到它所属的 struct vmap_area 结构体
+#define list_entry(ptr, type, member) container_of(ptr, type, member)
 // 遍历链表
 #define list_for_each(pos, head) \
     for (pos = (head)->next; pos != (head); pos = pos->next)

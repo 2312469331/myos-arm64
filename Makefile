@@ -126,6 +126,7 @@ endif
                 kernel/mmu.c \
                 kernel/pgtbl.c \
                 kernel/vmalloc.c \
+                kernel/vmap.c \
                 kernel/page_fault.c \
                 kernel/ds/rbtree.c \
                 kernel/sync/completion.c \

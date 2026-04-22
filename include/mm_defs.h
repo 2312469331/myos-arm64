@@ -15,7 +15,7 @@ typedef unsigned long size_t;
 
 // 地址空间布局宏定义
 /* 可修改的物理内存管理范围 */
-#define BUDDY_MEM_START 0x4058b000
+#define BUDDY_MEM_START 0x40585000UL
 #define BUDDY_MEM_END 0x4FFFFFFFUL
 /* 可修改的虚拟内存管理范围 */
 #define VIRT_START      0xffff000000000000UL  // 用户空间起始地址

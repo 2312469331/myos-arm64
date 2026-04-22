@@ -199,7 +199,7 @@ static struct slab_page *slab_grow(struct slab_cache *cache) {
   if (!sp)
     return NULL;
 
-  pa = alloc_phys_pages(order);
+  pa = alloc_phys_pages(order, GFP_KERNEL);
   if (!pa) {
     free_slab_page_meta(sp);
     return NULL;
@@ -309,7 +309,7 @@ static void *large_alloc(size_t size) {
   if (!la)
     return NULL;
 
-  pa = alloc_phys_pages(order);
+  pa = alloc_phys_pages(order, GFP_KERNEL);
   if (!pa) {
     free_large_meta(la);
     return NULL;

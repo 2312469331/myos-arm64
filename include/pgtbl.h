@@ -94,9 +94,9 @@ static inline int pte_table_empty(pte_t *table) {
 static inline bool pte_present(pte_t pte) { return !!(pte & ARM64_PTE_VALID); }
 
 /* 页表硬件操作函数 */
-int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa);
+int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot);
 void pgtbl_unmap_one_page(uintptr_t va);
-int pgtbl_map_range(uintptr_t va, phys_addr_t pa, size_t size);
+int pgtbl_map_range(uintptr_t va, phys_addr_t pa, size_t size, uint64_t prot);
 void pgtbl_unmap_range(uintptr_t va, size_t size);
 
 /* 内存属性和寄存器操作 */

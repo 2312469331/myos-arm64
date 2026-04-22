@@ -9,7 +9,7 @@
  *  - 适用于裸机内核物理页管理：页表、DMA、内核堆底层页分配
  *
  * 说明：
- *  - alloc_phys_pages(order) 返回连续物理页块起始物理地址
+ *  - alloc_phys_pages(order, GFP_KERNEL) 返回连续物理页块起始物理地址
  *  - free_phys_pages(pa, order) 释放对应块，并自动尝试与伙伴合并
  *  - 失败时 alloc 返回 0
  *
@@ -20,28 +20,17 @@
 /* 链表操作函数和 container_of 宏已在 list.h 中定义 */
 
 /* ============================================================
- * 3. 页面元数据
+ * 1. 页面元数据
  * ============================================================
  */
 
-/*
- * page.flags 定义
- */
-#define PG_RESERVED (1UL << 0) /* 保留，不可分配 */
-#define PG_BUDDY                                                               \
-  (1UL << 1) /* 当前页是某个空闲块的首页，已挂到 buddy 空闲链表 */
-#define PG_ALLOCATED (1UL << 2) /* 块已分配（仅首页使用此标志即可） */
-#define PG_HEAD (1UL << 3)      /* 表示这是一个块首页 */
-
-// struct page 已在 mm_defs.h 中定义
+/* 所有页的元数据数组（在 pmm.h 中声明为 extern） */
+struct page mem_map[TOTAL_PAGES];
 
 struct free_area {
   struct list_head free_list;
   u32 nr_free; /* 当前 order 的空闲块数量 */
 };
-
-/* 所有页的元数据数组 */
-static struct page mem_map[TOTAL_PAGES];
 
 /* 多级空闲链表 */
 static struct free_area free_area[NR_ORDERS];
@@ -53,17 +42,9 @@ enum buddy_error buddy_get_last_error(void) { return buddy_last_error; }
 static void buddy_set_error(enum buddy_error err) { buddy_last_error = err; }
 
 /* ============================================================
- * 5. 地址与页框号转换
+ * 2. 地址与页框号转换（内部使用）
  * ============================================================
  */
-
-static unsigned long pa_to_pfn(phys_addr_t pa) {
-  return (unsigned long)((pa - BUDDY_MEM_START) >> PAGE_SHIFT);
-}
-
-static phys_addr_t pfn_to_pa(unsigned long pfn) {
-  return (phys_addr_t)(BUDDY_MEM_START + (pfn << PAGE_SHIFT));
-}
 
 static int pa_in_range(phys_addr_t pa) {
   return (pa >= BUDDY_MEM_START) && (pa <= BUDDY_MEM_END);
@@ -76,52 +57,7 @@ static int page_aligned(phys_addr_t pa) {
 }
 
 /* ============================================================
- * 6. page 状态辅助函数
- * ============================================================
- */
-
-static struct page *pfn_to_page(unsigned long pfn) { return &mem_map[pfn]; }
-
-static int page_is_buddy(struct page *page) {
-  return (page->flags & PG_BUDDY) != 0;
-}
-
-static int page_is_allocated(struct page *page) {
-  return (page->flags & PG_ALLOCATED) != 0;
-}
-
-static int page_is_reserved(struct page *page) {
-  return (page->flags & PG_RESERVED) != 0;
-}
-
-static void set_page_order(struct page *page, unsigned int order) {
-  page->order = (u16)order;
-}
-
-static void clear_page_order(struct page *page) { page->order = 0; }
-
-static void mark_page_buddy(struct page *page, unsigned int order) {
-  page->flags = PG_BUDDY | PG_HEAD;
-  page->order = (u16)order;
-}
-
-static void mark_page_allocated(struct page *page, unsigned int order) {
-  page->flags = PG_ALLOCATED | PG_HEAD;
-  page->order = (u16)order;
-}
-
-static void mark_page_reserved(struct page *page) {
-  page->flags = PG_RESERVED;
-  page->order = 0;
-}
-
-static void clear_page_flags(struct page *page) {
-  page->flags = 0;
-  page->order = 0;
-}
-
-/* ============================================================
- * 7. buddy 核心辅助逻辑
+ * 3. buddy 核心辅助逻辑
  * ============================================================
  */
 
@@ -257,12 +193,12 @@ static unsigned long buddy_merge_pfn(unsigned long pfn, unsigned int *order) {
 }
 
 /* ============================================================
- * 8. 初始化
+ * 4. 初始化
  * ============================================================
  */
 
 /*
- * 将整个管理区域按“尽可能大的且地址对齐的块”加入 buddy 系统
+ * 将整个管理区域按"尽可能大的且地址对齐的块"加入 buddy 系统
  *
  * 这样既保证：
  *  - 全部内存都被纳入管理
@@ -330,7 +266,7 @@ void buddy_init(void) {
     clear_page_flags(&mem_map[pfn]);
     add_to_free_area(pfn, order);
 
-    /* 非首页页仅保留“已被系统管理但不是块头”的普通状态 */
+    /* 非首页页仅保留"已被系统管理但不是块头"的普通状态 */
     for (i = 1; i < (1UL << order); i++) {
       clear_page_flags(&mem_map[pfn + i]);
     }
@@ -341,7 +277,7 @@ void buddy_init(void) {
 }
 
 /* ============================================================
- * 9. 对外分配接口
+ * 5. 对外分配接口
  * ============================================================
  */
 
@@ -352,9 +288,10 @@ void buddy_init(void) {
  *  - 成功：起始物理地址
  *  - 失败：0
  */
-phys_addr_t alloc_phys_pages(unsigned int order) {
+phys_addr_t alloc_phys_pages(unsigned int order, gfp_t flags) {
   unsigned long pfn;
   struct page *page;
+
 
   if (!valid_order(order)) {
     buddy_set_error(BUDDY_ERR_BAD_ORDER);
@@ -380,7 +317,7 @@ phys_addr_t alloc_phys_pages(unsigned int order) {
 }
 
 /* ============================================================
- * 10. 对外释放接口
+ * 6. 对外释放接口
  * ============================================================
  */
 
@@ -455,7 +392,7 @@ void free_phys_pages(phys_addr_t pa, unsigned int order) {
 }
 
 /* ============================================================
- * 11. 调试/统计辅助
+ * 7. 调试/统计辅助
  * ============================================================
  */
 
@@ -477,7 +414,7 @@ u32 buddy_nr_free_pages_total(void) {
 }
 
 /*
- * 可选：返回指定物理地址是否当前处于“块首页已分配”状态
+ * 可选：返回指定物理地址是否当前处于"块首页已分配"状态
  * 便于测试。
  */
 int buddy_is_allocated_head(phys_addr_t pa) {

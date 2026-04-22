@@ -3,7 +3,7 @@
 
 #include <mm_defs.h>
 #include <ds/list.h>
-
+#include <gfp.h>
 /* ============================================================
  * 1. 可配置参数
  * ============================================================
@@ -35,12 +35,69 @@
 #endif
 
 /* ============================================================
- * 2. 双向链表
+ * 2. page.flags 宏定义（供所有内存管理模块使用）
+ * ============================================================
+ */
+#define PG_RESERVED (1UL << 0) /* 保留，不可分配 */
+#define PG_BUDDY    (1UL << 1) /* 当前页是某个空闲块的首页，已挂到 buddy 空闲链表 */
+#define PG_ALLOCATED (1UL << 2) /* 块已分配（仅首页使用此标志即可） */
+#define PG_HEAD (1UL << 3)      /* 表示这是一个块首页 */
+
+/* ============================================================
+ * 3. 外部变量声明（mem_map 在 pmm.c 中定义）
+ * ============================================================
+ */
+extern struct page mem_map[TOTAL_PAGES];
+
+/* ============================================================
+ * 4. page 状态辅助函数（供其他内存管理模块使用）
+ * ============================================================
+ */
+
+/* 页框号与 page 结构体互转 */
+static inline struct page *pfn_to_page(unsigned long pfn) { return &mem_map[pfn]; }
+static inline unsigned long page_to_pfn(struct page *page) { return (unsigned long)(page - mem_map); }
+
+/* 地址与 PFN 互转 */
+static inline phys_addr_t pfn_to_pa(unsigned long pfn) { return (phys_addr_t)(BUDDY_MEM_START + (pfn << PAGE_SHIFT)); }
+static inline unsigned long pa_to_pfn(phys_addr_t pa) { return (unsigned long)((pa - BUDDY_MEM_START) >> PAGE_SHIFT); }
+
+/* page 状态检查 */
+static inline int page_is_buddy(struct page *page) { return (page->flags & PG_BUDDY) != 0; }
+static inline int page_is_allocated(struct page *page) { return (page->flags & PG_ALLOCATED) != 0; }
+static inline int page_is_reserved(struct page *page) { return (page->flags & PG_RESERVED) != 0; }
+
+/* page 状态设置 */
+static inline void set_page_order(struct page *page, unsigned int order) { page->order = (u16)order; }
+static inline void clear_page_order(struct page *page) { page->order = 0; }
+
+static inline void mark_page_buddy(struct page *page, unsigned int order) {
+  page->flags = PG_BUDDY | PG_HEAD;
+  page->order = (u16)order;
+}
+
+static inline void mark_page_allocated(struct page *page, unsigned int order) {
+  page->flags = PG_ALLOCATED | PG_HEAD;
+  page->order = (u16)order;
+}
+
+static inline void mark_page_reserved(struct page *page) {
+  page->flags = PG_RESERVED;
+  page->order = 0;
+}
+
+static inline void clear_page_flags(struct page *page) {
+  page->flags = 0;
+  page->order = 0;
+}
+
+/* ============================================================
+ * 5. 双向链表
  * ============================================================
  */
 
 void buddy_init(void);
-phys_addr_t alloc_phys_pages(unsigned int order);
+phys_addr_t alloc_phys_pages(unsigned int order,gfp_t flags);
 void free_phys_pages(phys_addr_t pa, unsigned int order);
 
 unsigned int buddy_nr_free_blocks(unsigned int order);

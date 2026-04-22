@@ -10,6 +10,7 @@
 #include <timer.h>
 #include <uart.h>
 #include <vmalloc.h>
+#include <vmap.h>
 
 // // 测试 naked 属性
 // __attribute__((naked)) void test_naked_attribute(void) {
@@ -39,14 +40,14 @@ extern uint64_t get_ttbr1_el1(void);
 extern uintptr_t __boot_phys_base; // 从链接脚本获取 boot 段物理基址
 
 // 计算函数物理地址并调用
-uintptr_t func_pa = (uintptr_t)get_ttbr1_el1 + VIRT_BASE;
+uintptr_t func_pa =  (uintptr_t)get_ttbr1_el1; // 物理地址 0x4020072c
 
 // 👇 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
 void gic_test(void);
 void test_buddy_system(void);
 void test_kmalloc(void);
-void test_vmalloc(void);
+void test_vmap(void);
 void test_fdt(void);
 // void gic_test(void);
 // uart_irq_callback 已在handler.c文件实现，添加 extern 声明（根据实际参数修改）
@@ -97,17 +98,14 @@ void main(void *dtb) {
   // 初始化slab分配器
   slab_init();
 
-  // // 初始化vmap管理器
-  vmap_init();
-
-  // // 初始化vmalloc
-  // vmalloc_init();
+  // 初始化vmap管理器
+  va_manager_init();
 
   // 测试kmalloc功能
   test_kmalloc();
 
-  // 测试vmalloc功能
-  test_vmalloc();
+  // 测试vmap功能
+  test_vmap();
 
   // 测试 naked 属性（AArch64 不支持）
   // test_naked_attribute();
@@ -155,7 +153,7 @@ void test_buddy_system(void) {
   printk("[BUDDY TEST] Test 1: Allocate different orders\n");
   phys_addr_t orders[11];
   for (int i = 0; i <= 10; i++) {
-    orders[i] = alloc_phys_pages(i);
+    orders[i] = alloc_phys_pages(i, GFP_KERNEL);
     if (orders[i]) {
       printk("[BUDDY TEST]  Order %d: allocated at %p\n", i, orders[i]);
     } else {
@@ -176,7 +174,7 @@ void test_buddy_system(void) {
   int allocated = 0;
 
   for (int i = 0; i < 1000; i++) {
-    pages[i] = alloc_phys_pages(0);
+    pages[i] = alloc_phys_pages(0, GFP_KERNEL);
     if (pages[i]) {
       allocated++;
       // 每100个页面打印一次
@@ -216,7 +214,7 @@ void test_buddy_system(void) {
 
     // 分配随机order的页面
     int order = cycle % 5; // 0-4
-    phys_addr_t page = alloc_phys_pages(order);
+    phys_addr_t page = alloc_phys_pages(order, GFP_KERNEL);
     if (page) {
       free_phys_pages(page, order);
     }
@@ -228,7 +226,7 @@ void test_buddy_system(void) {
   int order10_allocated = 0;
 
   for (int i = 0; i < 30; i++) {
-    order10_pages[i] = alloc_phys_pages(10);
+    order10_pages[i] = alloc_phys_pages(10, GFP_KERNEL);
     if (order10_pages[i]) {
       order10_allocated++;
       printk("[BUDDY TEST]  Order10 %d allocated at %p\n", i + 1,
@@ -252,7 +250,7 @@ void test_buddy_system(void) {
   printk("\n[BUDDY TEST] Test 6: Boundary cases\n");
 
   // 尝试分配超过可用内存的页面
-  phys_addr_t big_page = alloc_phys_pages(20); // 这应该会失败
+  phys_addr_t big_page = alloc_phys_pages(20, GFP_KERNEL); // 这应该会失败
   if (!big_page) {
     printk("[BUDDY TEST]  Expected failure: order 20 allocation failed\n");
   }
@@ -605,39 +603,39 @@ void test_fdt(void) {
   printk("[FDT TEST] FDT test completed!\n");
 }
 
-// 测试 vmalloc 功能
-void test_vmalloc(void) {
-  printk("\n[VMALLOC TEST] Starting vmalloc test...\n");
+// 测试 vmap 功能
+void test_vmap(void) {
+  printk("\n[VMAP TEST] Starting vmap test...\n");
 
   // 测试 1: 分配各种大小的内存
-  printk("[VMALLOC TEST] Test 1: Allocate various sizes\n");
-  void *ptr1 = vmalloc(8192, PROT_READ | PROT_WRITE);
-  void *ptr2 = vmalloc(16384, PROT_READ | PROT_WRITE);
-  void *ptr3 = vmalloc(32768, PROT_READ | PROT_WRITE);
-  void *ptr4 = vmalloc(65536, PROT_READ | PROT_WRITE);
-  void *ptr5 = vmalloc(131072, PROT_READ | PROT_WRITE);
-  printk("[VMALLOC TEST]  8KB: %p\n", ptr1);
-  printk("[VMALLOC TEST]  16KB: %p\n", ptr2);
-  printk("[VMALLOC TEST]  32KB: %p\n", ptr3);
-  printk("[VMALLOC TEST]  64KB: %p\n", ptr4);
-  printk("[VMALLOC TEST]  128KB: %p\n", ptr5);
+  printk("[VMAP TEST] Test 1: Allocate various sizes\n");
+  void *ptr1 = vmalloc(8192);
+  void *ptr2 = vmalloc(16384);
+  void *ptr3 = vmalloc(32768);
+  void *ptr4 = vmalloc(65536);
+  void *ptr5 = vmalloc(131072);
+  printk("[VMAP TEST]  8KB: %p\n", ptr1);
+  printk("[VMAP TEST]  16KB: %p\n", ptr2);
+  printk("[VMAP TEST]  32KB: %p\n", ptr3);
+  printk("[VMAP TEST]  64KB: %p\n", ptr4);
+  printk("[VMAP TEST]  128KB: %p\n", ptr5);
 
   // 测试2: 写入数据并验证
-  printk("\n[VMALLOC TEST] Test 2: Write and verify data\n");
+  printk("\n[VMAP TEST] Test 2: Write and verify data\n");
   if (ptr1) {
     memset(ptr1, 0xAB, 8192);
-    printk("[VMALLOC TEST]  8KB: written 0xAB pattern\n");
+    printk("[VMAP TEST]  8KB: written 0xAB pattern\n");
   }
 
   if (ptr2) {
     for (int i = 0; i < 16384 / 4; i++) {
       ((uint32_t *)ptr2)[i] = i;
     }
-    printk("[VMALLOC TEST]  16KB: written sequential data\n");
+    printk("[VMAP TEST]  16KB: written sequential data\n");
   }
 
-  // 测试3: 释放内存
-  printk("\n[VMALLOC TEST] Test 3: Free allocated memory\n");
+  // 测试3: 释放内存（测试合并逻辑）
+  printk("\n[VMAP TEST] Test 3: Free allocated memory (test merge)\n");
   if (ptr1)
     vfree(ptr1);
   if (ptr2)
@@ -648,37 +646,65 @@ void test_vmalloc(void) {
     vfree(ptr4);
   if (ptr5)
     vfree(ptr5);
-  printk("[VMALLOC TEST]  All allocations freed\n");
+  printk("[VMAP TEST]  All allocations freed\n");
 
   // 测试4: 大量小内存分配
-  printk("\n[VMALLOC TEST] Test 4: Allocate 100 small blocks (8KB each)\n");
-  void *small_ptrs[100];
+  printk("\n[VMAP TEST] Test 4: Allocate 50 small blocks (8KB each)\n");
+  void *small_ptrs[50];
   int allocated = 0;
 
-  for (int i = 0; i < 100; i++) {
-    small_ptrs[i] = vmalloc(8192, PROT_READ | PROT_WRITE);
+  for (int i = 0; i < 50; i++) {
+    small_ptrs[i] = vmalloc(8192);
     if (small_ptrs[i]) {
       allocated++;
-      if ((i + 1) % 20 == 0) {
-        printk("[VMALLOC TEST]  Allocated %d/100 blocks...\n", i + 1);
+      if ((i + 1) % 10 == 0) {
+        printk("[VMAP TEST]  Allocated %d/50 blocks...\n", i + 1);
       }
     }
   }
 
-  printk("[VMALLOC TEST]  Successfully allocated %d/100 blocks\n",
-  allocated);
+  printk("[VMAP TEST]  Successfully allocated %d/50 blocks\n", allocated);
 
-  // 释放小内存块
+  // 释放小内存块（测试合并逻辑）
+  printk("[VMAP TEST]  Freeing small blocks (test merge)...\n");
   for (int i = 0; i < allocated; i++) {
     if (small_ptrs[i]) {
       vfree(small_ptrs[i]);
     }
   }
-  printk("[VMALLOC TEST]  All small blocks freed\n");
+  printk("[VMAP TEST]  All small blocks freed\n");
 
-  // 测试 5: 打印 vmalloc 区域信息
-  printk("\n[VMALLOC TEST] Test 5: Print vmalloc areas\n");
-  vmalloc_print_layout();
+  // 测试5: 交替分配和释放（测试合并逻辑）
+  printk("\n[VMAP TEST] Test 5: Alternate allocate and free (test merge)\n");
+  void *alt_ptrs[10];
+  
+  // 分配10个块
+  for (int i = 0; i < 10; i++) {
+    alt_ptrs[i] = vmalloc(4096);
+    if (alt_ptrs[i]) {
+      printk("[VMAP TEST]  Allocated block %d: %p\n", i, alt_ptrs[i]);
+    }
+  }
+  
+  // 释放奇数块
+  for (int i = 1; i < 10; i += 2) {
+    if (alt_ptrs[i]) {
+      printk("[VMAP TEST]  Freeing block %d: %p\n", i, alt_ptrs[i]);
+      vfree(alt_ptrs[i]);
+      alt_ptrs[i] = NULL;
+    }
+  }
+  
+  // 释放偶数块
+  for (int i = 0; i < 10; i += 2) {
+    if (alt_ptrs[i]) {
+      printk("[VMAP TEST]  Freeing block %d: %p\n", i, alt_ptrs[i]);
+      vfree(alt_ptrs[i]);
+      alt_ptrs[i] = NULL;
+    }
+  }
+  
+  printk("[VMAP TEST]  All alternate blocks freed\n");
 
-  printk("\n[VMALLOC TEST] All tests completed!\n");
+  printk("\n[VMAP TEST] All tests completed!\n");
 }

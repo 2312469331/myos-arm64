@@ -12,6 +12,7 @@ typedef struct {
 
 /* 静态编译期初始化 */
 #define SPIN_LOCK_UNLOCKED   { .raw_lock = { .next = 0, .owner = 0 }, .magic = 0xDEADBEEF }
+#define SPIN_LOCK_INIT       SPIN_LOCK_UNLOCKED
 
 /* 运行期动态初始化 (补上这个) */
 #define spin_lock_init(lock)                   \
@@ -30,11 +31,11 @@ static inline void spin_unlock(spinlock_t *lock) {
 }
 
 /* 结合中断控制的自旋锁 (最常用的安全组合) */
-static inline unsigned long spin_lock_irqsave(spinlock_t *lock) {
-    unsigned long flags = arch_local_irq_save();
-    arch_spin_lock(&lock->raw_lock);
-    return flags;
-}
+#define spin_lock_irqsave(lock, flags) \
+    do { \
+        arch_spin_lock(&(lock)->raw_lock); \
+        (flags) = arch_local_irq_save(); \
+    } while (0)
 
 static inline void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags) {
     arch_spin_unlock(&lock->raw_lock);
