@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <types.h>
-
+#include <gfp.h>  // 内核分配标志
 /* =========================================================
  * 基本常量
  * =========================================================
@@ -46,7 +46,7 @@ void slab_init(void);
 /*
  * kmalloc / kfree
  */
-void *kmalloc(size_t size);
+void *kmalloc(size_t size, gfp_t flags);
 void kfree(void *va);
 
 #endif /* _SLAB_H */

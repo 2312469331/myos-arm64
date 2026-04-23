@@ -102,16 +102,31 @@ void free_phys_pages(phys_addr_t pa, unsigned int order);
 
 unsigned int buddy_nr_free_blocks(unsigned int order);
 unsigned int buddy_nr_free_pages_total(void);
+unsigned int buddy_nr_used_pages_total(void);
+unsigned int buddy_mem_usage_percent(void);
+unsigned long total_phys_pages(void);
+unsigned long total_used_pages(void);
+unsigned int total_mem_usage_percent(void);
 
 enum buddy_error {
   BUDDY_OK = 0,
   BUDDY_ERR_BAD_ORDER,
+  BUDDY_ERR_NO_MEMORY,
   BUDDY_ERR_OUT_OF_RANGE,
   BUDDY_ERR_UNALIGNED,
-  BUDDY_ERR_DOUBLE_FREE,
   BUDDY_ERR_NOT_ALLOCATED,
-  BUDDY_ERR_NO_MEMORY,
+  BUDDY_ERR_DOUBLE_FREE,
 };
+
+/* ============================================================
+ * 页管理辅助函数
+ * ============================================================
+ */
+
+struct page *alloc_page(gfp_t flags);
+void free_page(struct page *page);
+void map_kernel_page(uint64_t va, uint64_t pa, uint64_t prot);
+void unmap_kernel_page(uint64_t va);
 
 enum buddy_error buddy_get_last_error(void);
 
