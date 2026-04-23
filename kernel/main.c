@@ -12,7 +12,7 @@
 #include <vmalloc.h>
 #include <vmap.h>
 
-// // ²âÊÔ naked ÊôĞÔ
+// // æµ‹è¯• naked å±æ€§
 // __attribute__((naked)) void test_naked_attribute(void) {
 //     __asm__ volatile (
 //         "mov x0, #42          \n"
@@ -21,28 +21,28 @@
 // }
 
 // __attribute__((naked,noreturn)) void test_noreturn(void) {
-//     __asm__ volatile ("b .");  // ËÀÑ­»·
+//     __asm__ volatile ("b .");  // æ­»å¾ªç¯
 // }
 
-// #include <a-profile/gicv2.h>    // GIC ÖĞ¶Ï¿ØÖÆÆ÷
+// #include <a-profile/gicv2.h>    // GIC ä¸­æ–­æ§åˆ¶å™¨
 // #include <a-profile/armv8a.h>
-// ¼ÆËãUARTĞéÄâµØÖ·£ºÔÚ×îºóÒ»¸öL3±íµÄ×îºóÒ»Ïî
-// L3±íÊıÁ¿ = (ÄÚºË´óĞ¡ + 2MB - 1) / 2MB
+// è®¡ç®—UARTè™šæ‹Ÿåœ°å€ï¼šåœ¨æœ€åä¸€ä¸ªL3è¡¨çš„æœ€åä¸€é¡¹
+// L3è¡¨æ•°é‡ = (å†…æ ¸å¤§å° + 2MB - 1) / 2MB
 #define VIRT_BASE 0xffff800000000000UL
-#define LINEAR_MAP_BASE 0xFFFF800000000000UL // ÏßĞÔ·ÖÅäÇøµØÖ·»ùµØÖ·
-// ´ÓÁ´½Ó½Å±¾µ¼ÈëµÄ·ûºÅ
-// ÔÚ bootc.c ÖĞ¶¨Òåº¯ÊıÖ¸ÕëÀàĞÍºÍ»ñÈ¡º¯Êı
+#define LINEAR_MAP_BASE 0xFFFF800000000000UL // çº¿æ€§åˆ†é…åŒºåœ°å€åŸºåœ°å€
+// ä»é“¾æ¥è„šæœ¬å¯¼å…¥çš„ç¬¦å·
+// åœ¨ bootc.c ä¸­å®šä¹‰å‡½æ•°æŒ‡é’ˆç±»å‹å’Œè·å–å‡½æ•°
 typedef uint64_t (*get_ttbr1_fn_t)(void);
-// ÔÚ bootc.c ÖĞ¶¨Òåº¯ÊıÖ¸ÕëÀàĞÍºÍ»ñÈ¡º¯Êı
+// åœ¨ bootc.c ä¸­å®šä¹‰å‡½æ•°æŒ‡é’ˆç±»å‹å’Œè·å–å‡½æ•°
 typedef uint64_t (*get_ttbr1_fn_t)(void);
-// ÔÚ main.c ÖĞÊ¹ÓÃ
+// åœ¨ main.c ä¸­ä½¿ç”¨
 extern uint64_t get_ttbr1_el1(void);
-extern uintptr_t __boot_phys_base; // ´Ó boot ¶Î boot ¶ÎÎïÀí»ùÖ·
+extern uintptr_t __boot_phys_base; // ä» boot æ®µ boot æ®µç‰©ç†åŸºå€
 void print_mem_usage(void);
-// ¼ÆËãº¯ÊıÎïÀíµØÖ·²¢µ÷ÓÃ
-uintptr_t func_pa =  (uintptr_t)get_ttbr1_el1; // ÎïÀíµØÖ· 0x4020072c
+// è®¡ç®—å‡½æ•°ç‰©ç†åœ°å€å¹¶è°ƒç”¨
+uintptr_t func_pa =  (uintptr_t)get_ttbr1_el1; // ç‰©ç†åœ°å€ 0x4020072c
 
-// ? ĞÂÔö£ºº¯ÊıÉùÃ÷£¨¸æËß±àÒëÆ÷ÕâĞ©º¯ÊıºóÃæ»á¶¨Òå£©
+// ? æ–°å¢ï¼šå‡½æ•°å£°æ˜ï¼ˆå‘Šè¯‰ç¼–è¯‘å™¨è¿™äº›å‡½æ•°åé¢ä¼šå®šä¹‰ï¼‰
 void uart_test(void);
 void gic_test(void);
 void test_buddy_system(void);
@@ -50,14 +50,14 @@ void test_kmalloc(void);
 void test_vmap(void);
 void test_fdt(void);
 // void gic_test(void);
-// uart_irq_callback ÒÑÔÚhandler.cÎÄ¼şÊµÏÖ£¬Ìí¼Ó extern ÉùÃ÷£¨¸ù¾İÊµ¼Ê²ÎÊıĞŞ¸Ä£©
+// uart_irq_callback å·²åœ¨handler.cæ–‡ä»¶å®ç°ï¼Œæ·»åŠ  extern å£°æ˜ï¼ˆæ ¹æ®å®é™…å‚æ•°ä¿®æ”¹ï¼‰
 extern void uart_irq_callback(uint32_t irq);
 extern void timer_irq_handler(uint32_t irq);
 
-void *dtb_base = NULL; // È«¾Ö±äÁ¿£¬±£´æ DTB µØÖ·
+void *dtb_base = NULL; // å…¨å±€å˜é‡ï¼Œä¿å­˜ DTB åœ°å€
 
 void main(void *dtb) {
-  dtb_base = dtb; // ±£´æ DTB µØÖ·
+  dtb_base = dtb; // ä¿å­˜ DTB åœ°å€
 
   if (L3_TABLES_NEEDED > 0) {
     uint64_t last_table_idx = L3_TABLES_NEEDED - 1;
@@ -78,78 +78,78 @@ void main(void *dtb) {
   printk("\n");
   test_fdt();
 
-  buddy_init(); // ²âÊÔ»ï°éÏµÍ³
-  // È«Ãæ²âÊÔ»ï°éÏµÍ³ĞÔÄÜºÍÍêÕûĞÔ
+  buddy_init(); // æµ‹è¯•ä¼™ä¼´ç³»ç»Ÿ
+  // å…¨é¢æµ‹è¯•ä¼™ä¼´ç³»ç»Ÿæ€§èƒ½å’Œå®Œæ•´æ€§
   test_buddy_system();
 
   printk("[PMM] Pages freed\n");
 
-  // ÉèÖÃslab·ÖÅäÆ÷ËùĞèµÄÈ«¾Ö±äÁ¿
+  // è®¾ç½®slabåˆ†é…å™¨æ‰€éœ€çš„å…¨å±€å˜é‡
   extern uintptr_t slab_linear_map_base;
   extern phys_addr_t slab_l0_table_pa;
   get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
   slab_l0_table_pa = get_ttbr1_pa();
-  // ÏßĞÔÓ³Éä»ùÖ·£ºVA = PA + slab_linear_map_base
+  // çº¿æ€§æ˜ å°„åŸºå€ï¼šVA = PA + slab_linear_map_base
   slab_linear_map_base = LINEAR_MAP_BASE;
 
   printk("[SLAB] Linear map base: %lx\n", slab_linear_map_base);
   printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
 
-  // ³õÊ¼»¯slab·ÖÅäÆ÷
+  // åˆå§‹åŒ–slabåˆ†é…å™¨
   slab_init();
 
-  // ³õÊ¼»¯vmap¹ÜÀíÆ÷
+  // åˆå§‹åŒ–vmapç®¡ç†å™¨
   va_manager_init();
 
-  // ²âÊÔkmalloc¹¦ÄÜ
+  // æµ‹è¯•kmallocåŠŸèƒ½
   test_kmalloc();
 
-  // ²âÊÔvmap¹¦ÄÜ
+  // æµ‹è¯•vmapåŠŸèƒ½
   test_vmap();
 
-  // ²âÊÔ naked ÊôĞÔ£¨AArch64 ²»Ö§³Ö£©
+  // æµ‹è¯• naked å±æ€§ï¼ˆAArch64 ä¸æ”¯æŒï¼‰
   // test_naked_attribute();
 
   uart_test();
   gic_test();
 
-  irq_register(TIMER_IRQ_NUM, timer_irq_handler, "¶¨Ê±Æ÷");
+  irq_register(TIMER_IRQ_NUM, timer_irq_handler, "å®šæ—¶å™¨");
   gic_enable_irq(TIMER_IRQ_NUM);
 }
 
-// ²âÊÔÄÚÖÃº¯ÊıµÄ»ã±àÊµÏÖ - Ö±½Óµ÷ÓÃ __builtin_*
+// æµ‹è¯•å†…ç½®å‡½æ•°çš„æ±‡ç¼–å®ç° - ç›´æ¥è°ƒç”¨ __builtin_*
 void test_builtin_asm(void) {
   char src[100] = "Hello World";
   char dst1[100], dst2[100], dst3[100];
   
-  // ²âÊÔ __builtin_strlen
+  // æµ‹è¯• __builtin_strlen
   size_t len = __builtin_strlen(src);
   printk("[BUILTIN TEST] __builtin_strlen result: %zu\n", len);
   
-  // ²âÊÔ __builtin_memcpy
+  // æµ‹è¯• __builtin_memcpy
   __builtin_memcpy(dst1, src, len + 1);
   printk("[BUILTIN TEST] __builtin_memcpy: %s\n", dst1);
   
-  // ²âÊÔ __builtin_memset
+  // æµ‹è¯• __builtin_memset
   __builtin_memset(dst2, 'A', 10);
   dst2[10] = '\0';
   printk("[BUILTIN TEST] __builtin_memset: %s\n", dst2);
   
-  // ²âÊÔ __builtin_memmove
+  // æµ‹è¯• __builtin_memmove
   __builtin_memcpy(dst3, src, 5);
   __builtin_memmove(dst3 + 2, dst3, 3);
   dst3[8] = '\0';
   printk("[BUILTIN TEST] __builtin_memmove: %s\n", dst3);
   
-  // ²âÊÔ __builtin_memcmp
+  // æµ‹è¯• __builtin_memcmp
   int cmp = __builtin_memcmp(dst1, dst1, 5);
   printk("[BUILTIN TEST] __builtin_memcmp result: %d\n", cmp);
 }
 
-// È«Ãæ²âÊÔ»ï°éÏµÍ³ĞÔÄÜºÍÍêÕûĞÔ
+// å…¨é¢æµ‹è¯•ä¼™ä¼´ç³»ç»Ÿæ€§èƒ½å’Œå®Œæ•´æ€§
 void test_buddy_system(void) {
   printk("\n[BUDDY TEST] Starting comprehensive buddy system test...\n");
-  // ²âÊÔ1: ²»Í¬orderµÄ·ÖÅä
+  // æµ‹è¯•1: ä¸åŒorderçš„åˆ†é…
   printk("[BUDDY TEST] Test 1: Allocate different orders\n");
   phys_addr_t orders[11];
   for (int i = 0; i <= 10; i++) {
@@ -162,14 +162,14 @@ void test_buddy_system(void) {
     }
   }
 
-  // ÊÍ·ÅÕâĞ©Ò³Ãæ
+  // é‡Šæ”¾è¿™äº›é¡µé¢
   for (int i = 0; i <= 10; i++) {
     if (orders[i]) {
       free_phys_pages(orders[i], i);
     }
   }
 
-  // ²âÊÔ2: ´óÁ¿Ò³ÃæÁ¬Ğø·ÖÅä
+  // æµ‹è¯•2: å¤§é‡é¡µé¢è¿ç»­åˆ†é…
   printk("\n[BUDDY TEST] Test 2: Allocate 1000 pages (order 0)\n");
   phys_addr_t pages[1000];
   int allocated = 0;
@@ -178,7 +178,7 @@ void test_buddy_system(void) {
     pages[i] = alloc_phys_pages(0, GFP_KERNEL);
     if (pages[i]) {
       allocated++;
-      // Ã¿100¸öÒ³Ãæ´òÓ¡Ò»´Î
+      // æ¯100ä¸ªé¡µé¢æ‰“å°ä¸€æ¬¡
       if ((i + 1) % 100 == 0) {
         printk("[BUDDY TEST]  Allocated %d/1000 pages...\n", i + 1);
       }
@@ -187,7 +187,7 @@ void test_buddy_system(void) {
 
   printk("[BUDDY TEST]  Successfully allocated %d pages\n", allocated);
 
-  // ²âÊÔ3: ¼ì²éµØÖ··¶Î§
+  // æµ‹è¯•3: æ£€æŸ¥åœ°å€èŒƒå›´
   printk(
       "\n[BUDDY TEST] Test 3: Verify address range (0x40200000-0x4fffffff)\n");
   for (int i = 0; i < allocated; i++) {
@@ -197,14 +197,14 @@ void test_buddy_system(void) {
   }
   printk("[BUDDY TEST]  All pages are within valid range\n");
 
-  // ÊÍ·ÅÒ³Ãæ
+  // é‡Šæ”¾é¡µé¢
   for (int i = 0; i < allocated; i++) {
     if (pages[i]) {
       free_phys_pages(pages[i], 0);
     }
   }
 
-  // ²âÊÔ4: ·ÖÅäºÍÊÍ·ÅÑ­»·²âÊÔ
+  // æµ‹è¯•4: åˆ†é…å’Œé‡Šæ”¾å¾ªç¯æµ‹è¯•
   printk("\n[BUDDY TEST] Test 4: Allocate/free cycle test\n");
   const int CYCLES = 100;
 
@@ -213,7 +213,7 @@ void test_buddy_system(void) {
       printk("[BUDDY TEST]  Cycle %d/%d...\n", cycle + 1, CYCLES);
     }
 
-    // ·ÖÅäËæ»úorderµÄÒ³Ãæ
+    // åˆ†é…éšæœºorderçš„é¡µé¢
     int order = cycle % 5; // 0-4
     phys_addr_t page = alloc_phys_pages(order, GFP_KERNEL);
     if (page) {
@@ -221,7 +221,7 @@ void test_buddy_system(void) {
     }
   }
 
-  // ²âÊÔ5: ²âÊÔ·ÖÅä30¸öorder10
+  // æµ‹è¯•5: æµ‹è¯•åˆ†é…30ä¸ªorder10
   printk("\n[BUDDY TEST] Test 5: Allocate 30 order10 blocks (4MB each)\n");
   phys_addr_t order10_pages[30];
   int order10_allocated = 0;
@@ -241,33 +241,33 @@ void test_buddy_system(void) {
   printk("[BUDDY TEST]  Successfully allocated %d/30 order10 blocks\n",
          order10_allocated);
 
-  // ÊÍ·ÅÕâĞ©Ò³Ãæ
+  // é‡Šæ”¾è¿™äº›é¡µé¢
   for (int i = 0; i < order10_allocated; i++) {
     free_phys_pages(order10_pages[i], 10);
   }
   printk("[BUDDY TEST]  All order10 blocks freed\n");
 
-  // ²âÊÔ6: ²âÊÔ±ß½çÇé¿ö
+  // æµ‹è¯•6: æµ‹è¯•è¾¹ç•Œæƒ…å†µ
   printk("\n[BUDDY TEST] Test 6: Boundary cases\n");
 
-  // ³¢ÊÔ·ÖÅä³¬¹ı¿ÉÓÃÄÚ´æµÄÒ³Ãæ
-  phys_addr_t big_page = alloc_phys_pages(20, GFP_KERNEL); // ÕâÓ¦¸Ã»áÊ§°Ü
+  // å°è¯•åˆ†é…è¶…è¿‡å¯ç”¨å†…å­˜çš„é¡µé¢
+  phys_addr_t big_page = alloc_phys_pages(20, GFP_KERNEL); // è¿™åº”è¯¥ä¼šå¤±è´¥
   if (!big_page) {
     printk("[BUDDY TEST]  Expected failure: order 20 allocation failed\n");
   }
 
-  // ²âÊÔ¿ÕÖ¸ÕëÊÍ·Å
+  // æµ‹è¯•ç©ºæŒ‡é’ˆé‡Šæ”¾
   free_phys_pages(0, 0);
   printk("[BUDDY TEST]  NULL pointer free handled correctly\n");
 
   printk("\n[BUDDY TEST] All tests completed!\n");
 }
 
-// ²âÊÔkmalloc¹¦ÄÜ
+// æµ‹è¯•kmallocåŠŸèƒ½
 void test_kmalloc(void) {
   printk("\n[KMALLOC TEST] Starting kmalloc test...\n");
 
-  // ²âÊÔ1: ·ÖÅä¸÷ÖÖ´óĞ¡µÄÄÚ´æ
+  // æµ‹è¯•1: åˆ†é…å„ç§å¤§å°çš„å†…å­˜
   printk("[KMALLOC TEST] Test 1: Allocate various sizes\n");
   void *ptr1 = kmalloc(8, GFP_KERNEL);
   void *ptr2 = kmalloc(64, GFP_KERNEL);
@@ -284,7 +284,7 @@ void test_kmalloc(void) {
   printk("[KMALLOC TEST]  8192 bytes: %p\n", ptr6);
   printk("[KMALLOC TEST]  65536 bytes: %p\n", ptr7);
 
-  // ²âÊÔ2: Ğ´ÈëÊı¾İ²¢ÑéÖ¤
+  // æµ‹è¯•2: å†™å…¥æ•°æ®å¹¶éªŒè¯
   printk("\n[KMALLOC TEST] Test 2: Write and verify data\n");
   if (ptr1) {
     *(uint64_t *)ptr1 = 0x123456789ABCDEF0;
@@ -304,7 +304,7 @@ void test_kmalloc(void) {
     printk("[KMALLOC TEST]  512 bytes: written sequential data\n");
   }
 
-  // ²âÊÔ3: ÊÍ·ÅÄÚ´æ
+  // æµ‹è¯•3: é‡Šæ”¾å†…å­˜
   printk("\n[KMALLOC TEST] Test 3: Free allocated memory\n");
   if (ptr1)
     kfree(ptr1);
@@ -322,7 +322,7 @@ void test_kmalloc(void) {
     kfree(ptr7);
   printk("[KMALLOC TEST]  All allocations freed\n");
 
-  // ²âÊÔ4: ´óÁ¿Ğ¡ÄÚ´æ·ÖÅä
+  // æµ‹è¯•4: å¤§é‡å°å†…å­˜åˆ†é…
   printk(
       "\n[KMALLOC TEST] Test 4: Allocate 1000 small blocks (64 bytes each)\n");
   void *small_ptrs[1000];
@@ -340,7 +340,7 @@ void test_kmalloc(void) {
 
   printk("[KMALLOC TEST]  Successfully allocated %d/1000 blocks\n", allocated);
 
-  // ÊÍ·ÅĞ¡ÄÚ´æ¿é
+  // é‡Šæ”¾å°å†…å­˜å—
   for (int i = 0; i < allocated; i++) {
     if (small_ptrs[i]) {
       kfree(small_ptrs[i]);
@@ -348,16 +348,16 @@ void test_kmalloc(void) {
   }
   printk("[KMALLOC TEST]  All small blocks freed\n");
 
-  // ²âÊÔ5: ²âÊÔ±ß½çÇé¿ö
+  // æµ‹è¯•5: æµ‹è¯•è¾¹ç•Œæƒ…å†µ
   printk("\n[KMALLOC TEST] Test 5: Boundary cases\n");
 
-  // ·ÖÅä0×Ö½Ú
+  // åˆ†é…0å­—èŠ‚
   void *zero_ptr = kmalloc(0, GFP_KERNEL);
   if (!zero_ptr) {
     printk("[KMALLOC TEST]  Expected failure: kmalloc(0) returned NULL\n");
   }
 
-  // ÊÍ·ÅNULLÖ¸Õë
+  // é‡Šæ”¾NULLæŒ‡é’ˆ
   kfree(NULL);
   printk("[KMALLOC TEST]  NULL pointer free handled correctly\n");
 
@@ -368,39 +368,39 @@ void gic_test(void) {
 
   uart_puts("OS Boot Success!\n");
 
-  // 1. ÉèÖÃÒì³£ÏòÁ¿±í»ùÖ·,boot.SÒÑ¾­¼ÓÔØÍêÏòÁ¿±í£¬ÎŞĞè¼ÓÔØ
+  // 1. è®¾ç½®å¼‚å¸¸å‘é‡è¡¨åŸºå€,boot.Så·²ç»åŠ è½½å®Œå‘é‡è¡¨ï¼Œæ— éœ€åŠ è½½
   // write_sysreg(vbar_el1, (uint64_t)&vector_table_el1);
   uart_puts("[Init] Exception Vector Table Done\n");
 
-  // 2. ³õÊ¼»¯GICÖĞ¶Ï¿ØÖÆÆ÷
+  // 2. åˆå§‹åŒ–GICä¸­æ–­æ§åˆ¶å™¨
   gic_init();
   uart_puts("[Init] GICv2 Done\n");
 
-  // 3. ×¢²áUARTÖĞ¶Ï
+  // 3. æ³¨å†ŒUARTä¸­æ–­
   irq_register(IRQ_UART0, uart_irq_callback, "UART0");
   gic_enable_irq(IRQ_UART0);
-  // 4. ÆôÓÃÈ«¾ÖÖĞ¶Ï
+  // 4. å¯ç”¨å…¨å±€ä¸­æ–­
   enable_irq();
   uart_puts("[Init] Global IRQ Enabled\n");
 
-  // ²âÊÔ£º¹ÊÒâ´¥·¢¶ÔÆëÒì³££¨ÑéÖ¤Òì³£´¦Àí£©
+  // æµ‹è¯•ï¼šæ•…æ„è§¦å‘å¯¹é½å¼‚å¸¸ï¼ˆéªŒè¯å¼‚å¸¸å¤„ç†ï¼‰
   // volatile uint64_t *p = (uint64_t *)0x40000fac;
   // uint64_t val = *p;
 }
 
-// OS Ö÷º¯Êı
+// OS ä¸»å‡½æ•°
 void uart_test(void) {
   uart_error_t err;
   char c;
 
-  // 1. ³õÊ¼»¯UART
+  // 1. åˆå§‹åŒ–UART
   uart_init();
 
-  // 2. ·¢ËÍ²âÊÔ×Ö·û´®
+  // 2. å‘é€æµ‹è¯•å­—ç¬¦ä¸²
   uart_puts("=== PL011 UART Driver Test (QEMU virt ARM) ===\n");
   uart_puts("Input a character (echo mode): ");
 
-  // 3. »ØÏÔÄ£Ê½£º½ÓÊÕÒ»¸ö×Ö·û²¢·¢ËÍ»ØÈ¥
+  // 3. å›æ˜¾æ¨¡å¼ï¼šæ¥æ”¶ä¸€ä¸ªå­—ç¬¦å¹¶å‘é€å›å»
   c = uart_getc(&err);
   if (err != UART_ERR_NONE) {
     uart_puts("\nReceive error: ");
@@ -415,48 +415,48 @@ void uart_test(void) {
   printk("UART initialized\n");
   printk("Test: %s, %d, %x, %c\n", "Hello Kernel", 1234, 0x42, 'X');
 
-  // ²âÊÔ panic£¨¿ÉÑ¡£¬×¢ÊÍµôÏÈÑéÖ¤ printk£©
+  // æµ‹è¯• panicï¼ˆå¯é€‰ï¼Œæ³¨é‡Šæ‰å…ˆéªŒè¯ printkï¼‰
   // panic("Test panic: %s", "Something went wrong!");
-  // ËÀÑ­»·£¨OS ÎŞÍË³ö£©
+  // æ­»å¾ªç¯ï¼ˆOS æ— é€€å‡ºï¼‰
 }
-// Ç¿·ûºÅ£º¸²¸Ç timer.c ÀïµÄÈõ·ûºÅ
+// å¼ºç¬¦å·ï¼šè¦†ç›– timer.c é‡Œçš„å¼±ç¬¦å·
 void timer_irq_handler(uint32_t irq) {
-  // 1. ±ê¼Ç²ÎÊı£¨Ïû³ı¾¯¸æ£©
+  // 1. æ ‡è®°å‚æ•°ï¼ˆæ¶ˆé™¤è­¦å‘Šï¼‰
   (void)irq;
-  // 1. ÖØÔØ¶¨Ê±Æ÷£¬±£Ö¤³ÖĞø tick£¨±ØĞëĞ´£¬·ñÔòÖĞ¶ÏÖ»´¥·¢Ò»´Î£©
+  // 1. é‡è½½å®šæ—¶å™¨ï¼Œä¿è¯æŒç»­ tickï¼ˆå¿…é¡»å†™ï¼Œå¦åˆ™ä¸­æ–­åªè§¦å‘ä¸€æ¬¡ï¼‰
   cntp_set_tval(TIMER_LOAD_VAL);
-  // 2. ÏµÍ³Ê±¼ä++
+  // 2. ç³»ç»Ÿæ—¶é—´++
   system_tick++;
 }
 
 void uart_irq_callback(uint32_t irq) {
   printk("%s", "sbgxr????");
-  // 1. ±ê¼Ç²ÎÊı£¨Ïû³ı¾¯¸æ£©
+  // 1. æ ‡è®°å‚æ•°ï¼ˆæ¶ˆé™¤è­¦å‘Šï¼‰
   (void)irq;
 
-  // 3. ¼ì²éUART½ÓÊÕFIFOÊÇ·ñÓĞÊı¾İ£¨·Ç×èÈû£©
+  // 3. æ£€æŸ¥UARTæ¥æ”¶FIFOæ˜¯å¦æœ‰æ•°æ®ï¼ˆéé˜»å¡ï¼‰
   if (!uart_rx_ready()) {
-    return; // ÎŞÊı¾İÖ±½Ó·µ»Ø£¬²»ÀË·ÑÖĞ¶ÏÊ±¼ä
+    return; // æ— æ•°æ®ç›´æ¥è¿”å›ï¼Œä¸æµªè´¹ä¸­æ–­æ—¶é—´
   }
-  // 4. ·Ç×èÈû¶Á+´íÎó´¦Àí£¨¹æ·¶£©
+  // 4. éé˜»å¡è¯»+é”™è¯¯å¤„ç†ï¼ˆè§„èŒƒï¼‰
   uart_error_t err;
   char ch;
-  uart_getc_nonblock(&ch, &err); // ÏÖÔÚ &ch ÊÇ char*£¬ºÍº¯Êı²ÎÊıÆ¥Åä
+  uart_getc_nonblock(&ch, &err); // ç°åœ¨ &ch æ˜¯ char*ï¼Œå’Œå‡½æ•°å‚æ•°åŒ¹é…
   if (err != UART_ERR_NONE) {
     // p
-    uart_clear_error(); // Çå³ı´íÎó±êÖ¾£¬±ÜÃâ¿¨ËÀ
+    uart_clear_error(); // æ¸…é™¤é”™è¯¯æ ‡å¿—ï¼Œé¿å…å¡æ­»
     return;
   }
-  // 5. »ØÏÔÊı¾İ£¨½ö×öÒµÎñ´¦Àí£¬¿ìËÙÍË³ö£©
-  // ĞŞÕıºó£¨ÕıÈ·£©
-  uart_getc_nonblock(&ch, &err); // ÏÖÔÚ &ch ÊÇ char*£¬ºÍº¯Êı²ÎÊıÆ¥Åä
+  // 5. å›æ˜¾æ•°æ®ï¼ˆä»…åšä¸šåŠ¡å¤„ç†ï¼Œå¿«é€Ÿé€€å‡ºï¼‰
+  // ä¿®æ­£åï¼ˆæ­£ç¡®ï¼‰
+  uart_getc_nonblock(&ch, &err); // ç°åœ¨ &ch æ˜¯ char*ï¼Œå’Œå‡½æ•°å‚æ•°åŒ¹é…
   if (err != UART_ERR_NONE) {
     // p
-    uart_clear_error(); // Çå³ı´íÎó±êÖ¾£¬±ÜÃâ¿¨ËÀ
+    uart_clear_error(); // æ¸…é™¤é”™è¯¯æ ‡å¿—ï¼Œé¿å…å¡æ­»
     return;
   }
 }
-// ½âÎö½ÚµãÊôĞÔ
+// è§£æèŠ‚ç‚¹å±æ€§
 static void parse_node_properties(void *fdt, int node_offset) {
   const char *name = fdt_get_name(fdt, node_offset, NULL);
   if (!name)
@@ -464,7 +464,7 @@ static void parse_node_properties(void *fdt, int node_offset) {
 
   printk("[FDT TEST]   Node: %s\n", name);
 
-  // ±éÀúËùÓĞÊôĞÔ
+  // éå†æ‰€æœ‰å±æ€§
   int prop_offset = fdt_first_property_offset(fdt, node_offset);
   while (prop_offset >= 0) {
     const struct fdt_property *prop =
@@ -478,9 +478,9 @@ static void parse_node_properties(void *fdt, int node_offset) {
 
     printk("[FDT TEST]     Property: %s (length: %d)\n", prop_name, prop_len);
 
-    // ÌØÊâ´¦ÀíÒ»Ğ©³£¼ûÊôĞÔ
+    // ç‰¹æ®Šå¤„ç†ä¸€äº›å¸¸è§å±æ€§
     if (strcmp(prop_name, "compatible") == 0) {
-      // ¼æÈİÊôĞÔÊÇ×Ö·û´®ÁĞ±í
+      // å…¼å®¹å±æ€§æ˜¯å­—ç¬¦ä¸²åˆ—è¡¨
       int count = fdt_stringlist_count(fdt, node_offset, "compatible");
       for (int i = 0; i < count; i++) {
         int len;
@@ -491,7 +491,7 @@ static void parse_node_properties(void *fdt, int node_offset) {
         }
       }
     } else if (strcmp(prop_name, "reg") == 0) {
-      // reg ÊôĞÔÊÇµØÖ·ºÍ´óĞ¡µÄÁĞ±í
+      // reg å±æ€§æ˜¯åœ°å€å’Œå¤§å°çš„åˆ—è¡¨
       printk("[FDT TEST]       Reg: ");
       for (int i = 0; i < prop_len; i += 8) {
         if (i + 8 <= prop_len) {
@@ -504,7 +504,7 @@ static void parse_node_properties(void *fdt, int node_offset) {
       }
       printk("\n");
     } else if (strcmp(prop_name, "interrupts") == 0) {
-      // ÖĞ¶ÏÊôĞÔ
+      // ä¸­æ–­å±æ€§
       printk("[FDT TEST]       Interrupts: ");
       for (int i = 0; i < prop_len; i += 4) {
         if (i + 4 <= prop_len) {
@@ -515,7 +515,7 @@ static void parse_node_properties(void *fdt, int node_offset) {
       }
       printk("\n");
     } else if (strcmp(prop_name, "status") == 0) {
-      // ×´Ì¬ÊôĞÔ
+      // çŠ¶æ€å±æ€§
       if (prop_len > 0) {
         printk("[FDT TEST]       Status: ");
         for (int i = 0; i < prop_len; i++) {
@@ -524,19 +524,19 @@ static void parse_node_properties(void *fdt, int node_offset) {
         printk("\n");
       }
     } else if (prop_len == 4) {
-      // 32 Î»ÕûÊıÊôĞÔ
+      // 32 ä½æ•´æ•°å±æ€§
       uint32_t value = fdt32_to_cpu(*(const fdt32_t *)prop_value);
       printk("[FDT TEST]       Value: %d (0x%x)\n", value, value);
     } else if (prop_len == 8) {
-      // 64 Î»ÕûÊıÊôĞÔ
+      // 64 ä½æ•´æ•°å±æ€§
       uint64_t value = fdt64_to_cpu(*(const fdt64_t *)prop_value);
       printk("[FDT TEST]       Value: %llu (0x%lx)\n", value, value);
     } else if (prop_len > 0 &&
                ((const char *)prop_value)[prop_len - 1] == '\0') {
-      // ×Ö·û´®ÊôĞÔ
+      // å­—ç¬¦ä¸²å±æ€§
       printk("[FDT TEST]       Value: \"%s\"\n", (const char *)prop_value);
     } else {
-      // ÆäËûÀàĞÍµÄÊôĞÔ£¬ÏÔÊ¾Ô­Ê¼×Ö½Ú
+      // å…¶ä»–ç±»å‹çš„å±æ€§ï¼Œæ˜¾ç¤ºåŸå§‹å­—èŠ‚
       printk("[FDT TEST]       Raw bytes: ");
       for (int i = 0; i < prop_len && i < 16; i++) {
         uint8_t byte = ((const unsigned char *)prop_value)[i];
@@ -551,27 +551,27 @@ static void parse_node_properties(void *fdt, int node_offset) {
     prop_offset = fdt_next_property_offset(fdt, prop_offset);
   }
 }
-// FDT ²âÊÔº¯Êı
+// FDT æµ‹è¯•å‡½æ•°
 void test_fdt(void) {
   printk("\n[FDT TEST] Starting FDT test...\n");
 
-  // È·¶¨ DTB µØÖ·
+  // ç¡®å®š DTB åœ°å€
   uint64_t dtb_phys;
   if (dtb_base == NULL || (uint64_t)dtb_base == 0) {
     printk("[FDT TEST] DTB address is 0 (bare-metal boot), using default "
            "address (0x40000000)\n");
-    dtb_phys = 0x40000000; // Ä¬ÈÏ DTB ÎïÀíµØÖ·
+    dtb_phys = 0x40000000; // é»˜è®¤ DTB ç‰©ç†åœ°å€
   } else {
     dtb_phys = (uint64_t)dtb_base;
   }
 
-  // ×ª»»ÎªĞéÄâµØÖ·
+  // è½¬æ¢ä¸ºè™šæ‹Ÿåœ°å€
   void *fdt = (void *)(VIRT_BASE + dtb_phys);
 
   printk("[FDT TEST] DTB physical address: %lx\n", dtb_phys);
   printk("[FDT TEST] DTB virtual address: %lx\n", (uint64_t)fdt);
 
-  // ÑéÖ¤ FDT Í·²¿
+  // éªŒè¯ FDT å¤´éƒ¨
   int ret = fdt_check_header(fdt);
   if (ret != 0) {
     printk("[FDT TEST] ERROR: Invalid FDT header: %d\n", ret);
@@ -580,7 +580,7 @@ void test_fdt(void) {
 
   printk("[FDT TEST] FDT header is valid\n");
 
-  // »ñÈ¡¸ù½ÚµãÆ«ÒÆÁ¿
+  // è·å–æ ¹èŠ‚ç‚¹åç§»é‡
   int root_offset = fdt_path_offset(fdt, "/");
   if (root_offset < 0) {
     printk("[FDT TEST] ERROR: Failed to find root node: %d\n", root_offset);
@@ -589,11 +589,11 @@ void test_fdt(void) {
 
   printk("[FDT TEST] Root node found at offset: %d\n", root_offset);
 
-  // ½âÎö¸ù½ÚµãÊôĞÔ
+  // è§£ææ ¹èŠ‚ç‚¹å±æ€§
   printk("[FDT TEST] Root node properties:\n");
   parse_node_properties(fdt, root_offset);
 
-  // ±éÀú×Ó½Úµã
+  // éå†å­èŠ‚ç‚¹
   printk("[FDT TEST] Child nodes:\n");
   int node_offset = fdt_first_subnode(fdt, root_offset);
   while (node_offset >= 0) {
@@ -604,11 +604,11 @@ void test_fdt(void) {
   printk("[FDT TEST] FDT test completed!\n");
 }
 
-// ²âÊÔ vmap ¹¦ÄÜ
+// æµ‹è¯• vmap åŠŸèƒ½
 void test_vmap(void) {
   printk("\n[VMAP TEST] Starting vmap test...\n");
 
-  // ²âÊÔ 1: ·ÖÅä¸÷ÖÖ´óĞ¡µÄÄÚ´æ
+  // æµ‹è¯• 1: åˆ†é…å„ç§å¤§å°çš„å†…å­˜
   printk("[VMAP TEST] Test 1: Allocate various sizes\n");
   void *ptr1 = vmalloc(8192);
   void *ptr2 = vmalloc(16384);
@@ -621,7 +621,7 @@ void test_vmap(void) {
   printk("[VMAP TEST]  64KB: %p\n", ptr4);
   printk("[VMAP TEST]  128KB: %p\n", ptr5);
 
-  // ²âÊÔ2: Ğ´ÈëÊı¾İ²¢ÑéÖ¤
+  // æµ‹è¯•2: å†™å…¥æ•°æ®å¹¶éªŒè¯
   printk("\n[VMAP TEST] Test 2: Write and verify data\n");
   if (ptr1) {
     memset(ptr1, 0xAB, 8192);
@@ -635,7 +635,7 @@ void test_vmap(void) {
     printk("[VMAP TEST]  16KB: written sequential data\n");
   }
 
-  // ²âÊÔ3: ÊÍ·ÅÄÚ´æ£¨²âÊÔºÏ²¢Âß¼­£©
+  // æµ‹è¯•3: é‡Šæ”¾å†…å­˜ï¼ˆæµ‹è¯•åˆå¹¶é€»è¾‘ï¼‰
   printk("\n[VMAP TEST] Test 3: Free allocated memory (test merge)\n");
   if (ptr1)
     vfree(ptr1);
@@ -649,7 +649,7 @@ void test_vmap(void) {
     vfree(ptr5);
   printk("[VMAP TEST]  All allocations freed\n");
 
-  // ²âÊÔ4: ´óÁ¿Ğ¡ÄÚ´æ·ÖÅä
+  // æµ‹è¯•4: å¤§é‡å°å†…å­˜åˆ†é…
   printk("\n[VMAP TEST] Test 4: Allocate 50 small blocks (8KB each)\n");
   void *small_ptrs[50];
   int allocated = 0;
@@ -666,7 +666,7 @@ void test_vmap(void) {
 
   printk("[VMAP TEST]  Successfully allocated %d/50 blocks\n", allocated);
 
-  // ÊÍ·ÅĞ¡ÄÚ´æ¿é£¨²âÊÔºÏ²¢Âß¼­£©
+  // é‡Šæ”¾å°å†…å­˜å—ï¼ˆæµ‹è¯•åˆå¹¶é€»è¾‘ï¼‰
   printk("[VMAP TEST]  Freeing small blocks (test merge)...\n");
   for (int i = 0; i < allocated; i++) {
     if (small_ptrs[i]) {
@@ -675,11 +675,11 @@ void test_vmap(void) {
   }
   printk("[VMAP TEST]  All small blocks freed\n");
 
-  // ²âÊÔ5: ½»Ìæ·ÖÅäºÍÊÍ·Å£¨²âÊÔºÏ²¢Âß¼­£©
+  // æµ‹è¯•5: äº¤æ›¿åˆ†é…å’Œé‡Šæ”¾ï¼ˆæµ‹è¯•åˆå¹¶é€»è¾‘ï¼‰
   printk("\n[VMAP TEST] Test 5: Alternate allocate and free (test merge)\n");
   void *alt_ptrs[10];
   
-  // ·ÖÅä10¸ö¿é
+  // åˆ†é…10ä¸ªå—
   for (int i = 0; i < 10; i++) {
     alt_ptrs[i] = vmalloc(4096);
     if (alt_ptrs[i]) {
@@ -687,7 +687,7 @@ void test_vmap(void) {
     }
   }
   
-  // ÊÍ·ÅÆæÊı¿é
+  // é‡Šæ”¾å¥‡æ•°å—
   for (int i = 1; i < 10; i += 2) {
     if (alt_ptrs[i]) {
       printk("[VMAP TEST]  Freeing block %d: %p\n", i, alt_ptrs[i]);
@@ -696,7 +696,7 @@ void test_vmap(void) {
     }
   }
   
-  // ÊÍ·ÅÅ¼Êı¿é
+  // é‡Šæ”¾å¶æ•°å—
   for (int i = 0; i < 10; i += 2) {
     if (alt_ptrs[i]) {
       printk("[VMAP TEST]  Freeing block %d: %p\n", i, alt_ptrs[i]);
@@ -711,18 +711,18 @@ void test_vmap(void) {
 }
 
 void print_mem_usage(void) {
-// »ñÈ¡ buddy ¹ÜÀíµÄÄÚ´æÊ¹ÓÃÇé¿ö
+// è·å– buddy ç®¡ç†çš„å†…å­˜ä½¿ç”¨æƒ…å†µ
 unsigned int buddy_free = buddy_nr_free_pages_total();
 unsigned int buddy_used = buddy_nr_used_pages_total();
 unsigned int buddy_usage = buddy_mem_usage_percent();
 
-// »ñÈ¡Õû¸öÎïÀíÄÚ´æµÄÊ¹ÓÃÇé¿ö
+// è·å–æ•´ä¸ªç‰©ç†å†…å­˜çš„ä½¿ç”¨æƒ…å†µ
 unsigned int total_pages = total_phys_pages();
 unsigned int total_used = total_used_pages();
 unsigned int total_usage = total_mem_usage_percent();
 
-printk("Buddy ÄÚ´æÊ¹ÓÃÇé¿ö: ÒÑÊ¹ÓÃ %u Ò³, ¿ÕÏĞ %u Ò³, Õ¼ÓÃÂÊ %u%%\n", 
+printk("Buddy å†…å­˜ä½¿ç”¨æƒ…å†µ: å·²ä½¿ç”¨ %u é¡µ, ç©ºé—² %u é¡µ, å ç”¨ç‡ %u%%\n", 
        buddy_used, buddy_free, buddy_usage);
-printk("×ÜÎïÀíÄÚ´æÊ¹ÓÃÇé¿ö: ×ÜÒ³Êı %u, ÒÑÊ¹ÓÃ %u Ò³, Õ¼ÓÃÂÊ %u%%\n", 
+printk("æ€»ç‰©ç†å†…å­˜ä½¿ç”¨æƒ…å†µ: æ€»é¡µæ•° %u, å·²ä½¿ç”¨ %u é¡µ, å ç”¨ç‡ %u%%\n", 
        total_pages, total_used, total_usage);
 }
