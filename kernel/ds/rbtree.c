@@ -1,6 +1,6 @@
 #include <ds/rbtree.h>
 #include <slab.h>   // 内核内存分配
-
+#include <gfp.h>  // 内核分配标志
 #define RB_NIL(tree) ((tree)->nil)
 
 static void rb_left_rotate(rb_tree_t *tree, rb_node_t *x);
@@ -26,7 +26,7 @@ void rb_node_init(rb_node_t *node)
 // -----------------------------------------------------------------------------
 void rb_tree_init(rb_tree_t *tree, int (*compare)(rb_node_t *a, rb_node_t *b))
 {
-    tree->nil = kmalloc(sizeof(rb_node_t));
+    tree->nil = kmalloc(sizeof(rb_node_t), GFP_KERNEL);
     tree->nil->parent = tree->nil;
     tree->nil->left   = tree->nil;
     tree->nil->right  = tree->nil;

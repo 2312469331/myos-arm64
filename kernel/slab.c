@@ -180,7 +180,7 @@ static struct large_alloc *large_find_by_va(void *va) {
  * =========================================================
  */
 
-static struct slab_page *slab_grow(struct slab_cache *cache) {
+static struct slab_page *slab_grow(struct slab_cache *cache, gfp_t flags) {
   struct slab_page *sp;
   phys_addr_t pa;
   uintptr_t va;
@@ -199,7 +199,7 @@ static struct slab_page *slab_grow(struct slab_cache *cache) {
   if (!sp)
     return NULL;
 
-  pa = alloc_phys_pages(order, GFP_KERNEL);
+  pa = alloc_phys_pages(order, flags);
   if (!pa) {
     free_slab_page_meta(sp);
     return NULL;
@@ -251,7 +251,7 @@ static void slab_destroy_page(struct slab_page *sp) {
  * =========================================================
  */
 
-static void *slab_alloc(struct slab_cache *cache) {
+static void *slab_alloc(struct slab_cache *cache, gfp_t flags) {
   struct slab_page *sp;
   void *obj;
 
@@ -261,7 +261,7 @@ static void *slab_alloc(struct slab_cache *cache) {
   }
 
   if (!sp) {
-    sp = slab_grow(cache);
+    sp = slab_grow(cache, flags);
     if (!sp)
       return NULL;
   }
@@ -295,7 +295,7 @@ static void slab_free_obj(void *va) {
  * =========================================================
  */
 
-static void *large_alloc(size_t size) {
+static void *large_alloc(size_t size, gfp_t flags) {
   struct large_alloc *la;
   phys_addr_t pa;
   uintptr_t va;
@@ -309,7 +309,7 @@ static void *large_alloc(size_t size) {
   if (!la)
     return NULL;
 
-  pa = alloc_phys_pages(order, GFP_KERNEL);
+  pa = alloc_phys_pages(order, flags);
   if (!pa) {
     free_large_meta(la);
     return NULL;
@@ -359,7 +359,7 @@ void slab_init(void) {
     slab_caches[i].size = slab_sizes[i];
 }
 
-void *kmalloc(size_t size) {
+void *kmalloc(size_t size, gfp_t flags) {
   struct slab_cache *cache;
 
   if (!size)
@@ -372,10 +372,10 @@ void *kmalloc(size_t size) {
     cache = find_slab_cache(size);
     if (!cache)
       return NULL;
-    return slab_alloc(cache);
+    return slab_alloc(cache, flags);
   }
 
-  return large_alloc(size);
+  return large_alloc(size, flags);
 }
 
 void kfree(void *va) {

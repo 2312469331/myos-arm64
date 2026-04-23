@@ -3,9 +3,7 @@
 #include "io.h" // 确保包含 io.h
 #include "irq.h"
 #include "printk.h"
-#include "types.h"
 #include "uart.h" // 你的串口打印函数
-#include <stdint.h>
 
 // ==============================
 // AArch64 ESR_EL1 异常类型宏

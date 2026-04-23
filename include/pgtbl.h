@@ -24,8 +24,26 @@
  * 页表项属性位
  */
 #define ARM64_PTE_AF (1UL << 10)
-#define ARM64_PTE_SH_INNER (3UL << 8)
-#define ARM64_PTE_AP_RW_KERNEL (0UL << 6)
+#define ARM64_PTE_NG (0UL << 11)  // 非全局位 (nG)：0=全局，1=非全局 全局对所有ASID有效，非全局只对某个ASID的用户态进程有效
+
+/*
+ * 共享属性 (SH[1:0] 位)
+ * bit9 (SH[1]), bit8 (SH[0])
+ */
+#define ARM64_PTE_SH_NON_SHAREABLE   (0UL << 8)  // 00: Non-shareable
+#define ARM64_PTE_SH_OUTER_SHAREABLE (2UL << 8)  // 10: Outer Shareable
+#define ARM64_PTE_SH_INNER_SHAREABLE (3UL << 8)  // 11: Inner Shareable (SMP 标准)
+
+/*
+ * 访问权限 (AP[2:1] 位)
+ * bit7 (AP[2]), bit6 (AP[1])
+ */
+#define ARM64_PTE_AP_KERNEL_RW_EL0_NONE (0UL << 6)  // AP[2:1] = 00: 内核可读写，EL0 不可访问
+#define ARM64_PTE_AP_KERNEL_RW_EL0_RW   (1UL << 6)  // AP[2:1] = 01: 内核可读写，EL0 可读写
+#define ARM64_PTE_AP_KERNEL_RO_EL0_NONE (2UL << 6)  // AP[2:1] = 10: 内核只读，EL0 不可访问
+#define ARM64_PTE_AP_KERNEL_RO_EL0_RO   (3UL << 6)  // AP[2:1] = 11: 内核只读，EL0 只读
+
+#define ARM64_PTE_NS_RES0 (0UL << 5)  // EL1&0 翻译制度下为 RES0，必须设为 0
 #define ARM64_PTE_ATTRIDX(idx) ((unsigned long)(idx) << 2)
 #define ARM64_PTE_UXN (1UL << 54)
 #define ARM64_PTE_PXN (1UL << 53)
@@ -34,9 +52,9 @@
  * 默认按 AttrIndx=0 映射普通内存
  */
 #define ARM64_PAGE_PROT                                                        \
-  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_SH_INNER | \
-   ARM64_PTE_AP_RW_KERNEL | ARM64_PTE_ATTRIDX(0) | ARM64_PTE_UXN |             \
-   ARM64_PTE_PXN)
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_INNER_SHAREABLE | ARM64_PTE_AP_KERNEL_RW_EL0_NONE |         \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(0) | ARM64_PTE_UXN | ARM64_PTE_PXN)
 
 #define ARM64_TABLE_PROT (ARM64_PTE_VALID | ARM64_PTE_TYPE_TABLE)
 
@@ -47,6 +65,28 @@
 #define L2_INDEX(va) (((unsigned long)(va) >> 21) & 0x1FFUL)
 #define L3_INDEX(va) (((unsigned long)(va) >> 12) & 0x1FFUL)
 
+// 页表属性宏 - 使用 ARM64 架构定义
+// 普通内存属性使用 AttrIdx=0 (0xFF: 回写可缓存)
+// 设备内存属性使用 AttrIdx=2 (0x00: nGnRnE)
+
+#define PAGE_KERNEL_RW                                                        \
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_INNER_SHAREABLE | ARM64_PTE_AP_KERNEL_RW_EL0_NONE |         \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(0) | ARM64_PTE_UXN | ARM64_PTE_PXN)
+
+#define PAGE_KERNEL_RX                                                        \
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_INNER_SHAREABLE | ARM64_PTE_AP_KERNEL_RO_EL0_NONE |         \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(0) | ARM64_PTE_UXN | ARM64_PTE_PXN)
+#define PAGE_DMA                                                        \
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_INNER_SHAREABLE | ARM64_PTE_AP_KERNEL_RW_EL0_NONE |         \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(1) | ARM64_PTE_UXN | ARM64_PTE_PXN)
+
+#define PAGE_DEVICE                                                           \
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_NON_SHAREABLE | ARM64_PTE_AP_KERNEL_RW_EL0_NONE |           \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(2) | ARM64_PTE_UXN | ARM64_PTE_PXN)
 typedef uint64_t pte_t;
 
 /* ===============================================
@@ -99,11 +139,5 @@ void pgtbl_unmap_one_page(uintptr_t va);
 int pgtbl_map_range(uintptr_t va, phys_addr_t pa, size_t size, uint64_t prot);
 void pgtbl_unmap_range(uintptr_t va, size_t size);
 
-/* 内存属性和寄存器操作 */
-void pgtbl_set_mair_el1(void);
-void pgtbl_set_tcr_el1(void);
-void pgtbl_set_sctlr_el1(void);
-void pgtbl_switch_ttbr0(phys_addr_t ttbr0_pa);
-void pgtbl_flush_tlb(void);
 
 #endif /* _PGTBL_H */

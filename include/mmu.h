@@ -4,7 +4,8 @@
 #include <types.h>
 #include <pgtbl.h>
 #include <mm_defs.h>
-
+#include <gfp.h>
+#include <pmm.h>
 /* ===============================================
  * 🔔 重要配置 - 必须在 mmu_init() 之前设置！ 🔔
  * ===============================================
@@ -36,37 +37,10 @@ static inline bool va_in_linear_map(const void *va) {
 }
 
 /* 页表操作函数 */
-static inline int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
-    // 设置 pgtbl 所需的全局变量
-    linear_map_base = slab_linear_map_base;
-    l0_table_pa = slab_l0_table_pa;
-    
-    return pgtbl_map_one_page(va, pa, prot);
-}
+int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot);
+void arm64_unmap_one_page(uintptr_t va) ;
 
-static inline void arm64_unmap_one_page(uintptr_t va) {
-    // 设置 pgtbl 所需的全局变量
-    linear_map_base = slab_linear_map_base;
-    l0_table_pa = slab_l0_table_pa;
-    
-    pgtbl_unmap_one_page(va);
-}
 
-static inline int arm64_map_range(uintptr_t va, phys_addr_t pa, size_t size, uint64_t prot) {
-    // 设置 pgtbl 所需的全局变量
-    linear_map_base = slab_linear_map_base;
-    l0_table_pa = slab_l0_table_pa;
-    
-    return pgtbl_map_range(va, pa, size, prot);
-}
-
-static inline void arm64_unmap_range(uintptr_t va, size_t size) {
-    // 设置 pgtbl 所需的全局变量
-    linear_map_base = slab_linear_map_base;
-    l0_table_pa = slab_l0_table_pa;
-    
-    pgtbl_unmap_range(va, size);
-}
 
 /* =========================================================
  * 基础工具
@@ -102,5 +76,18 @@ static inline unsigned int get_order_ul(unsigned long size) {
   }
   return order;
 }
+/* MAIR_EL1 内存属性配置 */
+void set_mair_el1(void);
 
+/* TCR_EL1 地址翻译控制寄存器配置 */
+void set_tcr_el1(void);
+
+/* SCTLR_EL1 系统控制寄存器（使能MMU/缓存） */
+void set_sctlr_el1(void);
+
+/* 切换 TTBR0_EL1（用户态页表基地址） */
+void switch_ttbr0(phys_addr_t ttbr0_pa);
+
+/* 刷新 EL1 所有 TLB 表项 */
+void flush_tlb(void);
 #endif /* _MMU_H */

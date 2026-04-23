@@ -16,6 +16,7 @@
  * 作者说明：666
  */
 #include <pmm.h>
+#include <mm_defs.h>
 
 /* 链表操作函数和 container_of 宏已在 list.h 中定义 */
 
@@ -430,4 +431,85 @@ int buddy_is_allocated_head(phys_addr_t pa) {
 
   page = pfn_to_page(pfn);
   return page_is_allocated(page) && (page->flags & PG_HEAD);
+}
+
+/* ============================================================
+ * 8. 页管理辅助函数
+ * ============================================================
+ */
+
+/**
+ * alloc_page - 分配一页物理内存
+ * @flags: 分配标志 (GFP_*)
+ *
+ * 返回：
+ *  - 成功：page 结构体指针
+ *  - 失败：NULL
+ */
+struct page *alloc_page(gfp_t flags) {
+    // 使用alloc_phys_pages分配一页物理内存
+    phys_addr_t pa = alloc_phys_pages(0, flags);
+    if (!pa) return NULL;
+    // 转换为page结构体指针
+    return pfn_to_page(pa_to_pfn(pa));
+}
+
+/**
+ * free_page - 释放一页物理内存
+ * @page: page 结构体指针
+ */
+void free_page(struct page *page) {
+    // 转换为物理地址
+    unsigned long pfn = page_to_pfn(page);
+    phys_addr_t pa = pfn_to_pa(pfn);
+    // 释放物理内存
+    free_phys_pages(pa, 0);
+}
+
+/* ============================================================
+ * 9. 内存使用统计函数
+ * ============================================================
+ */
+
+/**
+ * buddy_nr_used_pages_total - 返回当前已使用的页数
+ */
+unsigned int buddy_nr_used_pages_total(void) {
+  return TOTAL_PAGES - buddy_nr_free_pages_total();
+}
+
+/**
+ * buddy_mem_usage_percent - 返回内存占用率（百分比）
+ */
+unsigned int buddy_mem_usage_percent(void) {
+  if (TOTAL_PAGES == 0)
+    return 0;
+  return (buddy_nr_used_pages_total() * 100) / TOTAL_PAGES;
+}
+
+/**
+ * total_phys_pages - 返回总物理页数（包括内核占用部分）
+ */
+unsigned long total_phys_pages(void) {
+  return (PHYS_MEM_END - PHYS_MEM_START + 1) / PAGE_SIZE;
+}
+
+/**
+ * total_used_pages - 返回总已使用页数（包括内核占用部分）
+ */
+unsigned long total_used_pages(void) {
+  // 内核占用的页数 = (BUDDY_MEM_START - PHYS_MEM_START) / PAGE_SIZE
+  unsigned long kernel_pages = (BUDDY_MEM_START - PHYS_MEM_START) / PAGE_SIZE;
+  // 总已使用页数 = 内核占用的页数 + buddy 已使用的页数
+  return kernel_pages + buddy_nr_used_pages_total();
+}
+
+/**
+ * total_mem_usage_percent - 返回总物理内存占用率（百分比）
+ */
+unsigned int total_mem_usage_percent(void) {
+  unsigned long total_pages = total_phys_pages();
+  if (total_pages == 0)
+    return 0;
+  return (total_used_pages() * 100) / total_pages;
 }

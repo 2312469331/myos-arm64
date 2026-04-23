@@ -19,7 +19,7 @@ use core::ptr::NonNull;
 // ============================================================================
 
 extern "C" {
-    fn kmalloc(size: usize) -> *mut core::ffi::c_void;
+    fn kmalloc(size: usize, flags: u32) -> *mut core::ffi::c_void;
     fn kfree(ptr: *mut core::ffi::c_void);
     fn vmalloc(size: usize, prot: u32) -> *mut core::ffi::c_void;
     fn vfree(ptr: *mut core::ffi::c_void);
@@ -77,7 +77,7 @@ impl KMem {
             return None;
         }
 
-        let ptr = unsafe { kmalloc(size) };
+        let ptr = unsafe { kmalloc(size, 0x001) }; // 0x001 = GFP_KERNEL
 
         if ptr.is_null() {
             return None;
@@ -222,7 +222,7 @@ impl Drop for PhysPage {
 /// kmalloc 包装（返回原始指针）
 #[no_mangle]
 pub extern "C" fn rust_kmalloc(size: usize) -> *mut core::ffi::c_void {
-    unsafe { kmalloc(size) }
+    unsafe { kmalloc(size, 0x001) } // 0x001 = GFP_KERNEL
 }
 
 /// kfree 包装

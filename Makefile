@@ -181,30 +181,27 @@ $(TARGET).img: $(TARGET).elf
 # IMG 启动 QEMU
 # ======================
 # 正常运行
-run: all dtb
+run: all
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
-		-dtb virt.dtb \
 		-nographic
 
 # 串口独立调试
-serial: all dtb
+serial: all
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).img \
-		-dtb virt.dtb \
 		-serial pty -daemonize -display none
 
 # GDB 阻塞等待调试
-debug: all dtb
+debug: all
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
 		-nographic -s -S
 
 # GDB 不阻塞直接运行
-debug-no-suspend: all dtb
+debug-no-suspend: all
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
-		-dtb virt.dtb \
 		-nographic -s
 
 # 获取设备树起始地址

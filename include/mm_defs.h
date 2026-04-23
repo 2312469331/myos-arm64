@@ -15,6 +15,8 @@ typedef unsigned long size_t;
 
 // 地址空间布局宏定义
 /* 可修改的物理内存管理范围 */
+#define PHYS_MEM_START 0x40000000UL
+#define PHYS_MEM_END 0x4FFFFFFFUL
 #define BUDDY_MEM_START 0x40585000UL
 #define BUDDY_MEM_END 0x4FFFFFFFUL
 /* 可修改的虚拟内存管理范围 */

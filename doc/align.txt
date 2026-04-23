@@ -1,0 +1,78 @@
+gcc
+$ aarch64-none-elf-gcc --help -v|grep align
+Using built-in specs.
+COLLECT_AS_OPTIONS='--help'
+COLLECT_GCC=C:\Users\chanpinkaifa\scoop\apps\bin\aarch64-none-elf-gcc.exe
+COLLECT_LTO_WRAPPER=C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/aarch64-none-elf/15.2.1/lto-wrapper.exe
+Target: aarch64-none-elf
+Configured with: /data/jenkins/workspace/GNU-toolchain/arm-15-6/src/gcc/configure --target=aarch64-none-elf --prefix=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/install --with-gmp=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/host-tools --with-mpfr=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/host-tools --with-mpc=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/host-tools --with-isl=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/host-tools 
+--disable-shared --disable-nls --disable-threads --enable-checking=release --enable-languages=c,c++,fortran --with-newlib --with-gnu-as --with-headers=yes --with-gnu-ld --with-native-system-header-dir=/include --with-sysroot=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/install/aarch64-none-elf --with-bugurl=https://gitlab.arm.com/tooling/gnu-devtools-for-arm/-/issues/ --with-libiconv-prefix=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/host-tools --with-libiconv-prefix=/data/jenkins/workspace/GNU-toolchain/arm-15-6/build-mingw-aarch64-none-elf/host-tools --enable-mingw-wildcard --host=x86_64-w64-mingw32 --with-pkgversion='Arm GNU Toolchain 15.2.Rel1 (Build arm-15.86)'
+Thread model: single
+Supported LTO compression algorithms: zlib
+gcc version 15.2.1 20251203 (Arm GNU Toolchain 15.2.Rel1 (Build arm-15.86))
+COLLECT_GCC_OPTIONS='--help' '-v' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'a-'
+
+ C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/aarch64-none-elf/15.2.1/cc1.exe -quiet -v -iprefix C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/ -isysroot C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../aarch64-none-elf help-dummy -quiet -dumpdir a- -dumpbase help-dummy -mlittle-endian -mabi=lp64 -version --help -o C:\Users\CHANPI~1\AppData\Local\Temp\ccu5u1dN.s
+  -Walign-commons             Warn about alignment of COMMON blocks.
+  -falign-commons             Enable alignment of COMMON blocks.
+  -Waligned-new               Warn about 'new' of type with extended alignment
+                              without -faligned-new.  Same as -Waligned-new=.
+  -Waligned-new=[none|global|all] Warn even if 'new' uses a class member
+  -Wif-not-aligned            Warn when the field in a struct is not aligned.
+  -Wpacked-not-aligned        Warn when fields in a struct with the packed
+                              attribute are misaligned.
+  -faligned-new               Support C++17 allocation of over-aligned types.
+                              Same as -faligned-new=.
+  -faligned-new=<N>           Use C++17 over-aligned type allocation for
+                              alignments greater than N.
+                              policy=[default|always|never|aligned] Fine-
+                              policy=[default|always|never|aligned] Fine-
+  --param=align-loop-iterations= Loops iterating at least selected number of
+                              iterations will get loop alignment.
+  --param=align-threshold=<1,65536> Select fraction of the maximal frequency of
+                              block get alignment.
+  --param=store-merging-allow-unaligned=<0,1> Allow the store merging pass to
+           introduce unaligned stores if it is legal to do
+  --param=vect-max-peeling-for-alignment=<0,64> Maximum number of loop peels to
+                              enhance alignment of data references in a loop.
+  --param=vect-max-version-for-alignment-checks= Bound on number of runtime
+                              versioning for alignment check.
+  -Wcast-align                Warn about pointer casts which increase alignment.
+  -Wcast-align=strict         Warn about pointer casts which increase alignment.
+  -Wpadded                    Warn when padding is required to align structure
+  -falign-functions           Align the start of functions.
+  -falign-functions=          This option lacks documentation.
+  -falign-jumps               Align labels which are only reached by jumping.
+  -falign-jumps=              This option lacks documentation.
+  -falign-labels              Align all labels.
+  -falign-labels=             This option lacks documentation.
+  -falign-loops               Align the start of loops.
+  -falign-loops=              This option lacks documentation.
+GN  -fipa-stack-alignment       Reduce stack alignment on call sites if possible.
+U   -flimit-function-alignment  This option lacks documentation.
+C  -fmin-function-alignment=   Align the start of every function.
+23  -fpack-struct=<number>      Set initial maximum structure member alignment.
+ (  -mstrict-align              Don't assume that unaligned accesses are handled
+Ar  -fipa-cp-alignment          Does nothing.  Preserved for backward
+m GNU Toolchain 15.2.Rel1 (Build arm-15.86)) version 15.2.1 20251203 (aarch64-none-elf)
+        compiled by GNU C version 13-win32, GMP version 6.2.1, MPFR version 3.1.6, MPC version 1.0.3, isl version isl-0.15-1-g835ea3a-GMP
+
+GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+COLLECT_GCC_OPTIONS='--help' '-v' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'a-'
+
+ C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/../../../../aarch64-none-elf/bin/as.exe -v -EL -mabi=lp64 --help -o C:\Users\CHANPI~1\AppData\Local\Temp\ccm8GOUA.o C:\Users\CHANPI~1\AppData\Local\Temp\ccu5u1dN.s
+GNU assembler version 2.45.1 (aarch64-none-elf) using BFD version (Arm GNU Toolchain 15.2.Rel1 (Build arm-15.86)) 2.45.1.20251203
+CO  -no-pad-sections        do not pad the end of sections to alignment boundaries
+MPILER_PATH=C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/aarch64-none-elf/15.2.1/;C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/;C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/../../../../aarch64-none-elf/bin/
+LIBRARY_PATH=C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/;C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/;C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/../../../../aarch64-none-elf/lib/;C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../aarch64-none-elf/lib/
+COLLECT_GCC_OPTIONS='--help' '-v' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'a.'
+
+ C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/aarch64-none-elf/15.2.1/collect2.exe -plugin C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/aarch64-none-elf/15.2.1/liblto_plugin.dll -plugin-opt=C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../libexec/gcc/aarch64-none-elf/15.2.1/lto-wrapper.exe -plugin-opt=-fresolution=C:\Users\CHANPI~1\AppData\Local\Temp\cc0R0CoB.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc --sysroot=C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../aarch64-none-elf -EL -X -maarch64elf --help C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/crti.o C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/crtbegin.o C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/../../../../aarch64-none-elf/lib/crt0.o -LC:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1 -LC:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc -LC:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/../../../../aarch64-none-elf/lib -LC:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../aarch64-none-elf/lib C:\Users\CHANPI~1\AppData\Local\Temp\ccm8GOUA.o -lgcc -lc -lgcc C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/crtend.o C:/Users/chanpinkaifa/scoop/apps/arm-gnu-toolchain-15.2.rel1-mingw-w64-x86_64-aarch64-none-elf/bin/../lib/gcc/aarch64-none-elf/15.2.1/crtn.o
+  -n, --nmagic                Do not page align data
+  -N, --omagic                Do not page align data, do not make text readonly
+  --no-omagic                 Page align data, make text readonly
+                              Sort common symbols by alignment [in specified order]
+  --sort-section name|alignment
+                              Sort sections by name or maximum alignment
+  --warn-section-align        Warn if start of section changes due to alignment
+COLLECT_GCC_OPTIONS='--help' '-v' '-mlittle-endian' '-mabi=lp64' '-dumpdir' 'a.'

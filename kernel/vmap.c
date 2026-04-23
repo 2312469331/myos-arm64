@@ -1,7 +1,7 @@
 #include <vmap.h>
 #include <printk.h>
 #include <slab.h>
-// 修改后
+#include <gfp.h>// 修改后
 #include <mm_defs.h>
 // 确保 VMALLOC_END 已定义
 #ifndef VMALLOC_END
@@ -109,7 +109,7 @@ void va_manager_init(void) {
     vm.total_free = VMALLOC_END - VMALLOC_START;
     vm.nr_busy = 0;
     
-    struct vmap_area *init_area = (struct vmap_area *)kmalloc(sizeof(struct vmap_area));
+    struct vmap_area *init_area = (struct vmap_area *)kmalloc(sizeof(struct vmap_area), GFP_KERNEL);
     if (!init_area) return;
     
     init_area->va_start = VMALLOC_START;
@@ -141,7 +141,7 @@ void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
     uint64_t aligned_start = (va->va_start + align - 1) & ~(align - 1);
     uint64_t waste = aligned_start - va->va_start;
     if (waste > 0) {
-        struct vmap_area *before = (struct vmap_area *)kmalloc(sizeof(struct vmap_area));
+        struct vmap_area *before = (struct vmap_area *)kmalloc(sizeof(struct vmap_area), GFP_KERNEL);
         if (before) {
             before->va_start = va->va_start;
             before->va_end = aligned_start;
@@ -154,7 +154,7 @@ void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
     // 3. 处理后部多余空间产生的碎片
     uint64_t va_sz = va_size(va);
     if (va_sz > size + VA_ALIGN_DEFAULT) {
-        struct vmap_area *remain = (struct vmap_area *)kmalloc(sizeof(struct vmap_area));
+        struct vmap_area *remain = (struct vmap_area *)kmalloc(sizeof(struct vmap_area), GFP_KERNEL);
         if (remain) {
             remain->va_start = va->va_start + size;
             remain->va_end = va->va_end;
