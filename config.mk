@@ -31,7 +31,7 @@ SRC_C_CONFIG   += driver/uart.c            # GICv2驱动
 endif
 
 ifeq ($(CONFIG_TIMER),y)
-# 若你有定时器底层汇编文件（比如 timer_asm.S），才需要这一行
+# 若有定时器底层汇编文件（比如 timer_asm.S），才需要这一行
 # SRC_ASM_CONFIG += timer/timer_asm.S  # 定时器底层汇编实现
 SRC_C_CONFIG   += driver/timer.c        # Cortex-A53定时器驱动（进程调度基准时钟）
 endif

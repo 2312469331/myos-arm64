@@ -2,7 +2,7 @@
 #define BOOTC_H
 // 总内存 256MB - 2MB = 254MB
 #define TOTAL_MEM_SIZE  ((256UL * 1024UL * 1024UL))
-/* 2. 页表基础常量（保持你的定义） */
+/* 2. 页表基础常量（保持定义） */
 #define PHYS_BASE 0x40000000UL
 #define KERNEL_VIRT_BASE (0xFFFF800000000000UL)
 #define TABLE_SIZE 512                        // 每个表的条目数
@@ -28,7 +28,7 @@
   DIV_ROUND_UP(L2_TABLES_NEEDED + L1_INDEX_BASE, TABLE_SIZE)
 // L0: 内核空间通常固定1个L0页表
 #define L0_TABLES_NEEDED 1
-/* 5. 保持你的原属性定义 */
+/* 5. 保持原属性定义 */
 #define BOOT_DATA __attribute__((section(".boot.data")))
 #define BOOT_CODE __attribute__((section(".boot.text")))
 #endif

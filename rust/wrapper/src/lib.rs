@@ -10,9 +10,87 @@
 //! - 数据竞争检查 ✅
 
 #![no_std]
+#![no_main]
 #![crate_type = "staticlib"]
 
 use core::ptr::NonNull;
+
+// 测试 #[repr(packed)] 在 Stable Rust 中是否可用
+#[repr(packed)]
+pub struct TestPacked {
+    a: u8,
+    b: u32,
+    c: u16,
+}
+
+// 测试 #[repr(C)] 在 Stable Rust 中是否可用
+#[repr(C)]
+pub struct TestC {
+    a: u8,
+    b: u32,
+    c: u16,
+}
+
+// 测试 #[repr(align)] 在 Stable Rust 中是否可用
+#[repr(align(16))]
+pub struct TestAlign {
+    data: [u8; 16],
+}
+
+// 测试 volatile 读写
+pub fn test_volatile() {
+    let mut data = 0u32;
+    let ptr = &mut data as *mut u32;
+    
+    unsafe {
+        core::ptr::write_volatile(ptr, 0x12345678);
+        let _value = core::ptr::read_volatile(ptr);
+    }
+}
+
+// 测试在 Stable Rust 中使用 asm! 宏实现内存屏障指令
+pub fn dmb_sy() {
+    unsafe { core::arch::asm!("dmb sy", options(nostack)) }
+}
+
+pub fn dsb_sy() {
+    unsafe { core::arch::asm!("dsb sy", options(nostack)) }
+}
+
+pub fn isb() {
+    unsafe { core::arch::asm!("isb", options(nostack)) }
+}
+
+// 测试在 Stable Rust 中使用 asm! 宏读写 TTBR 寄存器
+pub fn read_ttbr0_el1() -> u64 {
+    let value: u64;
+    unsafe {
+        core::arch::asm!(
+            "mrs x0, ttbr0_el1",
+            out("x0") value,
+            options(nostack)
+        );
+    }
+    value
+}
+
+pub fn write_ttbr0_el1(value: u64) {
+    unsafe {
+        core::arch::asm!(
+            "msr ttbr0_el1, x0",
+            in("x0") value,
+            options(nostack)
+        );
+    }
+}
+
+// ============================================================================
+// Panic Handler (no_std 环境必须提供)
+// ============================================================================
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
 
 // ============================================================================
 // 外部 C 函数声明
@@ -256,63 +334,111 @@ pub extern "C" fn rust_free_phys_pages(paddr: u64, order: u32) {
 }
 
 // ============================================================================
-// Rust 安全特性演示（不能在 no_std 中使用，需要 std）
+// Rust 安全特性演示（不能在 no_std 中使用，需要 std ）
 // ============================================================================
 
-// 下面的代码展示了在有 std 的环境中，如何利用 Rust 的安全特性
-// 这些代码仅作为文档参考，不能在裸机环境中编译
+// 下面的代码展示了在 no_std 环境中，如何利用 Rust 的安全特性
 
-/*
-/// 安全特性 1: 悬垂指针检查
-/// 编译器拒绝编译以下代码：
-fn dangling_pointer_example() {
-    let ptr: *mut u8;
-    {
-        let mem = KMem::new(64).unwrap();
-        ptr = mem.as_ptr();  // 错误！mem 在作用域结束时被释放
-    }
-    // println!("{}", *ptr);  // 编译错误！ptr 现在是悬垂指针
+/// 安全特性 1: 悬垂指针检查（编译时检查）
+#[no_mangle]
+pub extern "C" fn dangling_pointer_example() {
+    // 编译器拒绝编译以下代码：
+    // let ptr: *mut u8;
+    // {
+    //     let mem = KMem::new(64).unwrap();
+    //     ptr = mem.as_ptr();  // 错误！mem 在作用域结束时被释放
+    // }
+    // *ptr;  // 编译错误！ptr 现在是悬垂指针
 }
 
-/// 安全特性 2: 双重释放检查
-/// 编译器拒绝编译以下代码：
-fn double_free_example() {
-    let mem = KMem::new(64).unwrap();
-    let ptr = mem.as_ptr();
-    drop(mem);
+/// 安全特性 2: 双重释放检查（编译时检查）
+#[no_mangle]
+pub extern "C" fn double_free_example() {
+    // 编译器拒绝编译以下代码：
+    // let mem = KMem::new(64).unwrap();
+    // let ptr = mem.as_ptr();
+    // drop(mem);
     // drop(mem);  // 编译错误！mem 已经被 drop
 }
 
-/// 安全特性 3: 空指针解引用检查
-/// 编译器拒绝编译以下代码：
-fn null_pointer_example() {
-    let ptr: *mut u8 = core::ptr::null_mut();
-    // let val = *ptr;  // 编译错误！不能解引用空指针
+/// 安全特性 3: 空指针解引用检查（运行时检查）
+#[no_mangle]
+pub extern "C" fn null_pointer_example() {
+    // 运行时检查空指针
+    let mem = KMem::new(0);
+    if mem.is_none() {
+        // 处理空指针情况
+    }
 }
 
 /// 安全特性 4: 所有权转移检查
-fn ownership_example() {
-    let mem = KMem::new(64).unwrap();
-    let ptr = mem.as_ptr();
-    // mem 现在仍然拥有所有权，ptr 只是借用
-    // 如果尝试在 drop 后使用 ptr，编译器会报错
-    drop(mem);
-    // 任何尝试使用 ptr 的代码都会导致编译错误
+#[no_mangle]
+pub extern "C" fn ownership_example() {
+    let mem = KMem::new(64);
+    if let Some(mut mem) = mem {
+        let ptr = mem.as_ptr();
+        // mem 现在拥有所有权，ptr 只是借用
+        // 当 mem 离开作用域时，会自动释放
+    }
+    // mem 已经被释放，无法再使用
 }
 
 /// 安全特性 5: 借用检查
-fn borrow_example() {
-    let mut mem = KMem::new(64).unwrap();
-
-    // 不可变借用
-    let ptr1 = mem.as_ptr();
-    // 可变借用
-    let ptr2 = mem.as_mut_ptr();
-
-    // 错误！在有不可变借用时，不能有可变借用
-    // let ptr3 = mem.as_mut_ptr();
+#[no_mangle]
+pub extern "C" fn borrow_example() {
+    let mem = KMem::new(64);
+    if let Some(mut mem) = mem {
+        // 不可变借用
+        let ptr1 = mem.as_ptr();
+        // 可变借用
+        let ptr2 = mem.as_mut_ptr();
+        
+        // 编译器会检查借用规则
+        // 例如，不能同时有不可变和可变借用
+    }
 }
-*/
+
+/// 安全特性 6: 类型安全的内存操作
+#[no_mangle]
+pub extern "C" fn type_safe_memory() {
+    let mem = KMem::new(16);
+    if let Some(mut mem) = mem {
+        let ptr = mem.as_mut_ptr();
+        
+        // 类型安全的内存写入
+        unsafe {
+            core::ptr::write(ptr as *mut u32, 0x12345678);
+            let val = core::ptr::read(ptr as *mut u32);
+            // val 现在是 0x12345678
+        }
+    }
+}
+
+/// 安全特性 7: 自动内存管理
+#[no_mangle]
+pub extern "C" fn auto_memory_management() {
+    // 内存会在函数结束时自动释放
+    let _mem1 = KMem::new(64);
+    let _mem2 = VMem::new(1024, 0);
+    let _page = PhysPage::new(0);
+    
+    // 不需要手动释放内存
+}
+
+/// 安全特性 8: 错误处理
+#[no_mangle]
+pub extern "C" fn error_handling() {
+    // 使用 Option 类型进行错误处理
+    match KMem::new(64) {
+        Some(mem) => {
+            // 成功分配内存
+            let _ptr = mem.as_ptr();
+        }
+        None => {
+            // 内存分配失败
+        }
+    }
+}
 
 // ============================================================================
 // 使用示例（裸机环境）

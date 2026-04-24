@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 适配你的目录：include/ 和 kernel/
+# 适配目录：include/ 和 kernel/
 files=(
   "include/mm.h"
   "include/pmm.h"

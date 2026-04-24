@@ -1,8 +1,8 @@
 #include <sync/wait.h>
 /*
  * 等待队列的桩实现
- * 在你的调度器实现之前，这些函数什么实质工作都不做，仅仅是为了让同步锁模块能编译链接通过。
- * TODO: 等你写好了 task_struct 和 schedule()，再回来重写这里！
+ * 在调度器实现之前，这些函数什么实质工作都不做，仅仅是为了让同步锁模块能编译链接通过。
+ * TODO: 等写好了 task_struct 和 schedule()，再回来重写这里！
  */
 
 void add_wait_queue(struct wait_queue_head *wq, struct wait_queue_entry *wq_entry) {

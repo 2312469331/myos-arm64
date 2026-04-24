@@ -3,7 +3,7 @@
 #include "io.h" // 确保包含 io.h
 #include "irq.h"
 #include "printk.h"
-#include "uart.h" // 你的串口打印函数
+#include "uart.h" // 串口打印函数
 
 // ==============================
 // AArch64 ESR_EL1 异常类型宏
@@ -64,7 +64,7 @@ void c_exception_handler(void) {
 
   switch (ec) {
   // ======================
-  // 1. IRQ 中断：直接跳去你的处理函数
+  // 1. IRQ 中断：直接跳去处理函数
   // ======================
   case ESR_EC_IRQ:
     el1_irq_handler();
@@ -74,7 +74,7 @@ void c_exception_handler(void) {
   // 2. FIQ（快速中断，很少用）
   // ======================
   case ESR_EC_FIQ:
-    // 你可以自己实现 el1_fiq_handler()
+    // 可以自己实现 el1_fiq_handler()
     while (1)
       ;
     break;
@@ -217,7 +217,7 @@ __attribute__((weak)) void uart_irq_callback(uint32_t irq) {
 }
 /*
  * 定时器中断入口
- * 你只需要在中断判定为 30 号时跳来这里
+ * 只需要在中断判定为 30 号时跳来这里
  */
 // ---------------- 关键修改 ----------------
 // 1. 加 __attribute__((weak)) 声明为弱符号

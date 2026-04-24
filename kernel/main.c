@@ -49,6 +49,7 @@ void test_buddy_system(void);
 void test_kmalloc(void);
 void test_vmap(void);
 void test_fdt(void);
+// void test_rust_wrapper(void);
 // void gic_test(void);
 // uart_irq_callback 已在handler.c文件实现，添加 extern 声明（根据实际参数修改）
 extern void uart_irq_callback(uint32_t irq);
@@ -106,6 +107,9 @@ void main(void *dtb) {
 
   // 测试vmap功能
   test_vmap();
+
+  // 测试 Rust 包装器
+  // test_rust_wrapper();
 
   // 测试 naked 属性（AArch64 不支持）
   // test_naked_attribute();
@@ -269,20 +273,35 @@ void test_kmalloc(void) {
 
   // 测试1: 分配各种大小的内存
   printk("[KMALLOC TEST] Test 1: Allocate various sizes\n");
+  print_mem_usage();
+  
   void *ptr1 = kmalloc(8, GFP_KERNEL);
-  void *ptr2 = kmalloc(64, GFP_KERNEL);
-  void *ptr3 = kmalloc(512, GFP_KERNEL);
-  void *ptr4 = kmalloc(1024, GFP_KERNEL);
-  void *ptr5 = kmalloc(4096, GFP_KERNEL);
-  void *ptr6 = kmalloc(8192, GFP_KERNEL);
-  void *ptr7 = kmalloc(65536, GFP_KERNEL);
   printk("[KMALLOC TEST]  8 bytes: %p\n", ptr1);
+  print_mem_usage();
+  
+  void *ptr2 = kmalloc(64, GFP_KERNEL);
   printk("[KMALLOC TEST]  64 bytes: %p\n", ptr2);
+  print_mem_usage();
+  
+  void *ptr3 = kmalloc(512, GFP_KERNEL);
   printk("[KMALLOC TEST]  512 bytes: %p\n", ptr3);
+  print_mem_usage();
+  
+  void *ptr4 = kmalloc(1024, GFP_KERNEL);
   printk("[KMALLOC TEST]  1024 bytes: %p\n", ptr4);
+  print_mem_usage();
+  
+  void *ptr5 = kmalloc(4096, GFP_KERNEL);
   printk("[KMALLOC TEST]  4096 bytes: %p\n", ptr5);
+  print_mem_usage();
+  
+  void *ptr6 = kmalloc(8192, GFP_KERNEL);
   printk("[KMALLOC TEST]  8192 bytes: %p\n", ptr6);
+  print_mem_usage();
+  
+  void *ptr7 = kmalloc(65536, GFP_KERNEL);
   printk("[KMALLOC TEST]  65536 bytes: %p\n", ptr7);
+  print_mem_usage();
 
   // 测试2: 写入数据并验证
   printk("\n[KMALLOC TEST] Test 2: Write and verify data\n");
@@ -306,6 +325,8 @@ void test_kmalloc(void) {
 
   // 测试3: 释放内存
   printk("\n[KMALLOC TEST] Test 3: Free allocated memory\n");
+  print_mem_usage();
+  
   if (ptr1)
     kfree(ptr1);
   if (ptr2)
@@ -320,11 +341,15 @@ void test_kmalloc(void) {
     kfree(ptr6);
   if (ptr7)
     kfree(ptr7);
+  
   printk("[KMALLOC TEST]  All allocations freed\n");
+  print_mem_usage();
 
   // 测试4: 大量小内存分配
   printk(
       "\n[KMALLOC TEST] Test 4: Allocate 1000 small blocks (64 bytes each)\n");
+  print_mem_usage();
+  
   void *small_ptrs[1000];
   int allocated = 0;
 
@@ -334,11 +359,13 @@ void test_kmalloc(void) {
       allocated++;
       if ((i + 1) % 200 == 0) {
         printk("[KMALLOC TEST]  Allocated %d/1000 blocks...\n", i + 1);
+        print_mem_usage();
       }
     }
   }
 
   printk("[KMALLOC TEST]  Successfully allocated %d/1000 blocks\n", allocated);
+  print_mem_usage();
 
   // 释放小内存块
   for (int i = 0; i < allocated; i++) {
@@ -346,7 +373,9 @@ void test_kmalloc(void) {
       kfree(small_ptrs[i]);
     }
   }
+  
   printk("[KMALLOC TEST]  All small blocks freed\n");
+  print_mem_usage();
 
   // 测试5: 测试边界情况
   printk("\n[KMALLOC TEST] Test 5: Boundary cases\n");
@@ -610,16 +639,27 @@ void test_vmap(void) {
 
   // 测试 1: 分配各种大小的内存
   printk("[VMAP TEST] Test 1: Allocate various sizes\n");
+  print_mem_usage();
+  
   void *ptr1 = vmalloc(8192);
-  void *ptr2 = vmalloc(16384);
-  void *ptr3 = vmalloc(32768);
-  void *ptr4 = vmalloc(65536);
-  void *ptr5 = vmalloc(131072);
   printk("[VMAP TEST]  8KB: %p\n", ptr1);
+  print_mem_usage();
+  
+  void *ptr2 = vmalloc(16384);
   printk("[VMAP TEST]  16KB: %p\n", ptr2);
+  print_mem_usage();
+  
+  void *ptr3 = vmalloc(32768);
   printk("[VMAP TEST]  32KB: %p\n", ptr3);
+  print_mem_usage();
+  
+  void *ptr4 = vmalloc(65536);
   printk("[VMAP TEST]  64KB: %p\n", ptr4);
+  print_mem_usage();
+  
+  void *ptr5 = vmalloc(131072);
   printk("[VMAP TEST]  128KB: %p\n", ptr5);
+  print_mem_usage();
 
   // 测试2: 写入数据并验证
   printk("\n[VMAP TEST] Test 2: Write and verify data\n");
@@ -637,6 +677,8 @@ void test_vmap(void) {
 
   // 测试3: 释放内存（测试合并逻辑）
   printk("\n[VMAP TEST] Test 3: Free allocated memory (test merge)\n");
+  print_mem_usage();
+  
   if (ptr1)
     vfree(ptr1);
   if (ptr2)
@@ -647,10 +689,14 @@ void test_vmap(void) {
     vfree(ptr4);
   if (ptr5)
     vfree(ptr5);
+  
   printk("[VMAP TEST]  All allocations freed\n");
+  print_mem_usage();
 
   // 测试4: 大量小内存分配
   printk("\n[VMAP TEST] Test 4: Allocate 50 small blocks (8KB each)\n");
+  print_mem_usage();
+  
   void *small_ptrs[50];
   int allocated = 0;
 
@@ -660,11 +706,13 @@ void test_vmap(void) {
       allocated++;
       if ((i + 1) % 10 == 0) {
         printk("[VMAP TEST]  Allocated %d/50 blocks...\n", i + 1);
+        print_mem_usage();
       }
     }
   }
 
   printk("[VMAP TEST]  Successfully allocated %d/50 blocks\n", allocated);
+  print_mem_usage();
 
   // 释放小内存块（测试合并逻辑）
   printk("[VMAP TEST]  Freeing small blocks (test merge)...\n");
@@ -673,7 +721,9 @@ void test_vmap(void) {
       vfree(small_ptrs[i]);
     }
   }
+  
   printk("[VMAP TEST]  All small blocks freed\n");
+  print_mem_usage();
 
   // 测试5: 交替分配和释放（测试合并逻辑）
   printk("\n[VMAP TEST] Test 5: Alternate allocate and free (test merge)\n");
