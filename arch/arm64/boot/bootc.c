@@ -111,7 +111,7 @@ static BOOT_CODE void init_l3_table(void) {
       } else if (table_idx == L3_TABLES_NEEDED - 1 && page_idx == 511) {
         // 兜底处理：在最后一张L3表的最后一个槽位塞入 UART0
         uint64_t uart_pa = 0x09000000UL;
-        l3_tables[table_idx][page_idx] = dev_attr | (uart_pa & ~0xFFFUL);
+        // l3_tables[table_idx][page_idx] = dev_attr | (uart_pa & ~0xFFFUL);
       }
     }
     //   if (mapped_bytes < TOTAL_MEM_SIZE &&

@@ -1,0 +1,33 @@
+# 编译器配置
+CROSS_COMPILE := aarch64-none-elf-
+CC := $(CROSS_COMPILE)gcc
+AS := $(CROSS_COMPILE)as
+LD := $(CROSS_COMPILE)ld
+OBJDUMP := $(CROSS_COMPILE)objdump
+
+# 编译选项
+CFLAGS := -Wall -Wextra -O0 -ffreestanding -nostdlib -fno-stack-protector -mgeneral-regs-only -fno-PIC -fno-PIE -g
+INCLUDES := -I../include -I../arch/arm64/include
+CFLAGS += $(INCLUDES)
+
+# 目标文件
+TARGET := spinlock_test
+
+# 构建规则
+all: $(TARGET).elf $(TARGET).s
+
+# 编译 C 文件生成目标文件
+$(TARGET).o: $(TARGET).c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# 链接生成 ELF 文件
+$(TARGET).elf: $(TARGET).o
+	$(LD) -nostdlib -e test_spinlock_align $< -o $@
+
+# 反汇编生成汇编代码
+$(TARGET).s: $(TARGET).elf
+	$(OBJDUMP) -D $< > $@
+
+# 清理
+clean:
+	rm -f $(TARGET).o $(TARGET).elf $(TARGET).s

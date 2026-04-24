@@ -14,7 +14,7 @@ fi
 # 编译成功，才往下走
 echo "✅ 编译成功！启动QEMU..."
 # 👇 关键：--noprofile --norc 不加载 ROS 坏配置！
-gnome-terminal --title="QEMU AArch64 调试" -- bash --noprofile --norc -c "make debug"
+gnome-terminal --title="QEMU AArch64 调试" -- bash --noprofile --norc -c "make debug -j$(nproc)"
 
 echo "✅ QEMU 启动成功"
 echo "🔌 VSCode 按 F5 连接调试"

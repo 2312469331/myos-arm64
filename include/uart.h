@@ -1,13 +1,12 @@
 #ifndef __UART_H__
 #define __UART_H__
 
-#include "types.h"
+#include <types.h>
 #include <stdint.h>
 
 // ========================= 平台配置（QEMU virt ARM） =========================
-// UART虚拟地址会在main函数中动态计算并设置
+// UART虚拟地址会在uart_init函数中使用ioremap动态映射
 extern volatile void *uart_base;
-#define UART0_BASE uart_base
 #define UART_CLOCK 24000000U     // UART 时钟频率：24MHz
 #define DEFAULT_BAUDRATE 115200U // 默认波特率
 

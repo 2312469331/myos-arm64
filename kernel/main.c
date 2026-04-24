@@ -11,6 +11,7 @@
 #include <uart.h>
 #include <vmalloc.h>
 #include <vmap.h>
+#include <io.h>
 
 // // 测试 naked 属性
 // __attribute__((naked)) void test_naked_attribute(void) {
@@ -58,14 +59,31 @@ extern void timer_irq_handler(uint32_t irq);
 void *dtb_base = NULL; // 全局变量，保存 DTB 地址
 
 void main(void *dtb) {
+    // 设置slab分配器所需的全局变量
+  extern uintptr_t slab_linear_map_base;
+  extern phys_addr_t slab_l0_table_pa;
+  get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
+  slab_l0_table_pa = get_ttbr1_pa();
+  // 线性映射基址：VA = PA + slab_linear_map_base
+  slab_linear_map_base = LINEAR_MAP_BASE;
+  buddy_init(); // 测试伙伴系统
+    // 初始化slab分配器
+  slab_init();
+  
+
   dtb_base = dtb; // 保存 DTB 地址
 
-  if (L3_TABLES_NEEDED > 0) {
-    uint64_t last_table_idx = L3_TABLES_NEEDED - 1;
-    uint64_t uart_va = VIRT_BASE + PHYS_BASE +
-                       (last_table_idx * L3_TABLE_MAP_SIZE) + (511 * 4096);
-    uart_base = (volatile void *)uart_va;
-  }
+  // 初始化vmap管理器
+  va_manager_init();
+  uart_init();
+  print_mem_usage();
+  printk("[PMM] Pages freed\n");
+
+
+
+  printk("[SLAB] Linear map base: %lx\n", slab_linear_map_base);
+  printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
+  // uart_base 现在在 uart_init 函数中通过 ioremap 动态映射
 
   printk("\n");
   printk("===============================================\n");
@@ -79,34 +97,50 @@ void main(void *dtb) {
   printk("\n");
   test_fdt();
 
-  buddy_init(); // 测试伙伴系统
   // 全面测试伙伴系统性能和完整性
   test_buddy_system();
+print_mem_usage();
 
-  printk("[PMM] Pages freed\n");
+print_mem_usage();
 
-  // 设置slab分配器所需的全局变量
-  extern uintptr_t slab_linear_map_base;
-  extern phys_addr_t slab_l0_table_pa;
-  get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
-  slab_l0_table_pa = get_ttbr1_pa();
-  // 线性映射基址：VA = PA + slab_linear_map_base
-  slab_linear_map_base = LINEAR_MAP_BASE;
 
-  printk("[SLAB] Linear map base: %lx\n", slab_linear_map_base);
-  printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
-
-  // 初始化slab分配器
-  slab_init();
-
-  // 初始化vmap管理器
-  va_manager_init();
+print_mem_usage();
 
   // 测试kmalloc功能
   test_kmalloc();
-
+print_mem_usage();
   // 测试vmap功能
   test_vmap();
+print_mem_usage();
+
+  // // 测试 ioremap 功能
+  // printk("\n[IOREMAP TEST] Testing ioremap...\n");
+  // void *ioremap_addr = ioremap(0x9000000, 4096);
+  // if (ioremap_addr) {
+  //     printk("[IOREMAP TEST] ioremap(0x9000000, 4096) = %p\n", ioremap_addr);
+      
+  //     // 向前 4 字节写入数据
+  //     uint32_t test_data = 0x12345678;
+  //     printk("[IOREMAP TEST] Writing 0x%x to %p\n", test_data, ioremap_addr);
+  //     io_write32(ioremap_addr, test_data);
+      
+  //     // 读取验证
+  //     uint32_t read_data = io_read32(ioremap_addr);
+  //     printk("[IOREMAP TEST] Read back: 0x%x\n", read_data);
+      
+  //     if (read_data == test_data) {
+  //         printk("[IOREMAP TEST] ioremap write/read test passed!\n");
+  //     } else {
+  //         printk("[IOREMAP TEST] ioremap write/read test failed!\n");
+  //     }
+      
+  //     // 解除映射
+  //     iounmap(ioremap_addr);
+  //     printk("[IOREMAP TEST] iounmap done\n");
+  // } else {
+  //     printk("[IOREMAP TEST] ioremap failed!\n");
+  // }
+print_mem_usage();
 
   // 测试 Rust 包装器
   // test_rust_wrapper();
@@ -172,9 +206,12 @@ void test_buddy_system(void) {
       free_phys_pages(orders[i], i);
     }
   }
+  print_mem_usage();
 
   // 测试2: 大量页面连续分配
   printk("\n[BUDDY TEST] Test 2: Allocate 1000 pages (order 0)\n");
+  print_mem_usage();
+  
   phys_addr_t pages[1000];
   int allocated = 0;
 
@@ -185,11 +222,13 @@ void test_buddy_system(void) {
       // 每100个页面打印一次
       if ((i + 1) % 100 == 0) {
         printk("[BUDDY TEST]  Allocated %d/1000 pages...\n", i + 1);
+        print_mem_usage();
       }
     }
   }
 
   printk("[BUDDY TEST]  Successfully allocated %d pages\n", allocated);
+  print_mem_usage();
 
   // 测试3: 检查地址范围
   printk(
@@ -207,14 +246,18 @@ void test_buddy_system(void) {
       free_phys_pages(pages[i], 0);
     }
   }
+  print_mem_usage();
 
   // 测试4: 分配和释放循环测试
   printk("\n[BUDDY TEST] Test 4: Allocate/free cycle test\n");
+  print_mem_usage();
+  
   const int CYCLES = 100;
 
   for (int cycle = 0; cycle < CYCLES; cycle++) {
     if ((cycle + 1) % 20 == 0) {
       printk("[BUDDY TEST]  Cycle %d/%d...\n", cycle + 1, CYCLES);
+      print_mem_usage();
     }
 
     // 分配随机order的页面
@@ -224,9 +267,12 @@ void test_buddy_system(void) {
       free_phys_pages(page, order);
     }
   }
+  print_mem_usage();
 
   // 测试5: 测试分配30个order10
   printk("\n[BUDDY TEST] Test 5: Allocate 30 order10 blocks (4MB each)\n");
+  print_mem_usage();
+  
   phys_addr_t order10_pages[30];
   int order10_allocated = 0;
 
@@ -236,6 +282,9 @@ void test_buddy_system(void) {
       order10_allocated++;
       printk("[BUDDY TEST]  Order10 %d allocated at %p\n", i + 1,
              order10_pages[i]);
+      if (order10_allocated % 5 == 0) {
+        print_mem_usage();
+      }
     } else {
       printk("[BUDDY TEST]  Order10 %d allocation failed\n", i + 1);
       break;
@@ -244,25 +293,30 @@ void test_buddy_system(void) {
 
   printk("[BUDDY TEST]  Successfully allocated %d/30 order10 blocks\n",
          order10_allocated);
+  print_mem_usage();
 
   // 释放这些页面
   for (int i = 0; i < order10_allocated; i++) {
     free_phys_pages(order10_pages[i], 10);
   }
   printk("[BUDDY TEST]  All order10 blocks freed\n");
+  print_mem_usage();
 
   // 测试6: 测试边界情况
   printk("\n[BUDDY TEST] Test 6: Boundary cases\n");
+  print_mem_usage();
 
   // 尝试分配超过可用内存的页面
   phys_addr_t big_page = alloc_phys_pages(20, GFP_KERNEL); // 这应该会失败
   if (!big_page) {
     printk("[BUDDY TEST]  Expected failure: order 20 allocation failed\n");
   }
+  print_mem_usage();
 
   // 测试空指针释放
   free_phys_pages(0, 0);
   printk("[BUDDY TEST]  NULL pointer free handled correctly\n");
+  print_mem_usage();
 
   printk("\n[BUDDY TEST] All tests completed!\n");
 }
@@ -520,14 +574,20 @@ static void parse_node_properties(void *fdt, int node_offset) {
         }
       }
     } else if (strcmp(prop_name, "reg") == 0) {
-      // reg 属性是地址和大小的列表
+      // reg 属性是地址和大小的列表（每个地址/大小是 2 个 32 位值）
       printk("[FDT TEST]       Reg: ");
-      for (int i = 0; i < prop_len; i += 8) {
-        if (i + 8 <= prop_len) {
-          uint64_t addr =
-              fdt64_to_cpu(*(const fdt64_t *)((const char *)prop_value + i));
-          uint64_t size = fdt64_to_cpu(
-              *(const fdt64_t *)((const char *)prop_value + i + 8));
+      for (int i = 0; i < prop_len; i += 16) {
+        if (i + 16 <= prop_len) {
+          uint32_t addr_hi =
+              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i));
+          uint32_t addr_lo =
+              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i + 4));
+          uint32_t size_hi =
+              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i + 8));
+          uint32_t size_lo =
+              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i + 12));
+          uint64_t addr = ((uint64_t)addr_hi << 32) | addr_lo;
+          uint64_t size = ((uint64_t)size_hi << 32) | size_lo;
           printk("0x%lx (0x%lx) ", addr, size);
         }
       }
@@ -552,6 +612,17 @@ static void parse_node_properties(void *fdt, int node_offset) {
         }
         printk("\n");
       }
+    } else if (strcmp(prop_name, "clocks") == 0) {
+      // clocks 属性是时钟引用的列表，每个引用是一个 32 位整数
+      printk("[FDT TEST]       Clocks: ");
+      for (int i = 0; i < prop_len; i += 4) {
+        if (i + 4 <= prop_len) {
+          uint32_t clock =
+              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i));
+          printk("0x%x ", clock);
+        }
+      }
+      printk("\n");
     } else if (prop_len == 4) {
       // 32 位整数属性
       uint32_t value = fdt32_to_cpu(*(const fdt32_t *)prop_value);

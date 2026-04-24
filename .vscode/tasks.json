@@ -30,7 +30,7 @@
                 {
             "label": "make clean + compiledb",
             "type": "shell",
-            "command": "make clean && compiledb.exe make",
+            "command": "make clean && compiledb.exe make -j$(nproc)",
             "group": {
                 "kind": "build",
                 "isDefault": true

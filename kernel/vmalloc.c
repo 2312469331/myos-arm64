@@ -132,7 +132,7 @@ void *ioremap(uint64_t phys_addr, unsigned long size) {
     unsigned long nr_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
     uint64_t va_start = (uint64_t)addr;
     for (unsigned long i = 0; i < nr_pages; i++) {
-        map_kernel_page(va_start + i * PAGE_SIZE, phys_addr + i * PAGE_SIZE, PAGE_DEVICE);
+        map_kernel_page(va_start + i * PAGE_SIZE, phys_addr + i * PAGE_SIZE, GFP_KERNEL);
     }
 
     // ioremap 不需要 vm_struct 记录物理页，因为物理页不是们分配的，iounmap 时不能 free
@@ -142,10 +142,18 @@ void *ioremap(uint64_t phys_addr, unsigned long size) {
 
 void iounmap(const void *addr) {
     if (!addr) return;
-    // 简化处理：找到对应的 vmap_area 算出大小，拆页表，然后 va_free
-    // 实际上需要根据 addr 算出大小，或者把 ioremap 的 size 也记在某个地方
-    // 这里仅演示核心逻辑
-    // unmap_kernel_page(...);
-    // va_free(addr);
+    
+    // 简化处理：假设映射大小为 4096 字节（1 页）
+    unsigned long size = 4096;
+    unsigned long nr_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    uint64_t va_start = (uint64_t)addr;
+    
+    // 解除页表映射
+    for (unsigned long i = 0; i < nr_pages; i++) {
+        unmap_kernel_page(va_start + i * PAGE_SIZE);
+    }
+    
+    // 释放虚拟地址空间
+    va_free((void *)addr);
 }
 
