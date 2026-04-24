@@ -1,5 +1,5 @@
 #include "gic.h"
-#include "io.h" // 引入你封装的IO API
+#include "io.h" // 引入封装的IO API
 
 void gic_init(void) {
   // 1. 初始化 GICD 分发器

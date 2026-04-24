@@ -86,7 +86,7 @@ static struct vmap_area *va_find_prev_free(uint64_t addr) {
     struct vmap_area *prev = NULL;
     list_for_each_entry(va, &vm.free_list, free_list) {
         if (va->va_end <= addr) prev = va;
-        else break; // 遇到地址比我们大的，说明后面的都不可能是前驱了
+        else break; // 遇到地址比们大的，说明后面的都不可能是前驱了
     }
     return prev;
 }

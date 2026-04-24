@@ -20,7 +20,7 @@
             "name": "QEMU 调试（可重启/停止）",
             "type": "lldb",
             "request": "attach",
-            "program": "${workspaceFolder}/build/kernel.elf", // 你的内核 ELF 文件
+            "program": "${workspaceFolder}/build/kernel.elf", // 内核 ELF 文件
             "targetCreateCommands": ["target create ${workspaceFolder}/build/kernel.elf"],
             "processCreateCommands": ["gdb-remote localhost:1234"], // QEMU gdbstub 端口
             "preLaunchTask": "ubuntu启动 QEMU 调试服务器",

@@ -21,7 +21,7 @@ void cntp_set_tval(uint64_t tval) {
 
 /*
  * 定时器初始化：只做 CNTP 本身
- * GIC 中断使能你自己在外部调用你的 gic_enable_irq(TIMER_IRQ_NUM)
+ * GIC 中断使能自己在外部调用 gic_enable_irq(TIMER_IRQ_NUM)
  */
 void timer_init(void) {
   cntp_set_tval(TIMER_LOAD_VAL);

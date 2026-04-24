@@ -24,11 +24,11 @@ extern volatile void *uart_base;
 #define UART_ICR 0x044     // 中断清除寄存器
 
 // ==================== 寄存器偏移（PL011 手册 Table 3-1） ====================
-// ... 你现有的定义保持不变 ...
+// ... 现有的定义保持不变 ...
 #define UART_IFLS 0x034 // 中断FIFO阈值选择寄存器（新增）
 #define UART_RIS 0x03C  // 原始中断状态寄存器（新增）
 #define UART_MIS 0x040  // 屏蔽后中断状态寄存器（新增）
-// ... 你现有的 UART_IMSC / UART_ICR 保持不变 ...
+// ... 现有的 UART_IMSC / UART_ICR 保持不变 ...
 // ========================= 寄存器关键位定义 =========================
 // FR 寄存器
 #define UART_FR_TXFE (1U << 7) // 发送FIFO空

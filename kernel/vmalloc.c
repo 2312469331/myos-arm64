@@ -1,5 +1,5 @@
 #include <vmalloc.h>
-#include <slab.h>      // 假设你有 kmalloc/kfree
+#include <slab.h>      // 假设有 kmalloc/kfree
 #include <printk.h>
 #include <libc.h>
 #include <mm_defs.h>
@@ -29,7 +29,7 @@ static void *__vmalloc_node_range(unsigned long size, unsigned long align,
     if (!vm || !pages_array) goto fail;
 
     for (i = 0; i < nr_pages; i++) {
-        // 调用你写好的物理页分配器
+        // 调用写好的物理页分配器
         struct page *page = alloc_page(GFP_KERNEL); 
         if (!page) goto fail_cleanup_pages;
         pages_array[i] = (void *)page; // 直接存储page指针
@@ -135,7 +135,7 @@ void *ioremap(uint64_t phys_addr, unsigned long size) {
         map_kernel_page(va_start + i * PAGE_SIZE, phys_addr + i * PAGE_SIZE, PAGE_DEVICE);
     }
 
-    // ioremap 不需要 vm_struct 记录物理页，因为物理页不是我们分配的，iounmap 时不能 free
+    // ioremap 不需要 vm_struct 记录物理页，因为物理页不是们分配的，iounmap 时不能 free
     // (为了严谨，其实 Linux 也是有单独的 vmap 管理机制来追踪 ioremap，但最简实现可以先这样)
     return addr;
 }
@@ -143,7 +143,7 @@ void *ioremap(uint64_t phys_addr, unsigned long size) {
 void iounmap(const void *addr) {
     if (!addr) return;
     // 简化处理：找到对应的 vmap_area 算出大小，拆页表，然后 va_free
-    // 实际上你需要根据 addr 算出大小，或者把 ioremap 的 size 也记在某个地方
+    // 实际上需要根据 addr 算出大小，或者把 ioremap 的 size 也记在某个地方
     // 这里仅演示核心逻辑
     // unmap_kernel_page(...);
     // va_free(addr);

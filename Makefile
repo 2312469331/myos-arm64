@@ -6,7 +6,7 @@ $(info SRC_ASM_CONFIG = $(SRC_ASM_CONFIG))
 
 # qemu配置
 
-# 编译器/工具配置（沿用你现有配置）
+# 编译器/工具配置（沿用现有配置）
 QEMU := qemu-system-aarch64
 QEMU_MACHINE := virt,secure=on,virtualization=on
 QEMU_CPU := cortex-a53
@@ -134,6 +134,7 @@ endif
                 kernel/sync/rwsem.c \
                 kernel/sync/wait.c \
                 kernel/sync/semaphore.c \
+                kernel/rust_test.c \
                 $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # ARM64 架构特定源文件
@@ -147,6 +148,8 @@ endif
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
           $(patsubst %.c,build/%.o,$(SRC_C))
+# 👇 新增：Rust 静态库
+RUST_LIB = rust/wrapper/target/aarch64-unknown-none/debug/libmyos_wrapper.a
 # 👇 新增：提取所有 .o 文件的目录，并去重
 OBJ_DIRS := $(sort $(dir $(OBJ)))
 TARGET  = build/kernel
@@ -170,7 +173,7 @@ build/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(if $(findstring arch/arm64/boot/,$<),$(CC) $(BOOT_CFLAGS) -c $< -o $@,$(CC) $(CFLAGS) -c $< -o $@)
 # 链接 ELF（仅链接 .o 文件，无源码！）
-$(TARGET).elf: $(OBJ)
+$(TARGET).elf: $(OBJ) $(RUST_LIB)
 	$(LD) $(LDFLAGS) $^ -o $@
 
 # 生成 IMG 镜像

@@ -15,7 +15,7 @@
 
 /*
  * 纯基础实现，元数据池固定大小。
- * 如果你觉得不够，可以调大。
+ * 如果觉得不够，可以调大。
  */
 #define MAX_SLAB_PAGES 4096
 #define MAX_LARGE_ALLOCS 2048
