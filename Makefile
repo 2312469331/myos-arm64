@@ -134,7 +134,6 @@ endif
                 kernel/sync/rwsem.c \
                 kernel/sync/wait.c \
                 kernel/sync/semaphore.c \
-                kernel/rust_test.c \
                 $(SRC_C_CONFIG)       # 来自 config.mk 的条件C文件
 
 # ARM64 架构特定源文件
@@ -166,6 +165,7 @@ build_dir:
 
 # 汇编文件编译
 build/%.o: %.S
+	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
 # C 文件编译

@@ -116,7 +116,7 @@ void va_manager_init(void) {
     init_area->va_end = VMALLOC_END;
     init_area->flags = 0;
     va_insert_free(init_area);
-    printk("[VMAP] vmap manager initialized: %lx - %lx\n", VMALLOC_START, VMALLOC_END);
+    // printk("[VMAP] vmap manager initialized: %lx - %lx\n", VMALLOC_START, VMALLOC_END);
 }
 
 void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
@@ -130,7 +130,7 @@ void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
     struct vmap_area *va = va_find_best_fit(size);
     if (!va) {
         spin_unlock_irqrestore(&vm.lock, irq_flags);
-        printk("[VMAP] va_alloc failed: no suitable free area for size %lu\n", size);
+        // printk("[VMAP] va_alloc failed: no suitable free area for size %lu\n", size);
         return NULL;
     }
     
@@ -183,7 +183,7 @@ void va_free(void *addr) {
     struct vmap_area *va = va_find_by_addr((uint64_t)addr);
     if (!va) {
         spin_unlock_irqrestore(&vm.lock, irq_flags);
-        printk("[VMAP] va_free failed: address %p not found\n", addr);
+        // printk("[VMAP] va_free failed: address %p not found\n", addr);
         return;
     }
     

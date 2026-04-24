@@ -18,6 +18,7 @@ size_t strnlen(const char *s, size_t maxlen); // 字符串长度（带限制）
 int strcmp(const char *s1, const char *s2);   // 字符串比较
 char *strchr(const char *s, int c);    // 正向查找字符
 char *strrchr(const char *s, int c);   // 反向查找字符
+char *strstr(const char *s1, const char *s2); // 查找子字符串
 char *strcpy(char *dst, const char *src);     // 字符串复制
 char *strncpy(char *dst, const char *src, size_t n); // 字符串复制（带限制）
 

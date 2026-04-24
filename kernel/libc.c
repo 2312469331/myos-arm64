@@ -86,3 +86,23 @@ int strcmp(const char *s1, const char *s2) {
   return (unsigned char)*s1 - (unsigned char)*s2;
 }
 
+// 新增：strstr 实现（查找子字符串）
+char *strstr(const char *s1, const char *s2) {
+  if (!*s2) return (char *)s1;
+  
+  while (*s1) {
+    const char *p1 = s1;
+    const char *p2 = s2;
+    
+    while (*p1 && *p2 && *p1 == *p2) {
+      p1++;
+      p2++;
+    }
+    
+    if (!*p2) return (char *)s1;
+    s1++;
+  }
+  
+  return NULL;
+}
+
