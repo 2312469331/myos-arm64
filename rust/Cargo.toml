@@ -1,0 +1,20 @@
+[package]
+name = "rust_upper"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+# 必须是 staticlib，这样 makefile 才能用 ld 把它和 C 的 .o 链在一起
+crate-type = ["staticlib"] 
+test = false
+bench = false
+
+[profile.dev]
+panic = "abort"
+# 裸机强烈建议开优化！防止内联展开导致栈溢出或者未被优化的死循环消耗资源
+opt-level = 1 
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+
