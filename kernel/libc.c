@@ -106,3 +106,23 @@ char *strstr(const char *s1, const char *s2) {
   return NULL;
 }
 
+// Rust FFI 兼容层
+#include <printk.h>
+#include <slab.h>
+
+// 用于 Rust 侧打印字符串
+void c_print_str(const char *s) {
+    printk("%s", s);
+}
+
+// 用于 Rust 侧内存分配
+void *rust_kmalloc(size_t size) {
+    return NULL;
+    return kmalloc(size, GFP_KERNEL);
+}
+
+// 用于 Rust 侧内存释放
+void rust_kfree(void *ptr, size_t size) {
+    kfree(ptr);
+}
+

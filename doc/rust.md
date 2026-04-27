@@ -717,3 +717,44 @@ Rust 编译 → .a 静态库
 
 要直接给这套**最终内核库模板**吗？
 
+---
+
+# 内存分配错误处理
+
+在 Rust stable + no_std + alloc 环境下，内存分配失败的处理方式如下：
+
+## 处理流程
+1. 当内存分配失败时，`GlobalAlloc::alloc` 方法会返回 `null` 指针
+2. 我们应该调用 `core::alloc::handle_alloc_error` 函数来处理这个错误
+3. 在 no_std 环境下，`handle_alloc_error` 会自动调用 `panic!`
+4. 然后进入我们定义的 `#[panic_handler]` 函数
+
+## 参考文档
+- [handle_alloc_error - Rust](https://doc.rust-lang.org/stable/alloc/alloc/fn.handle_alloc_error.html)
+
+## 示例代码
+```rust
+use core::alloc::{GlobalAlloc, Layout, handle_alloc_error};
+
+pub struct KernelAllocator;
+
+unsafe impl GlobalAlloc for KernelAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let ptr = crate::ffi::rust_kmalloc(layout.size());
+        if ptr.is_null() {
+            handle_alloc_error(layout);
+        }
+        ptr
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        crate::ffi::rust_kfree(ptr, layout.size());
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: KernelAllocator = KernelAllocator;
+```
+
+这样，当内存分配失败时，会自动触发 panic，进入我们的 panic 处理函数，无需额外的 `#[alloc_error_handler]` 函数。
+

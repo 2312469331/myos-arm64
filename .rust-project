@@ -1,11 +1,11 @@
 {
   "roots": [
-    "rust/wrapper"
+    "rust/"
   ],
   "crates": [
     {
-      "root_module": "rust/wrapper/src/lib.rs",
-      "edition": "2021",
+      "root_module": "rust/src/lib.rs",
+      "edition": "2024",
       "deps": [],
       "target": "aarch64-unknown-none"
     }

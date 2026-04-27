@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "uart.h"
+#include <sync/spinlock.h>
+
+static spinlock_t printk_lock = SPIN_LOCK_UNLOCKED;
 
 #define PF_SIGNED    (1 << 0)
 #define PF_HEX_UPPER (1 << 1)
@@ -83,6 +86,9 @@ static void print_num(uint64_t num, int base, int width, int flags) {
 }
 
 static void vprintk(const char *fmt, va_list args) {
+    unsigned long flags;
+    spin_lock_irqsave(&printk_lock, flags);
+    
     while (*fmt != '\0') {
         if (*fmt == '%') {
             fmt++;
@@ -203,6 +209,8 @@ static void vprintk(const char *fmt, va_list args) {
         }
         fmt++;
     }
+    
+    spin_unlock_irqrestore(&printk_lock, flags);
 }
 
 void printk(const char *fmt, ...) {

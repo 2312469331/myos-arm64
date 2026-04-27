@@ -50,11 +50,9 @@ void test_buddy_system(void);
 void test_kmalloc(void);
 void test_vmap(void);
 void test_fdt(void);
-// void test_rust_wrapper(void);
-// void gic_test(void);
-// uart_irq_callback 已在handler.c文件实现，添加 extern 声明（根据实际参数修改）
-extern void uart_irq_callback(uint32_t irq);
-extern void timer_irq_handler(uint32_t irq);
+extern void rust_main(void);
+void uart_irq_callback(uint32_t irq);
+void timer_irq_handler(uint32_t irq);
 
 void *dtb_base = NULL; // 全局变量，保存 DTB 地址
 
@@ -109,37 +107,8 @@ void main(void *dtb) {
   test_vmap();
   print_mem_usage();
 
-  // // 测试 ioremap 功能
-  // printk("\n[IOREMAP TEST] Testing ioremap...\n");
-  // void *ioremap_addr = ioremap(0x9000000, 4096);
-  // if (ioremap_addr) {
-  //     printk("[IOREMAP TEST] ioremap(0x9000000, 4096) = %p\n", ioremap_addr);
-
-  //     // 向前 4 字节写入数据
-  //     uint32_t test_data = 0x12345678;
-  //     printk("[IOREMAP TEST] Writing 0x%x to %p\n", test_data, ioremap_addr);
-  //     io_write32(ioremap_addr, test_data);
-
-  //     // 读取验证
-  //     uint32_t read_data = io_read32(ioremap_addr);
-  //     printk("[IOREMAP TEST] Read back: 0x%x\n", read_data);
-
-  //     if (read_data == test_data) {
-  //         printk("[IOREMAP TEST] ioremap write/read test passed!\n");
-  //     } else {
-  //         printk("[IOREMAP TEST] ioremap write/read test failed!\n");
-  //     }
-
-  //     // 解除映射
-  //     iounmap(ioremap_addr);
-  //     printk("[IOREMAP TEST] iounmap done\n");
-  // } else {
-  //     printk("[IOREMAP TEST] ioremap failed!\n");
-  // }
-  print_mem_usage();
-
   // 测试 Rust 包装器
-  // test_rust_wrapper();
+  rust_main();
 
   // 测试 naked 属性（AArch64 不支持）
   // test_naked_attribute();

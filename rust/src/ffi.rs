@@ -18,10 +18,10 @@ unsafe extern "C" {
     // C 侧实现：void c_print_str(const char *s);
     pub fn c_print_str(s: *const core::ffi::c_char);
 
-    // C 侧实现：void *kmalloc(size_t size);
-    pub fn kmalloc(size: usize) -> *mut u8;
+    // C 侧实现：void *rust_kmalloc(size_t size);
+    pub fn rust_kmalloc(size: usize) -> *mut u8;
 
-    // C 侧实现：void kfree(void *ptr, size_t size);
-    pub fn kfree(ptr: *mut u8, size: usize);
+    // C 侧实现：void rust_kfree(void *ptr, size_t size);
+    pub fn rust_kfree(ptr: *mut u8, size: usize);
 }
 
