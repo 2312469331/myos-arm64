@@ -3,6 +3,9 @@
 #include "types.h"
 #include "mmu.h"
 #include "pmm.h"
+#include <sync/spinlock.h>
+
+static spinlock_t slab_lock = SPIN_LOCK_UNLOCKED;
 
 /* =========================================================
  * slab 元数据
@@ -361,6 +364,8 @@ void slab_init(void) {
 
 void *kmalloc(size_t size, gfp_t flags) {
   struct slab_cache *cache;
+  void *result;
+  unsigned long irq_flags;
 
   if (!size)
     return NULL;
@@ -368,24 +373,34 @@ void *kmalloc(size_t size, gfp_t flags) {
   if (size > SZ_4M)
     return NULL;
 
+  spin_lock_irqsave(&slab_lock, irq_flags);
+
   if (size <= SZ_8K) {
     cache = find_slab_cache(size);
-    if (!cache)
+    if (!cache) {
+      spin_unlock_irqrestore(&slab_lock, irq_flags);
       return NULL;
-    return slab_alloc(cache, flags);
+    }
+    result = slab_alloc(cache, flags);
+  } else {
+    result = large_alloc(size, flags);
   }
 
-  return large_alloc(size, flags);
+  spin_unlock_irqrestore(&slab_lock, irq_flags);
+  return result;
 }
 
 void kfree(void *va) {
   struct large_alloc *la;
+  unsigned long irq_flags;
 
   if (!va)
     return;
 
   if (!va_in_linear_map(va))
     return;
+
+  spin_lock_irqsave(&slab_lock, irq_flags);
 
   /*
    * 先判断 direct buddy alloc
@@ -394,6 +409,7 @@ void kfree(void *va) {
   la = large_find_by_va(va);
   if (la) {
     large_free(la);
+    spin_unlock_irqrestore(&slab_lock, irq_flags);
     return;
   }
 
@@ -401,4 +417,6 @@ void kfree(void *va) {
    * 否则按 slab 对象处理
    */
   slab_free_obj(va);
+
+  spin_unlock_irqrestore(&slab_lock, irq_flags);
 }

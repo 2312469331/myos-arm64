@@ -1,9 +1,12 @@
-#include "exception.h"
-#include "gic.h"
-#include "io.h" // 确保包含 io.h
-#include "irq.h"
-#include "printk.h"
-#include "uart.h" // 串口打印函数
+#include <exception.h>
+#include <gic.h>
+#include <io.h> // 确保包含 io.h
+#include <irq.h>
+#include <printk.h>
+#include <uart.h> // 串口打印函数
+#include <sync/spinlock.h>
+#include <types.h>
+static spinlock_t irq_table_lock = SPIN_LOCK_UNLOCKED;
 
 // ==============================
 // AArch64 ESR_EL1 异常类型宏
@@ -55,18 +58,21 @@ void c_exception_handler(void) {
   uint64_t far = read_far_el1();   // 数据/指令中止的地址
   uint64_t spsr = read_spsr_el1(); // 进入异常前的 PSTATE
   uint64_t ec = (esr & ESR_ELx_EC_MASK) >> ESR_ELx_EC_SHIFT;
-  // 用 printk 打印所有关键信息
-  printk("[Exception Handler] ELR (Fault PC): %lx\n", elr);
-  printk("[Exception Handler] FAR (Fault Address): %lx\n", far);
-  printk("[Exception Handler] ESR (Exception Syndrome): %lx\n", esr);
-  printk("[Exception Handler] ESR EC (Exception Class): %lx\n", ec);
-  printk("[Exception Handler] SPSR (PSTATE): %lx\n", spsr);
+  
+  // 打印异常基本信息
+  printk("[Exception] Exception occurred:\n");
+  printk("[Exception] ELR (Fault PC): 0x%lx\n", elr);
+  printk("[Exception] FAR (Fault Address): 0x%lx\n", far);
+  printk("[Exception] ESR (Exception Syndrome): 0x%lx\n", esr);
+  printk("[Exception] ESR EC (Exception Class): 0x%lx\n", ec);
+  printk("[Exception] SPSR (PSTATE): 0x%lx\n", spsr);
 
   switch (ec) {
   // ======================
   // 1. IRQ 中断：直接跳去处理函数
   // ======================
   case ESR_EC_IRQ:
+    printk("[Exception] Handling IRQ interrupt\n");
     el1_irq_handler();
     break;
 
@@ -74,61 +80,134 @@ void c_exception_handler(void) {
   // 2. FIQ（快速中断，很少用）
   // ======================
   case ESR_EC_FIQ:
+    printk("[Exception] FIQ interrupt received\n");
     // 可以自己实现 el1_fiq_handler()
-    while (1)
-      ;
+    panic("FIQ interrupt not handled");
     break;
 
   // ======================
   // 3. 未定义指令
   // ======================
   case ESR_EC_UNDEF_INSTR:
-    // 例：串口打印 "Undefined instruction at PC: 0x..."
-    while (1)
-      ;
+    printk("[Exception] Undefined instruction at PC: 0x%lx\n", elr);
+    panic("Undefined instruction");
     break;
 
   // ======================
   // 4. SVC 系统调用（AArch64）
   // ======================
   case ESR_EC_SVC_AARCH64:
-    // 解析系统调用号、参数
-    while (1)
-      ;
+    {
+    // 解析系统调用号
+    uint32_t svc_number = esr & 0xFFFF;
+    printk("[Exception] SVC system call #%u at PC: 0x%lx\n", svc_number, elr);
+    // 这里可以添加系统调用处理逻辑
+    panic("System call not implemented");
+    }
     break;
 
   // ======================
   // 5. 指令取指异常（PC 指向非法内存）
   // ======================
   case ESR_EC_IABORT:
-    // 错误地址 = elr（就是出错的 PC）
-    while (1)
-      ;
+    {
+    printk("[Exception] Instruction abort at PC: 0x%lx\n", elr);
+    printk("[Exception] Fault address: 0x%lx\n", far);
+    // 解析 ESR 中的详细错误信息
+    uint64_t iss = esr & 0x1FFFFFF;
+    printk("[Exception] ISS (Instruction Specific Syndrome): 0x%lx\n", iss);
+    panic("Instruction abort");
+    }
     break;
 
   // ======================
   // 6. 数据访问异常（空指针、缺页、越权访问）
   // ======================
   case ESR_EC_DABORT:
-    // 错误地址 = far
-    while (1)
-      ;
+    {
+    printk("[Exception] Data abort at PC: 0x%lx\n", elr);
+    printk("[Exception] Fault address: 0x%lx\n", far);
+    // 解析 ESR 中的详细错误信息
+    uint64_t iss = esr & 0x1FFFFFF;
+    printk("[Exception] ISS (Instruction Specific Syndrome): 0x%lx\n", iss);
+    
+    // 尝试识别错误类型
+    uint8_t dfsc = (iss >> 0) & 0x3F; // Data Fault Status Code
+    printk("[Exception] DFSC (Data Fault Status Code): 0x%x\n", dfsc);
+    
+    switch (dfsc) {
+    case 0x00:
+      printk("[Exception] Address size fault\n");
+      break;
+    case 0x01:
+      printk("[Exception] Translation fault - Level 0\n");
+      break;
+    case 0x02:
+      printk("[Exception] Translation fault - Level 1\n");
+      break;
+    case 0x03:
+      printk("[Exception] Translation fault - Level 2\n");
+      break;
+    case 0x04:
+      printk("[Exception] Translation fault - Level 3\n");
+      break;
+    case 0x05:
+      printk("[Exception] Access flag fault - Level 0\n");
+      break;
+    case 0x06:
+      printk("[Exception] Access flag fault - Level 1\n");
+      break;
+    case 0x07:
+      printk("[Exception] Access flag fault - Level 2\n");
+      break;
+    case 0x08:
+      printk("[Exception] Access flag fault - Level 3\n");
+      break;
+    case 0x09:
+      printk("[Exception] Permission fault - Level 0\n");
+      break;
+    case 0x0A:
+      printk("[Exception] Permission fault - Level 1\n");
+      break;
+    case 0x0B:
+      printk("[Exception] Permission fault - Level 2\n");
+      break;
+    case 0x0C:
+      printk("[Exception] Permission fault - Level 3\n");
+      break;
+    case 0x0D:
+      printk("[Exception] Synchronous external abort\n");
+      break;
+    case 0x0E:
+      printk("[Exception] Synchronous parity error\n");
+      break;
+    case 0x0F:
+      printk("[Exception] Synchronous ECC error\n");
+      break;
+    default:
+      printk("[Exception] Unknown data fault\n");
+      break;
+    }
+    
+    panic("Data abort");
+    }
     break;
 
   // ======================
   // 7. SError 硬件/总线错误
   // ======================
   case ESR_EC_SERROR:
-    while (1)
-      ;
+    printk("[Exception] SError hardware/bus error\n");
+    printk("[Exception] ESR: 0x%lx\n", esr);
+    panic("SError");
     break;
 
   // ======================
   // 其他未知异常
   // ======================
   default:
-    while (1)
-      ;
+    printk("[Exception] Unknown exception (EC: 0x%lx)\n", ec);
+    panic("Unknown exception");
     break;
   }
 }
@@ -137,6 +216,9 @@ static irq_handler_t irq_table[1024] = {NULL};
 
 // 注册中断回调
 void irq_register(uint32_t irq, irq_handler_t handler, const char *name) {
+  unsigned long flags;
+  spin_lock_irqsave(&irq_table_lock, flags);
+  
   if (irq < 1024 && handler) {
     irq_table[irq] = handler;
     gic_enable_irq(irq);
@@ -144,6 +226,8 @@ void irq_register(uint32_t irq, irq_handler_t handler, const char *name) {
     uart_puts(name);
     uart_puts("\n");
   }
+  
+  spin_unlock_irqrestore(&irq_table_lock, flags);
 }
 
 // EL1同步异常处理（核心：处理对齐错误）
@@ -175,8 +259,15 @@ void el1_irq_handler() {
   uint32_t irq_num = iar & 0x3FF; // 提取中断号
 
   // 调用注册的回调函数
-  if (irq_num < 1024 && irq_table[irq_num]) {
-    irq_table[irq_num](irq_num);
+  if (irq_num < 1024) {
+    unsigned long flags;
+    spin_lock_irqsave(&irq_table_lock, flags);
+    irq_handler_t handler = irq_table[irq_num];
+    spin_unlock_irqrestore(&irq_table_lock, flags);
+    
+    if (handler) {
+      handler(irq_num);
+    }
   }
 
   io_write32((volatile void *)GICC_EOIR, iar);
@@ -185,34 +276,22 @@ void el1_irq_handler() {
 // 规范的UART中断回调示例（以UART0为例）
 // 注意：中断号要和实际硬件匹配（QEMU virt平台 UART0中断号通常是33）
 __attribute__((weak)) void uart_irq_callback(uint32_t irq) {
-  printk("%s", "sbgxr????");
   // 1. 标记参数（消除警告）
   (void)irq;
-  // 改造后（使用 GIC 上层 API，更规范）
-  uint32_t irq_num = gic_ack_irq(); // 应答中断
-  // ... 处理 UART 数据 ...
-  gic_eoi_irq(irq_num); // 结束中断
-
+  
   // 3. 检查UART接收FIFO是否有数据（非阻塞）
   if (!uart_rx_ready()) {
     return; // 无数据直接返回，不浪费中断时间
   }
+  
   // 4. 非阻塞读+错误处理（规范）
   uart_error_t err;
   char ch;
-  uart_getc_nonblock(&ch, &err); // 现在 &ch 是 char*，和函数参数匹配
-  if (err != UART_ERR_NONE) {
-    // p
+  if (uart_getc_nonblock(&ch, &err) && err == UART_ERR_NONE) {
+    // 5. 回显数据（仅做业务处理，快速退出）
+    uart_putc(ch);
+  } else if (err != UART_ERR_NONE) {
     uart_clear_error(); // 清除错误标志，避免卡死
-    return;
-  }
-  // 5. 回显数据（仅做业务处理，快速退出）
-  // 修正后（正确）
-  uart_getc_nonblock(&ch, &err); // 现在 &ch 是 char*，和函数参数匹配
-  if (err != UART_ERR_NONE) {
-    // p
-    uart_clear_error(); // 清除错误标志，避免卡死
-    return;
   }
 }
 /*
