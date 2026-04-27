@@ -1,6 +1,7 @@
 #include <bootc.h>
 #include <exception.h>
 #include <gic.h>
+#include <io.h>
 #include <irq.h>
 #include <libc.h>
 #include <libfdt.h>
@@ -11,7 +12,6 @@
 #include <uart.h>
 #include <vmalloc.h>
 #include <vmap.h>
-#include <io.h>
 
 // // 测试 naked 属性
 // __attribute__((naked)) void test_naked_attribute(void) {
@@ -41,7 +41,7 @@ extern uint64_t get_ttbr1_el1(void);
 extern uintptr_t __boot_phys_base; // 从 boot 段 boot 段物理基址
 void print_mem_usage(void);
 // 计算函数物理地址并调用
-uintptr_t func_pa =  (uintptr_t)get_ttbr1_el1; // 物理地址 0x4020072c
+uintptr_t func_pa = (uintptr_t)get_ttbr1_el1; // 物理地址 0x4020072c
 
 // ? 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
@@ -59,7 +59,7 @@ extern void timer_irq_handler(uint32_t irq);
 void *dtb_base = NULL; // 全局变量，保存 DTB 地址
 
 void main(void *dtb) {
-    // 设置slab分配器所需的全局变量
+  // 设置slab分配器所需的全局变量
   extern uintptr_t slab_linear_map_base;
   extern phys_addr_t slab_l0_table_pa;
   get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
@@ -67,9 +67,8 @@ void main(void *dtb) {
   // 线性映射基址：VA = PA + slab_linear_map_base
   slab_linear_map_base = LINEAR_MAP_BASE;
   buddy_init(); // 测试伙伴系统
-    // 初始化slab分配器
+                // 初始化slab分配器
   slab_init();
-  
 
   dtb_base = dtb; // 保存 DTB 地址
 
@@ -78,8 +77,6 @@ void main(void *dtb) {
   uart_init();
   print_mem_usage();
   printk("[PMM] Pages freed\n");
-
-
 
   printk("[SLAB] Linear map base: %lx\n", slab_linear_map_base);
   printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
@@ -99,48 +96,47 @@ void main(void *dtb) {
 
   // 全面测试伙伴系统性能和完整性
   test_buddy_system();
-print_mem_usage();
+  print_mem_usage();
 
-print_mem_usage();
+  print_mem_usage();
 
-
-print_mem_usage();
+  print_mem_usage();
 
   // 测试kmalloc功能
   test_kmalloc();
-print_mem_usage();
+  print_mem_usage();
   // 测试vmap功能
   test_vmap();
-print_mem_usage();
+  print_mem_usage();
 
   // // 测试 ioremap 功能
   // printk("\n[IOREMAP TEST] Testing ioremap...\n");
   // void *ioremap_addr = ioremap(0x9000000, 4096);
   // if (ioremap_addr) {
   //     printk("[IOREMAP TEST] ioremap(0x9000000, 4096) = %p\n", ioremap_addr);
-      
+
   //     // 向前 4 字节写入数据
   //     uint32_t test_data = 0x12345678;
   //     printk("[IOREMAP TEST] Writing 0x%x to %p\n", test_data, ioremap_addr);
   //     io_write32(ioremap_addr, test_data);
-      
+
   //     // 读取验证
   //     uint32_t read_data = io_read32(ioremap_addr);
   //     printk("[IOREMAP TEST] Read back: 0x%x\n", read_data);
-      
+
   //     if (read_data == test_data) {
   //         printk("[IOREMAP TEST] ioremap write/read test passed!\n");
   //     } else {
   //         printk("[IOREMAP TEST] ioremap write/read test failed!\n");
   //     }
-      
+
   //     // 解除映射
   //     iounmap(ioremap_addr);
   //     printk("[IOREMAP TEST] iounmap done\n");
   // } else {
   //     printk("[IOREMAP TEST] ioremap failed!\n");
   // }
-print_mem_usage();
+  print_mem_usage();
 
   // 测试 Rust 包装器
   // test_rust_wrapper();
@@ -159,26 +155,26 @@ print_mem_usage();
 void test_builtin_asm(void) {
   char src[100] = "Hello World";
   char dst1[100], dst2[100], dst3[100];
-  
+
   // 测试 __builtin_strlen
   size_t len = __builtin_strlen(src);
   printk("[BUILTIN TEST] __builtin_strlen result: %zu\n", len);
-  
+
   // 测试 __builtin_memcpy
   __builtin_memcpy(dst1, src, len + 1);
   printk("[BUILTIN TEST] __builtin_memcpy: %s\n", dst1);
-  
+
   // 测试 __builtin_memset
   __builtin_memset(dst2, 'A', 10);
   dst2[10] = '\0';
   printk("[BUILTIN TEST] __builtin_memset: %s\n", dst2);
-  
+
   // 测试 __builtin_memmove
   __builtin_memcpy(dst3, src, 5);
   __builtin_memmove(dst3 + 2, dst3, 3);
   dst3[8] = '\0';
   printk("[BUILTIN TEST] __builtin_memmove: %s\n", dst3);
-  
+
   // 测试 __builtin_memcmp
   int cmp = __builtin_memcmp(dst1, dst1, 5);
   printk("[BUILTIN TEST] __builtin_memcmp result: %d\n", cmp);
@@ -211,7 +207,7 @@ void test_buddy_system(void) {
   // 测试2: 大量页面连续分配
   printk("\n[BUDDY TEST] Test 2: Allocate 1000 pages (order 0)\n");
   print_mem_usage();
-  
+
   phys_addr_t pages[1000];
   int allocated = 0;
 
@@ -251,7 +247,7 @@ void test_buddy_system(void) {
   // 测试4: 分配和释放循环测试
   printk("\n[BUDDY TEST] Test 4: Allocate/free cycle test\n");
   print_mem_usage();
-  
+
   const int CYCLES = 100;
 
   for (int cycle = 0; cycle < CYCLES; cycle++) {
@@ -272,7 +268,7 @@ void test_buddy_system(void) {
   // 测试5: 测试分配30个order10
   printk("\n[BUDDY TEST] Test 5: Allocate 30 order10 blocks (4MB each)\n");
   print_mem_usage();
-  
+
   phys_addr_t order10_pages[30];
   int order10_allocated = 0;
 
@@ -328,31 +324,31 @@ void test_kmalloc(void) {
   // 测试1: 分配各种大小的内存
   printk("[KMALLOC TEST] Test 1: Allocate various sizes\n");
   print_mem_usage();
-  
+
   void *ptr1 = kmalloc(8, GFP_KERNEL);
   printk("[KMALLOC TEST]  8 bytes: %p\n", ptr1);
   print_mem_usage();
-  
+
   void *ptr2 = kmalloc(64, GFP_KERNEL);
   printk("[KMALLOC TEST]  64 bytes: %p\n", ptr2);
   print_mem_usage();
-  
+
   void *ptr3 = kmalloc(512, GFP_KERNEL);
   printk("[KMALLOC TEST]  512 bytes: %p\n", ptr3);
   print_mem_usage();
-  
+
   void *ptr4 = kmalloc(1024, GFP_KERNEL);
   printk("[KMALLOC TEST]  1024 bytes: %p\n", ptr4);
   print_mem_usage();
-  
+
   void *ptr5 = kmalloc(4096, GFP_KERNEL);
   printk("[KMALLOC TEST]  4096 bytes: %p\n", ptr5);
   print_mem_usage();
-  
+
   void *ptr6 = kmalloc(8192, GFP_KERNEL);
   printk("[KMALLOC TEST]  8192 bytes: %p\n", ptr6);
   print_mem_usage();
-  
+
   void *ptr7 = kmalloc(65536, GFP_KERNEL);
   printk("[KMALLOC TEST]  65536 bytes: %p\n", ptr7);
   print_mem_usage();
@@ -380,7 +376,7 @@ void test_kmalloc(void) {
   // 测试3: 释放内存
   printk("\n[KMALLOC TEST] Test 3: Free allocated memory\n");
   print_mem_usage();
-  
+
   if (ptr1)
     kfree(ptr1);
   if (ptr2)
@@ -395,7 +391,7 @@ void test_kmalloc(void) {
     kfree(ptr6);
   if (ptr7)
     kfree(ptr7);
-  
+
   printk("[KMALLOC TEST]  All allocations freed\n");
   print_mem_usage();
 
@@ -403,7 +399,7 @@ void test_kmalloc(void) {
   printk(
       "\n[KMALLOC TEST] Test 4: Allocate 1000 small blocks (64 bytes each)\n");
   print_mem_usage();
-  
+
   void *small_ptrs[1000];
   int allocated = 0;
 
@@ -427,7 +423,7 @@ void test_kmalloc(void) {
       kfree(small_ptrs[i]);
     }
   }
-  
+
   printk("[KMALLOC TEST]  All small blocks freed\n");
   print_mem_usage();
 
@@ -580,12 +576,12 @@ static void parse_node_properties(void *fdt, int node_offset) {
         if (i + 16 <= prop_len) {
           uint32_t addr_hi =
               fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i));
-          uint32_t addr_lo =
-              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i + 4));
-          uint32_t size_hi =
-              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i + 8));
-          uint32_t size_lo =
-              fdt32_to_cpu(*(const fdt32_t *)((const char *)prop_value + i + 12));
+          uint32_t addr_lo = fdt32_to_cpu(
+              *(const fdt32_t *)((const char *)prop_value + i + 4));
+          uint32_t size_hi = fdt32_to_cpu(
+              *(const fdt32_t *)((const char *)prop_value + i + 8));
+          uint32_t size_lo = fdt32_to_cpu(
+              *(const fdt32_t *)((const char *)prop_value + i + 12));
           uint64_t addr = ((uint64_t)addr_hi << 32) | addr_lo;
           uint64_t size = ((uint64_t)size_hi << 32) | size_lo;
           printk("0x%lx (0x%lx) ", addr, size);
@@ -711,23 +707,23 @@ void test_vmap(void) {
   // 测试 1: 分配各种大小的内存
   printk("[VMAP TEST] Test 1: Allocate various sizes\n");
   print_mem_usage();
-  
+
   void *ptr1 = vmalloc(8192);
   printk("[VMAP TEST]  8KB: %p\n", ptr1);
   print_mem_usage();
-  
+
   void *ptr2 = vmalloc(16384);
   printk("[VMAP TEST]  16KB: %p\n", ptr2);
   print_mem_usage();
-  
+
   void *ptr3 = vmalloc(32768);
   printk("[VMAP TEST]  32KB: %p\n", ptr3);
   print_mem_usage();
-  
+
   void *ptr4 = vmalloc(65536);
   printk("[VMAP TEST]  64KB: %p\n", ptr4);
   print_mem_usage();
-  
+
   void *ptr5 = vmalloc(131072);
   printk("[VMAP TEST]  128KB: %p\n", ptr5);
   print_mem_usage();
@@ -749,7 +745,7 @@ void test_vmap(void) {
   // 测试3: 释放内存（测试合并逻辑）
   printk("\n[VMAP TEST] Test 3: Free allocated memory (test merge)\n");
   print_mem_usage();
-  
+
   if (ptr1)
     vfree(ptr1);
   if (ptr2)
@@ -760,14 +756,14 @@ void test_vmap(void) {
     vfree(ptr4);
   if (ptr5)
     vfree(ptr5);
-  
+
   printk("[VMAP TEST]  All allocations freed\n");
   print_mem_usage();
 
   // 测试4: 大量小内存分配
   printk("\n[VMAP TEST] Test 4: Allocate 50 small blocks (8KB each)\n");
   print_mem_usage();
-  
+
   void *small_ptrs[50];
   int allocated = 0;
 
@@ -792,14 +788,14 @@ void test_vmap(void) {
       vfree(small_ptrs[i]);
     }
   }
-  
+
   printk("[VMAP TEST]  All small blocks freed\n");
   print_mem_usage();
 
   // 测试5: 交替分配和释放（测试合并逻辑）
   printk("\n[VMAP TEST] Test 5: Alternate allocate and free (test merge)\n");
   void *alt_ptrs[10];
-  
+
   // 分配10个块
   for (int i = 0; i < 10; i++) {
     alt_ptrs[i] = vmalloc(4096);
@@ -807,7 +803,7 @@ void test_vmap(void) {
       printk("[VMAP TEST]  Allocated block %d: %p\n", i, alt_ptrs[i]);
     }
   }
-  
+
   // 释放奇数块
   for (int i = 1; i < 10; i += 2) {
     if (alt_ptrs[i]) {
@@ -816,7 +812,7 @@ void test_vmap(void) {
       alt_ptrs[i] = NULL;
     }
   }
-  
+
   // 释放偶数块
   for (int i = 0; i < 10; i += 2) {
     if (alt_ptrs[i]) {
@@ -825,25 +821,25 @@ void test_vmap(void) {
       alt_ptrs[i] = NULL;
     }
   }
-  
+
   printk("[VMAP TEST]  All alternate blocks freed\n");
 
   printk("\n[VMAP TEST] All tests completed!\n");
 }
 
 void print_mem_usage(void) {
-// 获取 buddy 管理的内存使用情况
-unsigned int buddy_free = buddy_nr_free_pages_total();
-unsigned int buddy_used = buddy_nr_used_pages_total();
-unsigned int buddy_usage = buddy_mem_usage_percent();
+  // 获取 buddy 管理的内存使用情况
+  unsigned int buddy_free = buddy_nr_free_pages_total();
+  unsigned int buddy_used = buddy_nr_used_pages_total();
+  unsigned int buddy_usage = buddy_mem_usage_percent();
 
-// 获取整个物理内存的使用情况
-unsigned int total_pages = total_phys_pages();
-unsigned int total_used = total_used_pages();
-unsigned int total_usage = total_mem_usage_percent();
+  // 获取整个物理内存的使用情况
+  unsigned int total_pages = total_phys_pages();
+  unsigned int total_used = total_used_pages();
+  unsigned int total_usage = total_mem_usage_percent();
 
-printk("Buddy 内存使用情况: 已使用 %u 页, 空闲 %u 页, 占用率 %u%%\n", 
-       buddy_used, buddy_free, buddy_usage);
-printk("总物理内存使用情况: 总页数 %u, 已使用 %u 页, 占用率 %u%%\n", 
-       total_pages, total_used, total_usage);
+  printk("Buddy 内存使用情况: 已使用 %u 页, 空闲 %u 页, 占用率 %u%%\n",
+         buddy_used, buddy_free, buddy_usage);
+  printk("总物理内存使用情况: 总页数 %u, 已使用 %u 页, 占用率 %u%%\n",
+         total_pages, total_used, total_usage);
 }

@@ -1,0 +1,7 @@
+[build]
+target = "aarch64-unknown-none"
+
+[target.aarch64-unknown-none]
+# 只传链接脚本，不要传 -C linker，因为最终链接由 Makefile 里的 rust-lld 执行
+rustflags = ["-C", "link-arg=-Tlink.ld"] 
+
