@@ -117,7 +117,7 @@ void c_print_str(const char *s) {
 
 // 用于 Rust 侧内存分配
 void *rust_kmalloc(size_t size) {
-    return NULL;
+    // return NULL;//测试给rust返回NULL默认行为用的
     return kmalloc(size, GFP_KERNEL);
 }
 
