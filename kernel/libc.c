@@ -1,4 +1,4 @@
-#include "libc.h"
+#include <libc.h>
 
 // 原有实现
 size_t strlen(const char *s) {

@@ -1,6 +1,6 @@
-#include "timer.h"
-#include "irq.h"
-#include "printk.h"
+#include <timer.h>
+#include <irq.h>
+#include <printk.h>
 #include <sync/spinlock.h>
 #include <slab.h>
 volatile uint64_t system_tick = 0;
@@ -179,11 +179,30 @@ uint64_t timer_get_time_ms(void) {
  * GIC 中断使能自己在外部调用 gic_enable_irq(TIMER_IRQ_NUM)
  */
 void timer_init(void) {
-  cntp_set_tval(TIMER_LOAD_VAL);
+  // 1. 设置系统计数器频率（QEMU 默认 1MHz）
+  uint64_t freq = 1000000; // 1MHz
+  asm volatile("msr CNTFRQ_EL0, %0" : : "r"(freq));
+  
+  // 2. 检查系统计数器是否可用
+  uint64_t cntpct;
+  asm volatile("mrs %0, CNTPCT_EL0" : "=r"(cntpct));
+  if (cntpct == 0) {
+    printk("[TIMER] Warning: System counter not running\n");
+  }
+  
+  // 3. 读取并显示实际频率
+  uint64_t actual_freq;
+  asm volatile("mrs %0, CNTFRQ_EL0" : "=r"(actual_freq));
+  
+  // 4. 设置定时器加载值（基于实际频率）
+  uint64_t load_val = actual_freq / TICK_HZ;
+  cntp_set_tval(load_val);
+  
+  // 5. 启用定时器
   cntp_enable();
   
-  // 注册定时器中断处理函数
+  // 6. 注册定时器中断处理函数
   irq_register(TIMER_IRQ_NUM, timer_irq_handler, "Timer");
   
-  printk("[TIMER] Initialized, tick rate: %d Hz\n", TICK_HZ);
+  printk("[TIMER] Initialized, tick rate: %d Hz, counter freq: %llu Hz, IRQ: %d (PPI 16+13=29, 0x1d)\n", TICK_HZ, actual_freq, TIMER_IRQ_NUM);
 }

@@ -1,8 +1,8 @@
-#include "printk.h"
+#include <printk.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "uart.h"
+#include <uart.h>
 #include <sync/spinlock.h>
 
 static spinlock_t printk_lock = SPIN_LOCK_UNLOCKED;

@@ -6,7 +6,7 @@
 /* 根据硬件修改 */
 #define TIMER_CLK_HZ 25000000UL
 #define TICK_HZ 1000     // 1ms 一次调度 tick
-#define TIMER_IRQ_NUM 30 // A53 CNTP 固定中断号
+#define TIMER_IRQ_NUM 29 // A53 CNTP 固定中断号 (PPI 16+13=29, 0x1d)
 
 #define TIMER_LOAD_VAL (TIMER_CLK_HZ / TICK_HZ)
 

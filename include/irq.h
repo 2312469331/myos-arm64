@@ -5,7 +5,7 @@
 
 // QEMU virt 外设中断号
 #define IRQ_UART0 33  // 串口0中断
-#define IRQ_TIMER0 27 // 核心定时器中断
+#define IRQ_TIMER0 29 // EL1 物理定时器中断 (PPI 16+13=29)
 
 // 中断回调函数类型
 typedef void (*irq_handler_t)(uint32_t irq);
