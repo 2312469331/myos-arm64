@@ -3,10 +3,13 @@
 #include "types.h"
 #include <stdint.h>
 
-// QEMU virt平台 GICv2 基地址
-// 修正后（指针，和 UART0_BASE 统一）：
-#define GICD_BASE ((volatile void *)0x08000000) // 分发器
-#define GICC_BASE ((volatile void *)0x08010000) // CPU接口
+// GIC 基地址（初始化为 NULL，将在运行时通过 ioremap 映射）
+extern volatile void *GICD_BASE; // 分发器
+extern volatile void *GICC_BASE; // CPU接口
+
+// QEMU virt平台 GICv2 物理基地址（默认值）
+#define GICD_PHYS_BASE 0x08000000 // 分发器物理地址
+#define GICC_PHYS_BASE 0x08010000 // CPU接口物理地址
 
 #define GICD_ISPENDR(n) (GICD_BASE + 0x200 + (n) * 4) // 中断挂起组n (n=0~31)
 

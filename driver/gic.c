@@ -1,8 +1,23 @@
 #include "gic.h"
 #include "io.h" // 引入封装的IO API
+#include "vmalloc.h" // 引入 ioremap 函数
+
+// 定义 GIC 基地址全局变量
+volatile void *GICD_BASE = NULL;
+volatile void *GICC_BASE = NULL;
 
 void gic_init(void) {
-  // 1. 初始化 GICD 分发器
+  // 1. 使用 ioremap 映射 GIC 物理地址到虚拟地址
+  GICD_BASE = ioremap(GICD_PHYS_BASE, 0x10000); // 64KB 空间
+  GICC_BASE = ioremap(GICC_PHYS_BASE, 0x10000); // 64KB 空间
+  
+  if (!GICD_BASE || !GICC_BASE) {
+    // 映射失败，使用默认的物理地址（作为 fallback）
+    GICD_BASE = (volatile void *)GICD_PHYS_BASE;
+    GICC_BASE = (volatile void *)GICC_PHYS_BASE;
+  }
+  
+  // 2. 初始化 GICD 分发器
   io_write32(GICD_CTLR, 0); // 先禁用 GICD
 
   // 禁用所有中断
@@ -37,7 +52,7 @@ void gic_init(void) {
   // 使能 GICD 组 0 + 组 1（EL1 非安全必须）
   io_write32(GICD_CTLR, 0x3);
 
-  // 2. 初始化 GICC CPU 接口
+  // 3. 初始化 GICC CPU 接口
   io_write32(GICC_PMR, 0xFF); // 允许所有优先级
   io_write32(GICC_CTLR, 1);   // 启用 GICC
 }
