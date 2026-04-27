@@ -1,6 +1,8 @@
 # 引入功能配置（条件编译）
 include config.mk
 $(info SRC_ASM_CONFIG = $(SRC_ASM_CONFIG))
+# ✅ 强制指定默认目标为 all（防止其他规则抢占默认目标位置）
+.DEFAULT_GOAL := all
 
 # --------------- QEMU 全局公共配置 ---------------
 
@@ -147,12 +149,21 @@ endif
 # 🚨【核心修复】仅生成编译后的 .o 文件，绝不混入源码！
 OBJ     = $(patsubst %.S,build/%.o,$(SRC_ASM)) \
           $(patsubst %.c,build/%.o,$(SRC_C))
-# 👇 新增：Rust 静态库
-RUST_LIB = rust/wrapper/target/aarch64-unknown-none/debug/libmyos_wrapper.a
 # 👇 新增：提取所有 .o 文件的目录，并去重
 OBJ_DIRS := $(sort $(dir $(OBJ)))
 TARGET  = build/kernel
 
+# --------------------------
+# Rust 修复
+# --------------------------
+RUST_DIR := rust
+RUST_TARGET := aarch64-unknown-none
+RUST_LIB := $(RUST_DIR)/target/$(RUST_TARGET)/debug/librust_upper.a
+
+.PHONY: rust
+OBJ += $(RUST_LIB)
+
+# 默认编译
 # 默认编译
 # all: build_dir $(TARGET).img
 
@@ -172,8 +183,14 @@ build/%.o: %.S
 build/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(if $(findstring arch/arm64/boot/,$<),$(CC) $(BOOT_CFLAGS) -c $< -o $@,$(CC) $(CFLAGS) -c $< -o $@)
+rust:
+	cargo build --manifest-path $(RUST_DIR)/Cargo.toml --target $(RUST_TARGET)
+
+$(RUST_LIB): rust
+
+
 # 链接 ELF（仅链接 .o 文件，无源码！）
-$(TARGET).elf: $(OBJ) $(RUST_LIB)
+$(TARGET).elf: $(OBJ) 
 	$(LD) $(LDFLAGS) $^ -o $@
 
 # 生成 IMG 镜像
@@ -230,6 +247,7 @@ clean-dtb:
 
 clean:
 	rm -rf build/*
+	cd $(RUST_DIR) && cargo clean
 
 # 查看 ELF 文件段信息 (-l)
 readelf-l:
