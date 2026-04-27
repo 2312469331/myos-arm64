@@ -73,6 +73,8 @@ void main(void *dtb) {
   // 初始化vmap管理器
   va_manager_init();
   uart_init();
+  //初始化GIC中断控制器
+  gic_init();
   print_mem_usage();
   printk("[PMM] Pages freed\n");
 
