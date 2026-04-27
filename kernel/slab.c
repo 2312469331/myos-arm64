@@ -1,8 +1,8 @@
-#include "slab.h"
+#include <slab.h>
 #include <libc.h>
-#include "types.h"
-#include "mmu.h"
-#include "pmm.h"
+#include <types.h>
+#include <mmu.h>
+#include <pmm.h>
 #include <sync/spinlock.h>
 
 static spinlock_t slab_lock = SPIN_LOCK_UNLOCKED;

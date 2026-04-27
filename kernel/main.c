@@ -75,6 +75,7 @@ void main(void *dtb) {
   uart_init();
   //初始化GIC中断控制器
   gic_init();
+  timer_init();
   print_mem_usage();
   printk("[PMM] Pages freed\n");
 
@@ -473,10 +474,24 @@ void uart_test(void) {
 void timer_irq_handler(uint32_t irq) {
   // 1. 标记参数（消除警告）
   (void)irq;
-  // 1. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
-  cntp_set_tval(TIMER_LOAD_VAL);
-  // 2. 系统时间++
+  
+  // 2. 读取系统计数器频率
+  uint64_t freq;
+  asm volatile("mrs %0, CNTFRQ_EL0" : "=r"(freq));
+  
+  // 3. 计算加载值（基于实际频率）
+  uint64_t load_val = freq / 1000; // 1000 Hz
+  
+  // 4. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
+  cntp_set_tval(load_val);
+  
+  // 5. 系统时间++
   system_tick++;
+  
+  // 6. 每 1000 个 tick（1秒）打印一次信息
+  if (system_tick % 1000 == 0) {
+    printk("[TIMER] Tick: %lu, Time: %lu seconds\n", system_tick, system_tick / 1000);
+  }
 }
 
 void uart_irq_callback(uint32_t irq) {

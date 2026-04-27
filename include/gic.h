@@ -1,6 +1,6 @@
 #ifndef __GIC_H__
 #define __GIC_H__
-#include "types.h"
+#include <types.h>
 #include <stdint.h>
 
 // GIC 基地址（初始化为 NULL，将在运行时通过 ioremap 映射）
