@@ -76,6 +76,8 @@ void main(void *dtb) {
   //初始化GIC中断控制器
   gic_init();
   timer_init();
+  // irq_register(TIMER_IRQ_NUM, timer_irq_handler, "定时器");
+  gic_enable_irq(TIMER_IRQ_NUM);
   print_mem_usage();
   printk("[PMM] Pages freed\n");
 
@@ -119,8 +121,7 @@ void main(void *dtb) {
   uart_test();
   gic_test();
 
-  irq_register(TIMER_IRQ_NUM, timer_irq_handler, "定时器");
-  gic_enable_irq(TIMER_IRQ_NUM);
+
 }
 
 // 测试内置函数的汇编实现 - 直接调用 __builtin_*

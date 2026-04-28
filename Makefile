@@ -50,6 +50,7 @@ CFLAGS := -Wall -Wextra \
           -fno-stack-protector \
           -mgeneral-regs-only \
           -fno-PIC -fno-PIE \
+          -MMD -MP \
           -g
 # 追加包含路径
 CFLAGS += $(INCLUDES)
@@ -60,7 +61,7 @@ ASFLAGS := $(INCLUDES) -g
 # Boot 段编译配置（已彻底关闭 -fPIC）
 BOOT_CFLAGS := -march=armv8-a -mgeneral-regs-only -ffreestanding
 BOOT_CFLAGS += -nostdlib -fno-builtin -fno-PIC -fno-PIE
-BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g
+BOOT_CFLAGS += -fno-stack-protector -O0 -Wall -g -MMD -MP
 BOOT_CFLAGS += $(INCLUDES)
 
 # 链接器选项：彻底排除系统 CRT、强制入口 _start
@@ -159,7 +160,11 @@ TARGET  = build/kernel
 RUST_DIR := rust
 RUST_TARGET := aarch64-unknown-none
 RUST_LIB := $(RUST_DIR)/target/$(RUST_TARGET)/debug/librust_upper.a
+# 生成 build/xxx.d
+DEPS = $(patsubst build/%.o,build/%.d,$(OBJ))
 
+# 包含所有依赖
+-include $(DEPS)
 .PHONY: rust
 OBJ += $(RUST_LIB)
 

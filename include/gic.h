@@ -20,7 +20,7 @@ extern volatile void *GICC_BASE; // CPU接口
 #define GICD_TYPER (GICD_BASE + 0x004)                  // 类型寄存器
 #define GICD_ISENABLER(n) (GICD_BASE + 0x100 + (n) * 4) // 中断使能组n (n=0~31)
 #define GICD_ICENABLER(n) (GICD_BASE + 0x200 + (n) * 4) // 中断禁用组n (n=0~31)
-// 👇 新增缺失的三个关键宏！
+#define GICD_IGROUPR(n) (GICD_BASE + 0x80 + (n) * 4)    // 中断分组寄存器 (n=0~31)
 #define GICD_IPRIORITYR(n)                                                     \
   (GICD_BASE + 0x400 + (n) * 4) // 优先级寄存器 (n=0~255)
 #define GICD_ITARGETSR(n)                                                      \

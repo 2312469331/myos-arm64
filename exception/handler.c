@@ -3,6 +3,7 @@
 #include <io.h> // 确保包含 io.h
 #include <irq.h>
 #include <printk.h>
+#include <stdint.h>
 #include <uart.h> // 串口打印函数
 #include <sync/spinlock.h>
 #include <types.h>
@@ -221,6 +222,7 @@ void irq_register(uint32_t irq, irq_handler_t handler, const char *name) {
   
   if (irq < 1024 && handler) {
     irq_table[irq] = handler;
+
     gic_enable_irq(irq);
     uart_puts("[IRQ] Register: ");
     uart_puts(name);

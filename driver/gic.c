@@ -1,40 +1,36 @@
-#include "gic.h"
-#include "io.h" // 引入封装的IO API
-#include "vmalloc.h" // 引入 ioremap 函数
-
-// 定义 GIC 基地址全局变量
+#include <gic.h>
+#include <io.h>
+#include <vmalloc.h>
+#include <compiler.h>
 volatile void *GICD_BASE = NULL;
 volatile void *GICC_BASE = NULL;
 
 void gic_init(void) {
-  // 1. 使用 ioremap 映射 GIC 物理地址到虚拟地址
-  GICD_BASE = ioremap(GICD_PHYS_BASE, 0x10000); // 64KB 空间
-  GICC_BASE = ioremap(GICC_PHYS_BASE, 0x10000); // 64KB 空间
+  GICD_BASE = ioremap(GICD_PHYS_BASE, 0x10000);
+  GICC_BASE = ioremap(GICC_PHYS_BASE, 0x10000);
   
   if (!GICD_BASE || !GICC_BASE) {
-    // 映射失败，使用默认的物理地址（作为 fallback）
     GICD_BASE = (volatile void *)GICD_PHYS_BASE;
     GICC_BASE = (volatile void *)GICC_PHYS_BASE;
   }
-  
-  // 2. 初始化 GICD 分发器
-  io_write32(GICD_CTLR, 0); // 先禁用 GICD
 
-  // 禁用所有中断
+  io_write32(GICC_CTLR, 0x1); // 非安全端写0x1即可，开启Group1
   for (int i = 0; i < 32; i++) {
     io_write32(GICD_ICENABLER(i), 0xFFFFFFFF);
   }
 
-  // --- 补全：默认优先级 + 目标 CPU + 触发方式（可选，也可以在注册时单独设置）
   for (int i = 0; i < 1024; i++) {
-    // 设置默认优先级为 0xA0
+    uint32_t grp_idx = i / 32;
+    uint32_t grp_bit = i % 32;
+    io_write32(GICD_IGROUPR(grp_idx),
+               io_read32(GICD_IGROUPR(grp_idx)) | (1 << grp_bit));
+
     uint32_t prio_idx = i / 4;
     uint32_t prio_shift = (i % 4) * 8;
     io_write32(GICD_IPRIORITYR(prio_idx),
                (io_read32(GICD_IPRIORITYR(prio_idx)) & ~(0xFF << prio_shift)) |
                    (0xA0 << prio_shift));
 
-    // 设置目标 CPU 为 CPU0
     uint32_t target_idx = i / 4;
     uint32_t target_shift = (i % 4) * 8;
     io_write32(
@@ -42,51 +38,61 @@ void gic_init(void) {
         (io_read32(GICD_ITARGETSR(target_idx)) & ~(0xFF << target_shift)) |
             (0x01 << target_shift));
 
-    // 设置默认触发方式为电平触发
     uint32_t cfg_idx = i / 16;
     uint32_t cfg_shift = (i % 16) * 2;
     io_write32(GICD_ICFGR(cfg_idx),
                io_read32(GICD_ICFGR(cfg_idx)) & ~(0x3 << cfg_shift));
   }
 
-  // 使能 GICD 组 0 + 组 1（EL1 非安全必须）
-  io_write32(GICD_CTLR, 0x3);
+  //当前非安全状态，bit1根本写不进去
+  /*
+ bit[0]  0 interrupts not forwarded.
+         1 interrupts forwarded, subject to the priority rules.
+  */
+  // 开启Group1中断转发（非安全端只能写0x1）
+  io_write32(GICD_CTLR, 0x1);
+  // 开启CPU接口对Group1中断的信号发送
+  io_write32(GICC_CTLR, 0x1); // 非安全端写0x1即可，开启Group1
 
-  // 3. 初始化 GICC CPU 接口
-  io_write32(GICC_PMR, 0xFF); // 允许所有优先级
-  io_write32(GICC_CTLR, 1);   // 启用 GICC
+  io_write32(GICC_PMR, 0xFF);
+  io_write32(GICC_BPR, 3);
+
+  __enable_irq();
 }
 
 void gic_enable_irq(uint32_t irq_num) {
-  uint32_t idx = irq_num / 32; // 计算中断所在组号
-  uint32_t bit = irq_num % 32; // 计算组内bit位
-  // 使能指定中断
+  uint32_t idx = irq_num / 32;
+  uint32_t bit = irq_num % 32;
+  // // 先读当前值
+  // uint32_t nsacr1 = io_read32(GICD_BASE + 0x0E0);
+  // // 把 bit10 置1，允许非安全使用该中断
+  // nsacr1 |= (1 << bit);
+  // io_write32(GICD_BASE + 0x0E0, nsacr1);
+      uint32_t val;
+
+  val=io_read32(GICD_IGROUPR(0));
+  io_write32(GICD_IGROUPR(0), val|(1<<bit));
   io_write32(GICD_ISENABLER(idx), 1 << bit);
 }
-// 应答中断：获取当前中断号
+
 uint32_t gic_ack_irq(void) { return io_read32((volatile void *)GICC_IAR); }
 
-// 结束中断：通知 GIC 处理完成
 void gic_eoi_irq(uint32_t irq_num) {
   io_write32((volatile void *)GICC_EOIR, irq_num);
 }
 
-// 禁用指定中断
 void gic_disable_irq(uint32_t irq_num) {
-  uint32_t n = irq_num / 32; // 每组 32 个中断
+  uint32_t n = irq_num / 32;
   uint32_t bit = irq_num % 32;
   io_write32((volatile void *)(GICD_ICENABLER(n)), 1U << bit);
 }
 
-// 设置中断优先级
 void gic_set_irq_priority(uint32_t irq_num, uint8_t priority) {
-  // GICD_IPRIORITYR 寄存器：每个中断占 8 位，偏移为 irq_num * 4
   volatile void *reg_addr =
       (volatile void *)((uint8_t *)GICD_BASE + 0x400 + (irq_num * 4));
   io_write32(reg_addr, priority);
 }
 
-// 查询中断是否挂起
 bool gic_is_irq_pending(uint32_t irq_num) {
   uint32_t n = irq_num / 32;
   uint32_t bit = irq_num % 32;
