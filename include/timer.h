@@ -4,11 +4,15 @@
 #include <stdint.h>
 
 /* 根据硬件修改 */
-#define TIMER_CLK_HZ 25000000UL
-#define TICK_HZ 1000     // 1ms 一次调度 tick
-#define TIMER_IRQ_NUM 29 // A53 CNTP 固定中断号 (PPI 16+13=29, 0x1d)
-
-#define TIMER_LOAD_VAL (TIMER_CLK_HZ / TICK_HZ)
+#define TICK_HZ 1000
+/*
+组号*16+中断号  = 硬件号 
+DTS 的 13 + 16 = 硬件号 29 （对应 ARM 规范里的 Secure Physical Timer PPI）
+DTS 的 14 + 16 = 硬件号 30 （对应 ARM 规范里的 Non-secure Physical Timer PPI）
+DTS 的 11 + 16 = 硬件号 27 （对应 ARM 规范里的 Virtual Timer PPI）
+DTS 的 10 + 16 = 硬件号 26 （对应 ARM 规范里的 Hyp Timer PPI）
+*/
+#define TIMER_IRQ_NUM 30
 
 /* 全局系统时钟 tick */
 extern volatile uint64_t system_tick;
