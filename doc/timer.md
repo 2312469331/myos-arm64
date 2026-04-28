@@ -173,3 +173,155 @@ c. 复位值：bit[2] = 0，bits[1:0] = 0b11
 - 你 ARM64 内核 **直接忽略本表**，只用 Table10-2 即可
 
 
+AArch64 通用定时器 CNTFRQ_EL0 权限 & 陷阱机制详解
+ 
+1. 核心结论前置
+ 
+1. CNTFRQ_EL0：全局系统定时器频率寄存器
+2. 只有 EL3 能写，EL0 / EL1 / EL2 禁止写入
+3. EL1 / EL2 任意读，无限制
+4. EL0 用户态 默认禁止直接读，读就触发系统访问陷阱
+5. 固件 BL31/EL3 必须初始化写入频率，不写不会死机，但时间彻底错乱
+ 
+ 
+ 
+2. MSR 写入规则（写 CNTFRQ_EL0）
+ 
+官方硬件伪代码：
+ 
+plaintext
+  
+MSR CNTFRQ_EL0, Xt
+if IsHighestEL(PSTATE.EL) then
+    CNTFRQ_EL0 = X[t, 64];
+else
+    UNDEFINED;
+ 
+ 
+规则翻译
+ 
+-  IsHighestEL  = 当前处于 EL3
+- EL3：可以正常写入定时器频率
+- EL0 / EL1 / EL2：执行写指令 → 未定义指令异常
+ 
+关键点
+ 
+- 整个系统只有 EL3 有权修改定时器基准频率
+- Linux 内核、裸机系统 永远不能写 CNTFRQ_EL0
+- 上电必须由 EL3 固件 提前配置好频率
+ 
+疑问：EL3 不写会不会炸？
+ 
+- 硬件不会直接崩溃
+- 寄存器复位值随机/为0
+- 内核读取错误频率 → 时间计算错乱、sleep 异常、调度异常、vDSO 时间全部失效
+- 属于功能性报废
+ 
+ 
+ 
+3. MRS 读取规则（读 CNTFRQ_EL0）
+ 
+官方硬件伪代码：
+ 
+plaintext
+  
+if PSTATE.EL == EL0 then
+    if !ELIsInHost(EL0) && CNTKCTL_EL1.<EL0PCTEN,EL0VCTEN> == '00' then
+        if EL2Enabled() && HCR_EL2.TGE == '1' then
+            AArch64.SystemAccessTrap(EL2, 0x18);
+        else
+            AArch64.SystemAccessTrap(EL1, 0x18);
+    elsif ELIsInHost(EL0) && CNTHCTL_EL2.<EL0PCTEN,EL0VCTEN> == '00' then
+        AArch64.SystemAccessTrap(EL2, 0x18);
+    else
+        X[t, 64] = CNTFRQ_EL0;
+
+elsif PSTATE.EL == EL1 || PSTATE.EL == EL2 || PSTATE.EL == EL3 then
+    X[t, 64] = CNTFRQ_EL0;
+ 
+ 
+规则翻译
+ 
+1. EL1 / EL2 / EL3
+无条件直接读取，无任何陷阱、无权限限制
+2. EL0 用户态
+默认关闭：
+-  CNTKCTL_EL1  位： EL0PCTEN   EL0VCTEN  = 00
+- 用户执行  MRS x0, CNTFRQ_EL0 
+- 硬件触发 SystemAccessTrap
+- 异常码： 0x18 
+- 陷入 EL1 / EL2 内核
+3. 放开权限后
+内核主动置位允许位，用户态才可以直接读
+ 
+ 
+ 
+4. 为什么 Linux 要做寄存器编码比对？
+ 
+1. 用户态执行：
+asm
+  
+mrs x0, CNTFRQ_EL0
+ 
+2. 硬件触发异常，CPU 只会上报：
+- ESR_ELx.ISS 字段
+- 原始 5 个编码： op0 op1 CRn CRm op2 
+3. 硬件不认寄存器名字，只认数字编码
+4. Linux 定义：
+c
+  
+#define sys_reg(op0,op1,CRn,CRm,op2) ...
+#define SYS_CNTFRQ_EL0 sys_reg(3,3,14,0,0)
+ 
+5. 内核异常处理：
+- 取出 ISS 编码
+- 和  SYS_CNTFRQ_EL0  比对
+- 精准识别：用户在读定时器频率
+- 内核代为读取、返回、拦截
+ 
+ 
+ 
+5. 特权级权限总表
+ 
+特权级 读 CNTFRQ_EL0 写 CNTFRQ_EL0 
+EL0 用户态 默认陷阱，需内核放行 未定义指令异常 
+EL1 内核态 自由读取 禁止写入 
+EL2 虚拟化 自由读取 禁止写入 
+EL3 安全固件 自由读取 唯一可写 
+ 
+ 
+ 
+6. 和你之前代码对应关系
+ 
+1.  sys64_hooks[]  数组
+- 专门捕获用户态  mrs  系统寄存器读
+2.  ESR_ELx_SYS64_ISS_SYS_CNTFRQ 
+- 就是  CNTFRQ_EL0  的硬件5位编码
+3.  cntfrq_read_handler 
+- 陷阱回调函数
+- 内核代读寄存器，返回给用户态
+4. vDSO
+- 用户态不能直接读定时器寄存器
+- 依靠内核陷阱 + 代读 + 缓存频率实现高精度时间
+ 
+ 
+ 
+7. 最简运行流程
+ 
+1. EL3 固件上电： MSR CNTFRQ_EL0, X0  写入真实频率
+2. EL1 内核启动：只读一次 CNTFRQ_EL0，缓存频率
+3. 内核默认禁止 EL0 直接访问
+4. 用户态调用时间函数 → 触发陷阱
+5. 内核匹配编码 → 代读返回
+6. vDSO 利用缓存频率计算用户态时间
+ 
+ 
+ 
+8. 一句话终极总结
+ 
+- 写权限独属于 EL3
+- 内核 EL1 只准读、不准改
+- 用户 EL0 读就被硬件拦截陷阱
+-  op0/op1/CRn/CRm/op2  是硬件原始指令编码，用于内核异常匹配
+- 不初始化 CNTFRQ_EL0 ≠ 死机，时间子系统彻底失效
+ 
