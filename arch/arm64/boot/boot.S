@@ -35,11 +35,19 @@ _start:
 	mov x0, #0x3C9
 	msr spsr_el3, x0
 
-	// 5. 设置 EL2 入口地址
+	// 5. 设置 EL3 异常向量表
+	ldr x0, =vector_table_el3
+	msr vbar_el3, x0
+	isb
+
+	// 6. EL3 阶段初始化 GIC（设置 NSACR、IGROUPR、ISENABLER）
+	bl gic_el3_init
+
+	// 7. 设置 EL2 入口地址
 	ldr x0, =el2_entry
 	msr elr_el3, x0
 
-	// 6. 跳转到 EL2
+	// 8. 跳转到 EL2
 	eret
 
 /* =========================================================

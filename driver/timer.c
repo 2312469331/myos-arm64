@@ -147,19 +147,19 @@ void timer_init(void) {
 
   irq_register(TIMER_IRQ_NUM, timer_irq_handler, "Timer");
 
-  uint64_t tval;
-  asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
-  printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
-  asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
-  printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
-    asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
-  printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
-    asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
-  printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
-    asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
-  printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
-    asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
-  printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
+//   uint64_t tval;
+//   asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
+//   printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
+//   asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
+//   printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
+//     asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
+//   printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
+//     asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
+//   printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
+//     asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
+//   printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
+//     asm volatile("mrs %0, CNTP_TVAL_EL0" : "=r"(tval));
+//   printk("[TIMER] CNTP_TVAL_EL0 = %llu\n", tval);
 
 
   printk("[TIMER] Initialized, tick rate: %d Hz, counter freq: %llu Hz, IRQ: %d\n", TICK_HZ, actual_freq, TIMER_IRQ_NUM);
