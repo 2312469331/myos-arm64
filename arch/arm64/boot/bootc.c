@@ -4,6 +4,7 @@
  */
 #include <bootc.h>
 #include <types.h>
+#include <compiler.h>
 /* 自动声明页表数组（完全动态） */
 // 注意：这里 ttbr0_l0/ttbr1_l0 是L0表，虽然只有1个，但维度保持 [数量][条目数]
 // 一致
@@ -96,8 +97,8 @@ static BOOT_CODE void init_l3_table(void) {
                       (0ULL << 5) |  // NS: Secure
                       (0ULL << 2);   // AttrIndx: Normal
 
-  // 提取设备内存属性 (Device Memory, 用于UART)
-  uint64_t dev_attr = mem_attr | (2ULL << 2); // 仅替换 AttrIndx 为 Device
+  // // 提取设备内存属性 (Device Memory, 用于UART)
+  // uint64_t dev_attr = mem_attr | (2ULL << 2); // 仅替换 AttrIndx 为 Device
 
   uint64_t mapped_bytes = 0;
 
@@ -109,8 +110,8 @@ static BOOT_CODE void init_l3_table(void) {
         l3_tables[table_idx][page_idx] = mem_attr | (pa & ~0xFFFUL);
         mapped_bytes += 4096;
       } else if (table_idx == L3_TABLES_NEEDED - 1 && page_idx == 511) {
-        // 兜底处理：在最后一张L3表的最后一个槽位塞入 UART0
-        uint64_t uart_pa = 0x09000000UL;
+        // // 兜底处理：在最后一张L3表的最后一个槽位塞入 UART0
+        // uint64_t uart_pa = 0x09000000UL;
         // l3_tables[table_idx][page_idx] = dev_attr | (uart_pa & ~0xFFFUL);
       }
     }
@@ -246,4 +247,37 @@ uint64_t get_sctlr_el1(void) {
 
   // --- bit 33~63：全部RES0，符合ARM规范 ---
   return sctlr;
+}
+
+/* EL3 阶段 GIC 初始化：设置 NSACR、IGROUPR、ISENABLER */
+BOOT_CODE
+void gic_el3_init(void) {
+  __enable_irq();
+  volatile uint32_t *gicd_base = (volatile uint32_t *)0x8000000;
+  volatile uint32_t *gicc_base = (volatile uint32_t *)0x08010000;
+
+//全搞到非安全组中断
+
+  for (int i = 0; i < 1024; i++) {
+    uint32_t idx = i / 32;
+    uint32_t bit = i % 32;
+    gicd_base[(0x80 + idx * 4) / 4] |= (1 << bit);
+  }
+//先禁止所有中断
+  for (int i = 0; i < 32; i++) {
+    gicd_base[(0x180 + i * 4) / 4] = 0xFFFFFFFF;
+  }
+//单独启用定时器中断
+  uint32_t timer_irqs[] = {26, 27, 28, 29};
+  for (int i = 0; i < 4; i++) {
+    uint32_t idx = timer_irqs[i] / 32;
+    uint32_t bit = timer_irqs[i] % 32;
+    gicd_base[(0x100 + idx * 4) / 4] |= (1 << bit);
+  }
+//同时开启C/D侧中断转发
+  gicd_base[0x000 / 4] = 0x3;
+  gicc_base[0x000 / 4] = 0x3;
+  gicc_base[0x004 / 4] = 0xFF;
+  // gicc_base[0x008 / 4] = 0x3;
+  mb();
 }

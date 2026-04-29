@@ -54,10 +54,16 @@ extern void rust_main(void);
 void uart_irq_callback(uint32_t irq);
 void timer_irq_handler(uint32_t irq);
 
+void test_smc_to_el3(void) {
+  printk("[SMC TEST] Calling SMC to EL3...\n");
+  asm volatile("smc #0");
+  printk("[SMC TEST] Returned from EL3 (should not reach here)\n");
+}
+
 void *dtb_base = NULL; // 全局变量，保存 DTB 地址
 
 void main(void *dtb) {
-  // 设置slab分配器所需的全局变量
+    // 设置slab分配器所需的全局变量
   extern uintptr_t slab_linear_map_base;
   extern phys_addr_t slab_l0_table_pa;
   get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
@@ -76,14 +82,22 @@ void main(void *dtb) {
   //初始化GIC中断控制器
   gic_init();
   timer_init();
+  __enable_irq();
+
   // irq_register(TIMER_IRQ_NUM, timer_irq_handler, "定时器");
-  gic_enable_irq(TIMER_IRQ_NUM);
+  // gic_enable_irq(TIMER_IRQ_NUM);
   print_mem_usage();
   printk("[PMM] Pages freed\n");
 
   printk("[SLAB] Linear map base: %lx\n", slab_linear_map_base);
   printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
   // uart_base 现在在 uart_init 函数中通过 ioremap 动态映射
+
+  while (1){}
+    test_smc_to_el3();
+
+
+
 
   printk("\n");
   printk("===============================================\n");
@@ -471,29 +485,29 @@ void uart_test(void) {
   // panic("Test panic: %s", "Something went wrong!");
   // 死循环（OS 无退出）
 }
-// 强符号：覆盖 timer.c 里的弱符号
-void timer_irq_handler(uint32_t irq) {
-  // 1. 标记参数（消除警告）
-  (void)irq;
+// // 强符号：覆盖 timer.c 里的弱符号
+// void timer_irq_handler(uint32_t irq) {
+//   // 1. 标记参数（消除警告）
+//   (void)irq;
   
-  // 2. 读取系统计数器频率
-  uint64_t freq;
-  asm volatile("mrs %0, CNTFRQ_EL0" : "=r"(freq));
+//   // 2. 读取系统计数器频率
+//   uint64_t freq;
+//   asm volatile("mrs %0, CNTFRQ_EL0" : "=r"(freq));
   
-  // 3. 计算加载值（基于实际频率）
-  uint64_t load_val = freq / 1000; // 1000 Hz
+//   // 3. 计算加载值（基于实际频率）
+//   uint64_t load_val = freq / 1000; // 1000 Hz
   
-  // 4. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
-  cntp_set_tval(load_val);
+//   // 4. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
+//   cntp_set_tval(load_val);
   
-  // 5. 系统时间++
-  system_tick++;
+//   // 5. 系统时间++
+//   system_tick++;
   
-  // 6. 每 1000 个 tick（1秒）打印一次信息
-  if (system_tick % 1000 == 0) {
-    printk("[TIMER] Tick: %lu, Time: %lu seconds\n", system_tick, system_tick / 1000);
-  }
-}
+//   // 6. 每 1000 个 tick（1秒）打印一次信息
+//   if (system_tick % 1000 == 0) {
+//     printk("[TIMER] Tick: %lu, Time: %lu seconds\n", system_tick, system_tick / 1000);
+//   }
+// }
 
 void uart_irq_callback(uint32_t irq) {
   printk("%s", "sbgxr????");

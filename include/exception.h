@@ -20,5 +20,8 @@
 // 异常处理函数声明
 void el1_sync_handler();
 void el1_irq_handler();
+void c_exception_handler_el1(uint64_t);
+void c_exception_handler_el2(void);
+void c_exception_handler_el3(void);
 
 #endif // __EXCEPTION_H__

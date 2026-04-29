@@ -1,3 +1,240 @@
+我们把两张表的所有偏移地址整理出来，按从低到高排序：
+
+| 偏移地址  | 来源说明 |
+| :-------- | :------- |
+| `0x000`   | Current EL with SP_EL0, Synchronous (non-External abort) / Synchronous External aborts, EASE==0 |
+| `0x080`   | Current EL with SP_EL0, IRQ/vIRQ |
+| `0x100`   | Current EL with SP_EL0, FIQ/vFIQ |
+| `0x180`   | Current EL with SP_EL0, Synchronous External aborts, EASE==1 / SError, vSError, delegated SError |
+| `0x200`   | Current EL with SP_ELx (x>0), Synchronous (non-External abort) / Synchronous External aborts, EASE==0 |
+| `0x280`   | Current EL with SP_ELx (x>0), IRQ/vIRQ |
+| `0x300`   | Current EL with SP_ELx (x>0), FIQ/vFIQ |
+| `0x380`   | Current EL with SP_ELx (x>0), Synchronous External aborts, EASE==1 / SError, vSError, delegated SError |
+| `0x400`   | Lower EL (AArch64), Synchronous (non-External abort) / Synchronous External aborts, EASE==0 |
+| `0x480`   | Lower EL (AArch64), IRQ/vIRQ |
+| `0x500`   | Lower EL (AArch64), FIQ/vFIQ |
+| `0x580`   | Lower EL (AArch64), Synchronous External aborts, EASE==1 / SError, vSError, delegated SError |
+| `0x600`   | Lower EL (AArch32), Synchronous (non-External abort) / Synchronous External aborts, EASE==0 |
+| `0x680`   | Lower EL (AArch32), IRQ/vIRQ |
+| `0x700`   | Lower EL (AArch32), FIQ/vFIQ |
+| `0x780`   | Lower EL (AArch32), Synchronous External aborts, EASE==1 / SError, vSError, delegated SError |
+
+---
+按地址从小到大的完整排序序列：
+`0x000 → 0x080 → 0x100 → 0x180 → 0x200 → 0x280 → 0x300 → 0x380 → 0x400 → 0x480 → 0x500 → 0x580 → 0x600 → 0x680 → 0x700 → 0x780`
+
+要不要我帮你把这些偏移对应的**完整向量表布局**画出来，方便你写异常向量表代码？
+
+
+这是**完全严格匹配你提供的表格**、**逐行完整注释**、**可直接用于 EL1/EL2/EL3** 的 ARM64 异常向量表汇编代码。
+
+代码遵循 **ARMv8-A 官方规范**，**16KB 对齐**，每个向量入口 **0x80 对齐**，注释详尽到每一个偏移地址和功能。
+
+```asm
+/*
+ * ==============================================================================
+ * ARM64 异常向量表 (Exception Vector Table)
+ * 严格遵循 ARMv8-A 架构规范
+ * 基地址必须 16KB (0x4000) 对齐
+ * 每个异常入口固定占用 128 字节 (0x80 对齐)
+ * 适用等级：EL1 / EL2 / EL3 (每个EL独立使用一份)
+ * ==============================================================================
+ */
+
+/* 强制 16KB 对齐，这是 ARM64 硬件对向量表基地址的硬性要求 */
+.align 14
+
+/* 导出向量表基地址符号，供C语言或初始化代码设置到 VBAR_ELx 寄存器 */
+.global arm64_vector_table
+arm64_vector_table:
+
+/*
+ * ==============================================================================
+ * 第 1 组：当前异常等级 (Current EL)，使用 SP_EL0 堆栈指针
+ * 偏移地址：0x000 ~ 0x180
+ * ==============================================================================
+ */
+
+/*
+ * 偏移地址：0x000
+ * 功能说明：Current EL with SP_EL0
+ *           同步异常 (非外部 abort / 外部 abort，EASE==0)
+ */
+.align 7
+el0_sp_sync_e0:
+    b   .               /* 原地跳转占位，实际需填写异常处理逻辑 */
+
+/*
+ * 偏移地址：0x080
+ * 功能说明：Current EL with SP_EL0
+ *           普通中断 / 虚拟中断 (IRQ/vIRQ)
+ */
+.align 7
+el0_sp_irq:
+    b   .
+
+/*
+ * 偏移地址：0x100
+ * 功能说明：Current EL with SP_EL0
+ *           快速中断 / 虚拟快速中断 (FIQ/vFIQ)
+ */
+.align 7
+el0_sp_fiq:
+    b   .
+
+/*
+ * 偏移地址：0x180
+ * 功能说明：Current EL with SP_EL0
+ *           同步外部异常 (EASE==1) / 系统错误 / 虚拟系统错误 / 委托系统错误 (SError)
+ */
+.align 7
+el0_sp_serror:
+    b   .
+
+/*
+ * ==============================================================================
+ * 第 2 组：当前异常等级 (Current EL)，使用 SP_ELx (x>0) 堆栈指针 (EL1/2/3自身栈)
+ * 偏移地址：0x200 ~ 0x380
+ * ==============================================================================
+ */
+
+/*
+ * 偏移地址：0x200
+ * 功能说明：Current EL with SP_ELx (x>0)
+ *           同步异常 (非外部 abort / 外部 abort，EASE==0)
+ */
+.align 7
+elx_sp_sync_e0:
+    b   .
+
+/*
+ * 偏移地址：0x280
+ * 功能说明：Current EL with SP_ELx (x>0)
+ *           普通中断 / 虚拟中断 (IRQ/vIRQ)
+ */
+.align 7
+elx_sp_irq:
+    b   .
+
+/*
+ * 偏移地址：0x300
+ * 功能说明：Current EL with SP_ELx (x>0)
+ *           快速中断 / 虚拟快速中断 (FIQ/vFIQ)
+ */
+.align 7
+elx_sp_fiq:
+    b   .
+
+/*
+ * 偏移地址：0x380
+ * 功能说明：Current EL with SP_ELx (x>0)
+ *           同步外部异常 (EASE==1) / 系统错误 / 虚拟系统错误 / 委托系统错误 (SError)
+ */
+.align 7
+elx_sp_serror:
+    b   .
+
+/*
+ * ==============================================================================
+ * 第 3 组：来自下层 64 位异常等级 (Lower EL)，AArch64 状态
+ * 偏移地址：0x400 ~ 0x580
+ * ==============================================================================
+ */
+
+/*
+ * 偏移地址：0x400
+ * 功能说明：Lower EL (AArch64 状态)
+ *           同步异常 (非外部 abort / 外部 abort，EASE==0)
+ */
+.align 7
+lower_a64_sync_e0:
+    b   .
+
+/*
+ * 偏移地址：0x480
+ * 功能说明：Lower EL (AArch64 状态)
+ *           普通中断 / 虚拟中断 (IRQ/vIRQ)
+ */
+.align 7
+lower_a64_irq:
+    b   .
+
+/*
+ * 偏移地址：0x500
+ * 功能说明：Lower EL (AArch64 状态)
+ *           快速中断 / 虚拟快速中断 (FIQ/vFIQ)
+ */
+.align 7
+lower_a64_fiq:
+    b   .
+
+/*
+ * 偏移地址：0x580
+ * 功能说明：Lower EL (AArch64 状态)
+ *           同步外部异常 (EASE==1) / 系统错误 / 虚拟系统错误 / 委托系统错误 (SError)
+ */
+.align 7
+lower_a64_serror:
+    b   .
+
+/*
+ * ==============================================================================
+ * 第 4 组：来自下层 32 位异常等级 (Lower EL)，AArch32 状态
+ * 偏移地址：0x600 ~ 0x780
+ * ==============================================================================
+ */
+
+/*
+ * 偏移地址：0x600
+ * 功能说明：Lower EL (AArch32 状态)
+ *           同步异常 (非外部 abort / 外部 abort，EASE==0)
+ */
+.align 7
+lower_a32_sync_e0:
+    b   .
+
+/*
+ * 偏移地址：0x680
+ * 功能说明：Lower EL (AArch32 状态)
+ *           普通中断 / 虚拟中断 (IRQ/vIRQ)
+ */
+.align 7
+lower_a32_irq:
+    b   .
+
+/*
+ * 偏移地址：0x700
+ * 功能说明：Lower EL (AArch32 状态)
+ *           快速中断 / 虚拟快速中断 (FIQ/vFIQ)
+ */
+.align 7
+lower_a32_fiq:
+    b   .
+
+/*
+ * 偏移地址：0x780
+ * 功能说明：Lower EL (AArch32 状态)
+ *           同步外部异常 (EASE==1) / 系统错误 / 虚拟系统错误 / 委托系统错误 (SError)
+ */
+.align 7
+lower_a32_serror:
+    b   .
+```
+
+---
+
+### 代码使用说明
+1.  **完全匹配**：代码中的**每一个偏移地址**和**功能注释**，都**1:1 对应**你提供的表格。
+2.  **语法标准**：使用 **GAS 语法**（GNU 汇编器），适用于 GCC、Clang 编译器。
+3.  **占位指令**：代码中 `b .` 是原地跳转占位符，实际开发时，你需要在这里添加**寄存器现场保存**、**调用C处理函数**、**现场恢复**和**异常返回（eret）**的逻辑。
+4.  **多 EL 复用**：**EL1、EL2、EL3 每个异常等级都可以独立使用这份代码**，只需将 `arm64_vector_table` 的地址写入对应的 `VBAR_EL1`、`VBAR_EL2` 或 `VBAR_EL3` 寄存器即可。
+
+
+
+
+
+
+
 ```mermaid
 graph TD
     A[VBAR_ELx 向量基地址] --> B1[表1：普通异常]
