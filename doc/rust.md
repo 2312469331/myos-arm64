@@ -1,3 +1,84 @@
+Rust 九成官方文档面向 Web 服务与业务逻辑开发，对于 `no_std` 裸机场景下寄存器操作、内存布局底层开发而言，相关内容不具备参考价值。
+本文为**Stable 稳定版裸机底层开发**专用 Rust 官方文档使用指南，明确各类问题对应文档查阅章节，同时标注无需查阅的冗余资料。
+
+---
+### 第一部分：Rust 文档四象限思维模型
+Rust 官方文档不可整体视作入门教程，应按照用途划分为四类独立工具：
+
+| 文档名称 | 定位 | 使用频率 | 核心作用 |
+| :--- | :--- | :--- | :--- |
+| **The Reference** (语言参考) | 语法标准规范 | ⭐⭐⭐⭐⭐ 高频日常查阅 | 查询 `asm!` 约束、`repr(C)` 内存布局、`unsafe` 安全边界 |
+| **Standard / Core Library API** | 类型与接口字典 | ⭐⭐⭐⭐ 高频日常查阅 | 查询 `AtomicUsize`、`UnsafeCell` 等底层类型用法 |
+| **The Unstable Book** | Nightly 特性风险清单 | ⭐⭐⭐ 常规排错查阅 | 校验语法特性是否受功能开关限制 |
+| **The Book / Rust by Example** | 新手入门教程 | 🗑️ 无需查阅 | 仅讲解字符串、动态数组等上层业务类型，不适用于内核开发 |
+
+---
+### 第二部分：内核开发文档查阅路由
+底层开发各类场景，严格按照对应路径查阅官方资料：
+#### 场景 1：内联汇编 `asm!` / `naked_asm!` 开发
+- 不建议查阅：API 文档内 `core::arch::asm` 条目，内容描述过于简略
+- 推荐查阅：👉 [The Reference -> Inline Assembly](https://doc.rust-lang.org/reference/inline-assembly.html)
+- 查阅重点：
+  - 明确 `nostack`、`nomem`、`preserves_flags` 等编译选项官方定义
+  - 理清 `in/out/lateout/inout` 寄存器约束规则，避免编译器优化篡改寄存器数据
+  - 理解 `clobber_abi("C")` 作用，依照 C 调用约定自动规范寄存器破坏规则，替代手动配置通用寄存器
+
+#### 场景 2：C 语言 FFI 交互与内存布局对齐
+- 推荐查阅：👉 [The Reference -> Type Layout](https://doc.rust-lang.org/reference/type-layout.html) & [External Blocks](https://doc.rust-lang.org/reference/items/external-blocks.html)
+- 查阅重点：
+  - 确认 `#[repr(C)]`、`#[repr(transparent)]` 内存对齐、数据长度规范，保证 Rust 任务上下文与 C 语言结构体内存布局完全一致
+  - 遵循 `extern "C"` 外部块函数签名标准，统一跨语言调用 ABI
+
+#### 场景 3：界定 `unsafe` 作用边界，规避未定义行为
+- 推荐查阅：👉 [The Reference -> Unsafety](https://doc.rust-lang.org/reference/unsafety.html)
+- 查阅重点：
+  - 以官方文档「不安全操作」清单为唯一标准，不参考第三方博客模糊总结
+  - 重点关注数据竞争、非法数值类型问题，包括引用非空约束、布尔值仅允许 0/1 取值，规避操作系统开发高频 UB 隐患
+
+#### 场景 4：查询 `no_std` 环境可用底层数据结构
+- 推荐查阅：👉 [Core Library Docs](https://doc.rust-lang.org/core/)
+- 查阅重点：
+  - std 库通用功能基本均可在 core 库找到对应实现，core 缺失功能再查阅 alloc 库
+  - 核心常用模块：`core::sync::atomic` 原子操作、`core::cell` 内存封装、`core::marker` 线程安全特征推导
+
+---
+### 第三部分：Stable 1.95.0 版本兼容性风险规避方案
+底层开发常遇到教程语法、接口无法在稳定版正常编译，可通过官方文档提前筛查版本限制。
+#### 技巧 1：查阅不稳定特性手册排查功能锁
+- 文档入口：👉 [The Unstable Book](https://doc.rust-lang.org/nightly/unstable-book/)
+- 使用方式：检索 `#[naked]`、`naked_asm!` 等底层语法
+- 判断规则：标注依赖 `#![feature(xxx)]` 的特性，仅 Nightly 版本可用，稳定版无法编译。例如 `naked_functions` 特性在 1.95.0 稳定版中不开放使用。
+
+#### 技巧 2：识别 API 文档版本标识
+查阅 docs.rs 接口时，优先查看页面顶部提示：
+- 标注 🚫 **`This is a nightly-only experimental API.`**：放弃该接口，更换实现逻辑
+- 标注 ⚠️ **`unsafe`**：详细阅读安全说明章节，通过宏封装、代码规范严格约束内核调用契约
+
+#### 技巧 3：适配 `#[unsafe(...)]` 语法迭代规则
+Rust 1.82 版本后进入属性语法过渡期，部分语法被归类为不安全属性。
+- 兼容规则：1.95.0 稳定版中 `#[no_mangle]` 旧写法依旧可用，仅触发警告不中断编译
+- 使用规范：文档标记为不安全属性的语法，误用会引发链接异常、ABI 错乱等严重未定义行为，内核开发需参照 `#[unsafe(属性名)]` 格式严格管控使用。
+
+---
+### 第四部分：必备官方文档永久书签
+操作系统底层开发仅需留存以下 5 个官方链接：
+1.  **[The Rust Reference (Stable)](https://doc.rust-lang.org/reference/)**
+    底层语法查阅最高频文档
+2.  **[Core Library API (Stable)](https://doc.rust-lang.org/core/)**
+    no_std 裸机开发核心接口参考库
+3.  **[The Unstable Book (Nightly)](https://doc.rust-lang.org/nightly/unstable-book/)**
+    版本兼容性筛选工具，无需使用 Nightly 即可判断语法是否稳定
+4.  **[Rust Compiler Error Index](https://doc.rust-lang.org/error_codes.html)**
+    直接检索错误编号查询官方解决方案，适配生命周期、栈释放顺序等内核专属编译问题
+5.  **[Rust RFC Book](https://rust-lang.github.io/rfcs/)**
+    语法设计原理查阅字典，可检索裸函数调用约定等底层规则由来
+
+---
+### 底层开发核心原则
+操作系统开发无需使用 `std::io`、异步语法、动态特征对象 `Box<dyn Trait>`。
+研发核心聚焦语言参考手册内联汇编、类型布局规范，以及 Core 库原子操作、内存容器相关接口，即可依托 Rust 稳定版完整实现 ARM64 硬件底层管控。
+
+
 
 ```bash
 chanpinkaifa@A-chanpinkaifa MINGW64 ~/Desktop/product/os/myos-arm64 (dev)
