@@ -39,6 +39,10 @@ MEMORY
 SECTIONS
 {
     /* ---------------- 3. 段布局核心 (SECTIONS 命令) ---------------- */
+    
+    /* 3.0 调试信息段：放到最前面，使用低物理地址避免 32 位重定位溢出 */
+   
+
     /* 3.1 早期启动段：物理地址 1:1 映射 */
     .boot :
     {
@@ -48,11 +52,15 @@ SECTIONS
         . = ALIGN(4096);    /* 4K 对齐，符合 LLD 段对齐规则 */
     } > BOOT_PHYS
 
+    .debug_gdb_scripts :
+    {
+        *(.debug_gdb_scripts .debug_gdb_scripts.*)
+    } > BOOT_PHYS
     /* 3.1.1 RESET 段：异常向量表 */
     .reset :
     {
         KEEP(*(RESET))  /* 保留异常向量表 */
-        . = ALIGN(2048);    /* 3 * 2048 字节对齐，确保容纳三个向量表 */
+        . = ALIGN(4096);    /* 3 * 2048 字节对齐，确保容纳三个向量表 */
     } > BOOT_PHYS
 
     /* 计算页表段的物理地址 */
@@ -111,11 +119,10 @@ SECTIONS
 
     } >KERNEL_VIRT
 
-    /* 3.3 废弃无用段：符合 LLD 规范 */
+    /* 3.4 废弃无用段：符合 LLD 规范 */
     /DISCARD/ : {
         *(.comment)   /* 去掉注释段 */
         *(.eh_frame)  /* 去掉异常处理帧 */
         *(.rel*)      /* 去掉重定位信息 */
     }
-
 }

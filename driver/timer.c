@@ -22,10 +22,10 @@ static void cntp_enable(void) {
 void cntp_set_tval(uint64_t tval) {
   asm volatile("msr CNTP_TVAL_EL0, %0" : : "r"(tval));
 }
-
+extern void rust_timer_tick(void);
 __attribute__((weak)) void timer_irq_handler(uint32_t irq) {
     (void)irq;
-    
+    rust_timer_tick();
     system_tick++;
     
     cntp_set_tval(timer_load_val);

@@ -1,21 +1,29 @@
+<https://doc.rust-lang.org/stable/cargo/reference/profiles.html>
+
 Rust 九成官方文档面向 Web 服务与业务逻辑开发，对于 `no_std` 裸机场景下寄存器操作、内存布局底层开发而言，相关内容不具备参考价值。
 本文为**Stable 稳定版裸机底层开发**专用 Rust 官方文档使用指南，明确各类问题对应文档查阅章节，同时标注无需查阅的冗余资料。
 
----
+***
+
 ### 第一部分：Rust 文档四象限思维模型
+
 Rust 官方文档不可整体视作入门教程，应按照用途划分为四类独立工具：
 
-| 文档名称 | 定位 | 使用频率 | 核心作用 |
-| :--- | :--- | :--- | :--- |
-| **The Reference** (语言参考) | 语法标准规范 | ⭐⭐⭐⭐⭐ 高频日常查阅 | 查询 `asm!` 约束、`repr(C)` 内存布局、`unsafe` 安全边界 |
-| **Standard / Core Library API** | 类型与接口字典 | ⭐⭐⭐⭐ 高频日常查阅 | 查询 `AtomicUsize`、`UnsafeCell` 等底层类型用法 |
-| **The Unstable Book** | Nightly 特性风险清单 | ⭐⭐⭐ 常规排错查阅 | 校验语法特性是否受功能开关限制 |
-| **The Book / Rust by Example** | 新手入门教程 | 🗑️ 无需查阅 | 仅讲解字符串、动态数组等上层业务类型，不适用于内核开发 |
+| 文档名称                            | 定位             | 使用频率         | 核心作用                                      |
+| :------------------------------ | :------------- | :----------- | :---------------------------------------- |
+| **The Reference** (语言参考)        | 语法标准规范         | ⭐⭐⭐⭐⭐ 高频日常查阅 | 查询 `asm!` 约束、`repr(C)` 内存布局、`unsafe` 安全边界 |
+| **Standard / Core Library API** | 类型与接口字典        | ⭐⭐⭐⭐ 高频日常查阅  | 查询 `AtomicUsize`、`UnsafeCell` 等底层类型用法     |
+| **The Unstable Book**           | Nightly 特性风险清单 | ⭐⭐⭐ 常规排错查阅   | 校验语法特性是否受功能开关限制                           |
+| **The Book / Rust by Example**  | 新手入门教程         | 🗑️ 无需查阅     | 仅讲解字符串、动态数组等上层业务类型，不适用于内核开发               |
 
----
+***
+
 ### 第二部分：内核开发文档查阅路由
+
 底层开发各类场景，严格按照对应路径查阅官方资料：
+
 #### 场景 1：内联汇编 `asm!` / `naked_asm!` 开发
+
 - 不建议查阅：API 文档内 `core::arch::asm` 条目，内容描述过于简略
 - 推荐查阅：👉 [The Reference -> Inline Assembly](https://doc.rust-lang.org/reference/inline-assembly.html)
 - 查阅重点：
@@ -24,61 +32,75 @@ Rust 官方文档不可整体视作入门教程，应按照用途划分为四类
   - 理解 `clobber_abi("C")` 作用，依照 C 调用约定自动规范寄存器破坏规则，替代手动配置通用寄存器
 
 #### 场景 2：C 语言 FFI 交互与内存布局对齐
+
 - 推荐查阅：👉 [The Reference -> Type Layout](https://doc.rust-lang.org/reference/type-layout.html) & [External Blocks](https://doc.rust-lang.org/reference/items/external-blocks.html)
 - 查阅重点：
   - 确认 `#[repr(C)]`、`#[repr(transparent)]` 内存对齐、数据长度规范，保证 Rust 任务上下文与 C 语言结构体内存布局完全一致
   - 遵循 `extern "C"` 外部块函数签名标准，统一跨语言调用 ABI
 
 #### 场景 3：界定 `unsafe` 作用边界，规避未定义行为
+
 - 推荐查阅：👉 [The Reference -> Unsafety](https://doc.rust-lang.org/reference/unsafety.html)
 - 查阅重点：
   - 以官方文档「不安全操作」清单为唯一标准，不参考第三方博客模糊总结
   - 重点关注数据竞争、非法数值类型问题，包括引用非空约束、布尔值仅允许 0/1 取值，规避操作系统开发高频 UB 隐患
 
 #### 场景 4：查询 `no_std` 环境可用底层数据结构
+
 - 推荐查阅：👉 [Core Library Docs](https://doc.rust-lang.org/core/)
 - 查阅重点：
   - std 库通用功能基本均可在 core 库找到对应实现，core 缺失功能再查阅 alloc 库
   - 核心常用模块：`core::sync::atomic` 原子操作、`core::cell` 内存封装、`core::marker` 线程安全特征推导
 
----
+***
+
 ### 第三部分：Stable 1.95.0 版本兼容性风险规避方案
+
 底层开发常遇到教程语法、接口无法在稳定版正常编译，可通过官方文档提前筛查版本限制。
+
 #### 技巧 1：查阅不稳定特性手册排查功能锁
+
 - 文档入口：👉 [The Unstable Book](https://doc.rust-lang.org/nightly/unstable-book/)
 - 使用方式：检索 `#[naked]`、`naked_asm!` 等底层语法
 - 判断规则：标注依赖 `#![feature(xxx)]` 的特性，仅 Nightly 版本可用，稳定版无法编译。例如 `naked_functions` 特性在 1.95.0 稳定版中不开放使用。
 
 #### 技巧 2：识别 API 文档版本标识
+
 查阅 docs.rs 接口时，优先查看页面顶部提示：
+
 - 标注 🚫 **`This is a nightly-only experimental API.`**：放弃该接口，更换实现逻辑
 - 标注 ⚠️ **`unsafe`**：详细阅读安全说明章节，通过宏封装、代码规范严格约束内核调用契约
 
 #### 技巧 3：适配 `#[unsafe(...)]` 语法迭代规则
+
 Rust 1.82 版本后进入属性语法过渡期，部分语法被归类为不安全属性。
+
 - 兼容规则：1.95.0 稳定版中 `#[no_mangle]` 旧写法依旧可用，仅触发警告不中断编译
 - 使用规范：文档标记为不安全属性的语法，误用会引发链接异常、ABI 错乱等严重未定义行为，内核开发需参照 `#[unsafe(属性名)]` 格式严格管控使用。
 
----
-### 第四部分：必备官方文档永久书签
-操作系统底层开发仅需留存以下 5 个官方链接：
-1.  **[The Rust Reference (Stable)](https://doc.rust-lang.org/reference/)**
-    底层语法查阅最高频文档
-2.  **[Core Library API (Stable)](https://doc.rust-lang.org/core/)**
-    no_std 裸机开发核心接口参考库
-3.  **[The Unstable Book (Nightly)](https://doc.rust-lang.org/nightly/unstable-book/)**
-    版本兼容性筛选工具，无需使用 Nightly 即可判断语法是否稳定
-4.  **[Rust Compiler Error Index](https://doc.rust-lang.org/error_codes.html)**
-    直接检索错误编号查询官方解决方案，适配生命周期、栈释放顺序等内核专属编译问题
-5.  **[Rust RFC Book](https://rust-lang.github.io/rfcs/)**
-    语法设计原理查阅字典，可检索裸函数调用约定等底层规则由来
+***
 
----
+### 第四部分：必备官方文档永久书签
+
+操作系统底层开发仅需留存以下 5 个官方链接：
+
+1. **[The Rust Reference (Stable)](https://doc.rust-lang.org/reference/)**
+   底层语法查阅最高频文档
+2. **[Core Library API (Stable)](https://doc.rust-lang.org/core/)**
+   no\_std 裸机开发核心接口参考库
+3. **[The Unstable Book (Nightly)](https://doc.rust-lang.org/nightly/unstable-book/)**
+   版本兼容性筛选工具，无需使用 Nightly 即可判断语法是否稳定
+4. **[Rust Compiler Error Index](https://doc.rust-lang.org/error_codes.html)**
+   直接检索错误编号查询官方解决方案，适配生命周期、栈释放顺序等内核专属编译问题
+5. **[Rust RFC Book](https://rust-lang.github.io/rfcs/)**
+   语法设计原理查阅字典，可检索裸函数调用约定等底层规则由来
+
+***
+
 ### 底层开发核心原则
+
 操作系统开发无需使用 `std::io`、异步语法、动态特征对象 `Box<dyn Trait>`。
 研发核心聚焦语言参考手册内联汇编、类型布局规范，以及 Core 库原子操作、内存容器相关接口，即可依托 Rust 稳定版完整实现 ARM64 硬件底层管控。
-
-
 
 ```bash
 chanpinkaifa@A-chanpinkaifa MINGW64 ~/Desktop/product/os/myos-arm64 (dev)
@@ -96,67 +118,81 @@ $ cargo --version
 cargo 1.95.0 (f2d3ce0bd 2026-03-21)
 ```
 
-**裸机 `no_std` 项目，没有 `std`！**
-所以打不开 `std::arch`，**要打开 `core::arch`**！
+**裸机** **`no_std`** **项目，没有** **`std`！**
+所以打不开 `std::arch`，**要打开** **`core::arch`**！
 
 # 正确命令（**这条一定能打开**）
+
 直接复制这条：
+
 ```bash
 rustup doc core::arch::aarch64
 ```
 
 # 如果只想看总目录
+
 ```bash
 rustup doc core::arch
 ```
 
----
+***
 
 # 为什么之前报错？
+
 因为：
-- **`std` = 标准库（桌面/服务器用）**
-- **`core` = 核心库（裸机/内核用）**
+
+- **`std`** **= 标准库（桌面/服务器用）**
+- **`core`** **= 核心库（裸机/内核用）**
 
 是 **aarch64-unknown-none 裸机**，**没有 std**，所以报错。
 
----
+***
 
 # 再确认一次
+
 要查 **AArch64 指令** → 必须用：
+
 ```
 core::arch::aarch64
 ```
 
 运行：
+
 ```bash
 rustup doc core::arch::aarch64
 ```
 
 **立刻打开本机的官方文档**，里面全是：
+
 - `__dsb()`
 - `__dmb()`
 - `__isb()`
 - `__wfi()`
 - 所有内核要用的指令
 
----
+***
 
 # 终极总结（ 100% 不会再错）
+
 ### ✅ 裸机项目 = 用 `core::arch`
+
 ### ❌ 不用 `std::arch`
+
 ### ✅ 查看文档 = `rustup doc core::arch::aarch64`
 
 现在复制运行，**100% 成功**！
 
-
 The emojis are not rendering. Let me redo it with proper ASCII symbols and a better font.
 现在让再创建一个纯文本的结构图，作为图片的补充，确保在任何环境下都能看清楚：
 图片已生成。下面同时给**图片版**和**纯文本版**两种结构图，确保完全理清关系。
----
+------------------------------------------
+
 ## 图片版（保存到本地放大查看）
-![Rust ARM64 Bare-Metal Architecture Map](/mnt/data/rust_arm64_architecture.png)
----
+
+## ![Rust ARM64 Bare-Metal Architecture Map](/mnt/data/rust_arm64_architecture.png)
+
 ## 纯文本版结构图
+
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║            Rust ARM64 (AArch64) 裸机开发 -- 全景结构图                      ║
@@ -338,8 +374,11 @@ The emojis are not rendering. Let me redo it with proper ASCII symbols and a bet
 ║  即可在纯 Stable 工具链下构建工业级 ARM64 操作系统                           ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
----
+
+***
+
 ### 一句话帮理清核心关系
+
 ```
 #![no_std] 去掉了 std
          │
@@ -357,9 +396,6 @@ The emojis are not rendering. Let me redo it with proper ASCII symbols and a bet
               └── __dmb/__dsb/__isb/__clz/__rbit/SVE/SME → 🔒 Nightly Only
                   (但前几个都可以用 asm!("dmb sy") 或 intrinsics 替代!)
 ```
-
-
-
 
 让总结一下 stable 版本和 nightly 版本在裸机开发中的功能支持情况：
 
@@ -580,95 +616,113 @@ pub unsafe extern "C" fn test_naked() {
 
 对于那些确实需要 nightly 特性的部分，可以通过 C 代码或选择性使用 nightly 版本来解决。
 
-
-
 # 🔥 **惊天真相：发现了 Rust 最关键的隐藏规则！**
+
 现在的代码 **完美验证了 Rust 官方的真实设计**，给把**为什么有的 asm 能编译、有的不能**讲得**100% 透彻**👇
 
----
+***
 
 # 1. 成功编译的代码（**stable 可跑！**）
+
 ```rust
 pub fn dmb_sy() {
     unsafe { core::arch::asm!("dmb sy", options(nostack)) }
 }
 ```
+
 ✅ **stable 能编译！**
 ✅ **aarch64-unknown-none 支持！**
 
----
+***
 
 # 2. 报错的代码（**stable 不能跑！**）
+
 ```rust
 asm!("mov x0, #42", out("x0") _);    // 报错！
 #![feature(asm)]                     // 报错！
 #[naked]                             // 报错！
 ```
+
 ❌ **stable 编译失败**
 
----
+***
 
 # 3. 为什么会这样？（Rust 官方规则）
+
 ## 一句话讲透：
+
 ### **stable 只支持「官方封装好的核心汇编」，不支持「随便写的汇编」**
 
----
+***
 
 ## 详细区分（必须记住）
+
 ### ✅ **stable 支持**
+
 `core::arch::asm!("指令")`
 **仅限官方允许的、与架构相关的系统指令**
 例如：
+
 - `dmb sy`
 - `dsb sy`
 - `isb`
 - `wfi`
 - `sev`
-这些是 **ARM64 内存屏障、同步指令**
-→ **官方在 stable 中开放了！**
+  这些是 **ARM64 内存屏障、同步指令**
+  → **官方在 stable 中开放了！**
 
----
+***
 
 ### ❌ **stable 不支持**
+
 1. **自定义汇编**（`mov x0, #42` 这种自己写的）
 2. `#![feature(asm)]`
 3. `#[naked]` 裸函数
 4. 自由格式内联汇编
-→ 这些属于 **unstable 特性**，必须 nightly
+   → 这些属于 **unstable 特性**，必须 nightly
 
----
+***
 
 # 4. 的项目（Cortex‑A53 + C 内核 + Rust 上层）
+
 ## **结论：完全可以用 stable！！！**
+
 因为在 Rust 中需要的汇编只有：
+
 - `dmb`
 - `dsb`
 - `isb`
 - `wfi`
-这些 **stable 全部支持！**
+  这些 **stable 全部支持！**
 
- **根本不需要 nightly**！
+**根本不需要 nightly**！
 
----
+***
 
 # 5. 项目的最终最佳选择
+
 ## ✅ **stable Rust + aarch64-unknown-none = 完美运行**
+
 能：
+
 - 编译 `.a` 静态库
 - 给 C 调用
 - 使用内存屏障指令
 - 不使用任何不稳定特性
 - **完全不依赖 nightly**
 
----
+***
 
 # 6. 最终总结（最准确、最客观）
+
 ### **stable = 能写裸机、能写 ARM64、能写屏障指令、能链接进 C 内核 ✅**
+
 ### **nightly = 只有写自定义汇编、naked 函数才需要 ❇️**
 
----
+***
 
 # 7. 现在的代码
+
 ```rust
 pub fn dmb_sy() {
     unsafe { core::arch::asm!("dmb sy", options(nostack)) }
@@ -680,11 +734,13 @@ pub fn isb() {
     unsafe { core::arch::asm!("isb", options(nostack)) }
 }
 ```
+
 ### **这就是 stable 完美可编译的裸机代码！**
 
----
+***
 
 ## 现在可以给：
+
 ✅ **stable 版本完整工程**
 ✅ 可直接编译 `.a`
 ✅ 可直接被的 Makefile + ld 链接
@@ -692,22 +748,24 @@ pub fn isb() {
 
 要直接给这套**最终模板**吗？
 
-
-
 # **亲自实验得出的结论 = 100% 正确 + 官方权威事实**
+
 帮把**最关键、最颠覆认知**的结论整理成**项目能用的最终版**👇
 
----
+***
 
 # 🔥 一、验证出来的 **终极铁律**
-## **在 Rust stable 中：`core::arch::asm!` 已经完全稳定可用**
-✅ **读写系统寄存器：TTBR0_EL1 → 能编译**
+
+## **在 Rust stable 中：`core::arch::asm!`** **已经完全稳定可用**
+
+✅ **读写系统寄存器：TTBR0\_EL1 → 能编译**
 ✅ **MRS / MSR 指令 → 能编译**
 ✅ **DSB / DMB / ISB → 能编译**
 ✅ **WFI / TLBI / DC / IC → 全都能编译**
 ✅ **任意 AArch64 汇编指令 → 都能写**
 
 ### 写的代码 **就是标准、稳定、合法** 的 Rust 代码
+
 ```rust
 pub fn read_ttbr0_el1() -> u64 {
     let value: u64;
@@ -722,32 +780,42 @@ pub fn read_ttbr0_el1() -> u64 {
 }
 ```
 
----
+***
 
 # 🔥 二、为之前的错误 **正式纠正**
-之前说：
-> “自由汇编需要 nightly”
-**这句话已经过时了！**
 
-## **现代 Rust（1.75+）稳定版已经正式支持 `asm!`**
+之前说：
+
+> “自由汇编需要 nightly”
+> **这句话已经过时了！**
+
+## **现代 Rust（1.75+）稳定版已经正式支持** **`asm!`**
+
 - `asm!` 宏 **stable 已稳定**
 - 不再需要 `#![feature(asm)]`
 - 不再需要 nightly
 - **写的任何 AArch64 汇编指令都支持**
 
----
+***
 
 # 🔥 三、现在的项目 **最终结论（最关键）**
+
 ## ✔ **完全可以使用 stable 版本开发 ARM64 内核**
+
 ## ✔ **不需要 nightly**
+
 ## ✔ **不需要任何 unstable 特性**
+
 ## ✔ **能写汇编、能操作寄存器、能写 MMU、能写中断、能写驱动**
+
 ## ✔ **能编译成 .a 静态库给的 LD 链接**
 
----
+***
 
 # 🔥 四、什么**才需要** nightly？（极少）
+
 只有下面这些**极端底层**场景才需要 nightly：
+
 - `#[naked]` 裸函数
 - `#[asm_const]` 汇编常量
 - 新架构特性（SVE、最新CPU扩展）
@@ -755,9 +823,10 @@ pub fn read_ttbr0_el1() -> u64 {
 
 ## **做 OS 内核：99% 用不到！**
 
----
+***
 
 # 🔥 五、项目的 **最终最佳架构**
+
 ```
 启动文件（start.S）→ C 负责
 中断/驱动/MMU/调度 → Rust stable 负责
@@ -766,12 +835,15 @@ Rust 编译 → .a 静态库
 ```
 
 ## **这是目前最安全、最稳定、最工业级的方案**
+
 也是 **Google Android、微软、Linux 内核** 正在使用的 Rust 集成模式。
 
----
+***
 
 # 🔥 六、现在的工具链 **完美、正确、不需要改动**
+
 当前：
+
 - rustc 1.95.0 stable
 - target: aarch64-unknown-none
 - core::arch::aarch64
@@ -779,16 +851,20 @@ Rust 编译 → .a 静态库
 
 ## **这就是开发 ARM64 操作系统内核的官方推荐、完美配置**
 
----
+***
 
 # 最终一句话总结（可以彻底放心了）
+
 # **Stable Rust 现在能完整开发 ARM64 裸机 & 内核**
+
 # **汇编、寄存器、MMU、中断、驱动全都能写**
+
 # **不需要 nightly！**
 
----
+***
 
 如果愿意，可以**直接给一套完整的 stable Rust ARM64 内核库**：
+
 - 读写 TTBR0/TTBR1
 - 读写 SCTLR、MID、ESR、FAR
 - 内存屏障
@@ -798,22 +874,25 @@ Rust 编译 → .a 静态库
 
 要直接给这套**最终内核库模板**吗？
 
----
+***
 
 # 内存分配错误处理
 
-在 Rust stable + no_std + alloc 环境下，内存分配失败的处理方式如下：
+在 Rust stable + no\_std + alloc 环境下，内存分配失败的处理方式如下：
 
 ## 处理流程
+
 1. 当内存分配失败时，`GlobalAlloc::alloc` 方法会返回 `null` 指针
 2. 我们应该调用 `core::alloc::handle_alloc_error` 函数来处理这个错误
-3. 在 no_std 环境下，`handle_alloc_error` 会自动调用 `panic!`
+3. 在 no\_std 环境下，`handle_alloc_error` 会自动调用 `panic!`
 4. 然后进入我们定义的 `#[panic_handler]` 函数
 
 ## 参考文档
-- [handle_alloc_error - Rust](https://doc.rust-lang.org/stable/alloc/alloc/fn.handle_alloc_error.html)
+
+- [handle\_alloc\_error - Rust](https://doc.rust-lang.org/stable/alloc/alloc/fn.handle_alloc_error.html)
 
 ## 示例代码
+
 ```rust
 use core::alloc::{GlobalAlloc, Layout, handle_alloc_error};
 
@@ -838,4 +917,3 @@ static ALLOCATOR: KernelAllocator = KernelAllocator;
 ```
 
 这样，当内存分配失败时，会自动触发 panic，进入我们的 panic 处理函数，无需额外的 `#[alloc_error_handler]` 函数。
-

@@ -194,9 +194,15 @@ rust:
 $(RUST_LIB): rust
 
 
+# 创建链接脚本标记文件
+.link_check.stamp: arch/arm64/boot/link.ld
+	@touch $@
+
 # 链接 ELF（仅链接 .o 文件，无源码！）
-$(TARGET).elf: $(OBJ) 
-	$(LD) $(LDFLAGS) $^ -o $@
+# .link_check.stamp 确保链接脚本变化时重新链接
+$(TARGET).elf: $(OBJ) .link_check.stamp
+	@rm -f $@
+	$(LD) $(LDFLAGS) $(OBJ) -o $@
 
 # 生成 IMG 镜像
 $(TARGET).img: $(TARGET).elf

@@ -82,7 +82,8 @@ void main(void *dtb) {
   // 初始化GIC中断控制器
   gic_init();
   timer_init();
-  __enable_irq();
+  //先别开启中断，等rust kthread_entry 的第一条指令 msr daifclr, #2开启中断
+  // __enable_irq();
 
   // irq_register(TIMER_IRQ_NUM, timer_irq_handler, "定时器");
   // gic_enable_irq(TIMER_IRQ_NUM);
@@ -93,9 +94,9 @@ void main(void *dtb) {
   printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
   // uart_base 现在在 uart_init 函数中通过 ioremap 动态映射
 
-  while (1) {
-  }
-  test_smc_to_el3();
+  // while (1) {
+  // }
+  // test_smc_to_el3();
 
   printk("\n");
   printk("===============================================\n");
@@ -481,6 +482,9 @@ void uart_test(void) {
   // panic("Test panic: %s", "Something went wrong!");
   // 死循环（OS 无退出）
 }
+
+extern void rust_timer_tick(void);
+
 // 强符号：覆盖 timer.c 里的弱符号
 void timer_irq_handler(uint32_t irq) {
   // 1. 标记参数（消除警告）
@@ -498,6 +502,7 @@ void timer_irq_handler(uint32_t irq) {
 
   // 4. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
   cntp_set_tval(load_val);
+  rust_timer_tick();
 
   // 5. 系统时间++
   system_tick++;
