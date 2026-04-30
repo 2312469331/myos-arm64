@@ -1,0 +1,38 @@
+/// 架构相关 CPU 控制：中断开关与抢占计数。
+/// 无外部依赖，仅使用 core 内联汇编。
+
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+/// 全局抢占计数：>0 表示禁止调度。
+pub static PREEMPT_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// 是否需要重新调度标志。
+pub static NEED_RESCHED: AtomicBool = AtomicBool::new(false);
+
+/// 禁用 IRQ（中断屏蔽），写入 DAIF 第 2 位。
+#[inline]
+pub fn disable_irq() {
+    unsafe {
+        core::arch::asm!("msr daifset, #2");
+    }
+}
+
+/// 开启 IRQ。
+#[inline]
+pub fn enable_irq() {
+    unsafe {
+        core::arch::asm!("msr daifclr, #2");
+    }
+}
+
+/// 增加抢占计数（禁止抢占）。
+#[inline]
+pub fn preempt_disable() {
+    PREEMPT_COUNT.fetch_add(1, Ordering::Relaxed);
+}
+
+/// 减少抢占计数，若归零则允许抢占。
+#[inline]
+pub fn preempt_enable() {
+    PREEMPT_COUNT.fetch_sub(1, Ordering::Relaxed);
+}

@@ -575,7 +575,7 @@ el1_spx_sync_e0:
     // 把 0 放入 x0
     mov x0, #0  // 异常类型 (0 = 同步异常)
     b el1_exception_entry
-    b el1_exception_entry
+
 
 /* 
  * 偏移地址：0x280 
@@ -737,11 +737,17 @@ el1_exception_entry:
     /* 调用 C 语言异常处理函数 */
     bl c_exception_handler_el1
 
+/* ---------------------------------------------
+ * 这里是出口标签，无论从 C 正常返回，还是 Rust 偷换 SP 后跳过来，
+ * 都会落到这里，无脑恢复当前 SP 指向的现场。
+ * --------------------------------------------- */
+.global el1_exception_exit
+el1_exception_exit:
     /* 恢复 EL1 专用返回地址和状态寄存器 */
     ldp x2, x3, [sp], #16
     msr elr_el1, x2
     msr spsr_el1, x3
-
+    
     /* 恢复所有通用寄存器 */
     ldp x30, xzr, [sp], #16
     ldp x28, x29, [sp], #16

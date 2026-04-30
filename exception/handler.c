@@ -7,7 +7,8 @@
 #include <sync/spinlock.h>
 #include <types.h>
 #include <uart.h>
-
+// 1. 声明 Rust 侧接口
+extern uint64_t rust_check_and_schedule(void);
 static spinlock_t irq_table_lock = SPIN_LOCK_UNLOCKED;
 
 // ==============================
@@ -117,7 +118,43 @@ void c_exception_handler_el2(void) {
   while (1)
     ;
 }
-
+// 2. pt_regs 结构体（顺序必须和你汇编 stp 的顺序严格对应！
+// 第一个必须是 elr 和 spsr，因为你是在存完它们之后才 bl 到 C 的
+struct pt_regs {
+    uint64_t elr_el1;
+    uint64_t spsr_el1;
+    uint64_t x30;
+    uint64_t x29;
+    uint64_t x28;
+    uint64_t x27;
+    uint64_t x26;
+    uint64_t x25;
+    uint64_t x24;
+    uint64_t x23;
+    uint64_t x22;
+    uint64_t x21;
+    uint64_t x20;
+    uint64_t x19;
+    uint64_t x18;
+    uint64_t x17;
+    uint64_t x16;
+    uint64_t x15;
+    uint64_t x14;
+    uint64_t x13;
+    uint64_t x12;
+    uint64_t x11;
+    uint64_t x10;
+    uint64_t x9;
+    uint64_t x8;
+    uint64_t x7;
+    uint64_t x6;
+    uint64_t x5;
+    uint64_t x4;
+    uint64_t x3;
+    uint64_t x2;
+    uint64_t x1;
+    uint64_t x0;  // 原始的 x0 保存在栈的最底下
+};
 // ==============================
 // EL1 异常处理入口
 // x0: 异常类型标识
@@ -126,6 +163,7 @@ void c_exception_handler_el2(void) {
 //     2 = FIQ 中断
 //     3 = SError 系统错误
 // ==============================
+
 void c_exception_handler_el1(uint64_t x0) {
   uint64_t esr = read_esr_el1();
   uint64_t elr = read_elr_el1();
@@ -197,7 +235,14 @@ void c_exception_handler_el1(uint64_t x0) {
 
   case 1:
     // printk("[Exception] IRQ interrupt\n");
-    el1_irq_handler();
+    // IRQ 中断处理
+    el1_irq_handler(); // 你的具体中断处理逻辑
+    
+    // 【唯一的调度检查点】
+    // 如果这里返回 1，说明 Rust 已经偷换了 SP 并跳到汇编恢复新现场了，不会 return。
+    if (rust_check_and_schedule()) {
+        __builtin_unreachable(); 
+    }
     break;
 
   case 2:
