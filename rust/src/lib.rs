@@ -32,6 +32,15 @@ pub extern "C" fn rust_main() {
             ffi::c_print_str(c_log.as_ptr());
         }
     }
+    // 唯一 Stable 1.95 合法能用的裸函数
+#[unsafe(naked)]
+pub extern "C" fn test_naked_ok() {
+    core::arch::naked_asm!(
+        "mov x0, #123\n",
+        "ret\n"
+    );
+}
+
     
     // 注册中断处理函数
     irq::register_irq_enum(irq::IrqNumber::Uart0, test_irq_handler, "Rust UART Test");

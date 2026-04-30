@@ -4,9 +4,9 @@
 #include <irq.h>
 #include <printk.h>
 #include <stdint.h>
-#include <uart.h>
 #include <sync/spinlock.h>
 #include <types.h>
+#include <uart.h>
 
 static spinlock_t irq_table_lock = SPIN_LOCK_UNLOCKED;
 
@@ -114,7 +114,8 @@ void c_exception_handler_el2(void) {
 
   printk("[EL2 Exception] ESR=0x%lx, ELR=0x%lx, SPSR=0x%lx\n", esr, elr, spsr);
 
-  while (1);
+  while (1)
+    ;
 }
 
 // ==============================
@@ -147,26 +148,21 @@ void c_exception_handler_el1(uint64_t x0) {
       panic("Undefined instruction");
       break;
 
-    case ESR_EC_SVC_AARCH64:
-      {
+    case ESR_EC_SVC_AARCH64: {
       uint32_t svc_number = esr & 0xFFFF;
       printk("[Exception] SVC system call #%u at PC: 0x%lx\n", svc_number, elr);
       panic("System call not implemented");
-      }
-      break;
+    } break;
 
-    case ESR_EC_IABORT:
-      {
+    case ESR_EC_IABORT: {
       printk("[Exception] Instruction abort at PC: 0x%lx\n", elr);
       printk("[Exception] Fault address: 0x%lx\n", far);
       uint64_t iss = esr & 0x1FFFFFF;
       printk("[Exception] ISS: 0x%lx\n", iss);
       panic("Instruction abort");
-      }
-      break;
+    } break;
 
-    case ESR_EC_DABORT:
-      {
+    case ESR_EC_DABORT: {
       printk("[Exception] Data abort at PC: 0x%lx\n", elr);
       printk("[Exception] Fault address: 0x%lx\n", far);
       uint64_t iss = esr & 0x1FFFFFF;
@@ -185,8 +181,7 @@ void c_exception_handler_el1(uint64_t x0) {
       }
 
       panic("Data abort");
-      }
-      break;
+    } break;
 
     case ESR_EC_SERROR:
       printk("[Exception] SError hardware/bus error\n");
@@ -201,7 +196,7 @@ void c_exception_handler_el1(uint64_t x0) {
     break;
 
   case 1:
-    printk("[Exception] IRQ interrupt\n");
+    // printk("[Exception] IRQ interrupt\n");
     el1_irq_handler();
     break;
 
@@ -252,10 +247,12 @@ void el1_sync_handler() {
 
   if (ec == 0x00) {
     uart_puts("[Error] Undefined Instruction!\n");
-    while (1);
+    while (1)
+      ;
   }
 
-  while (1);
+  while (1)
+    ;
 }
 
 void el1_irq_handler() {
@@ -292,6 +289,4 @@ __attribute__((weak)) void uart_irq_callback(uint32_t irq) {
   }
 }
 
-__attribute__((weak)) void timer_irq_handler(uint32_t irq) {
-  (void)irq;
-}
+__attribute__((weak)) void timer_irq_handler(uint32_t irq) { (void)irq; }
