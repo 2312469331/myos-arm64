@@ -55,7 +55,7 @@ pub fn create_kernel_thread(
     unsafe {
         (*arc.arc_self.get()) = Some(Arc::clone(&arc));
     }
-    arc
+    return arc;
 }
 
 /// 被 `kthread_entry` 调用的包装器。

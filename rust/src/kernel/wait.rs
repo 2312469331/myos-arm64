@@ -90,5 +90,5 @@ pub fn start_wait_queue_test() {
     scheduler::add_task(waiter);
     let waker = crate::kernel::task::create_kernel_thread(waker_func, 0, "waker");
     scheduler::add_task(waker);
-    println!("[test] WaitQueue test threads created.");
+    // println!("[test] WaitQueue test threads created.");
 }

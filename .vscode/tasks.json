@@ -4,7 +4,7 @@
         {
             "label": "ubuntu启动 QEMU 调试服务器",
             "type": "shell",
-            "command": "./tools/debug_ubuntu.sh",
+    "command": "gnome-terminal --title=\"QEMU AArch64 调试\" -- bash -i -c \"cd ${workspaceFolder} && ./tools/debug_ubuntu.sh\"",
             "args": [],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -27,17 +27,23 @@
             "problemMatcher": [],
             "isBackground": false
         },
-                {
-            "label": "make clean + compiledb",
+         {
+            "label": "make clean + compile_commands",
             "type": "shell",
-            "command": "make clean && compiledb.exe make -j$(nproc)",
+            "linux": {
+                "command": "make clean && (command -v compiledb >/dev/null && compiledb make -j$(nproc) || (command -v bear >/dev/null && bear -- make -j$(nproc) || make -j$(nproc)))"
+            },
+            "windows": {
+                "command": "make clean && (Get-Command compiledb.exe -ErrorAction SilentlyContinue) ? (compiledb.exe make -j$env:NUMBER_OF_PROCESSORS) : ((Get-Command bear.exe -ErrorAction SilentlyContinue) ? (bear -- make -j$env:NUMBER_OF_PROCESSORS) : (make -j$env:NUMBER_OF_PROCESSORS))"
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"],
             "presentation": {
-                "reveal": "always"
+                "reveal": "always",
+                "panel": "shared"
             }
         }
     ]

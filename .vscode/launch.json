@@ -20,12 +20,9 @@
             "name": "QEMU 调试（可重启/停止）",
             "type": "lldb",
             "request": "attach",
-            "program": "${workspaceFolder}/build/kernel.elf", // 内核 ELF 文件
             "targetCreateCommands": ["target create ${workspaceFolder}/build/kernel.elf"],
-            "processCreateCommands": ["gdb-remote localhost:1234"], // QEMU gdbstub 端口
+            "processCreateCommands": ["gdb-remote localhost:1234"],
             "preLaunchTask": "ubuntu启动 QEMU 调试服务器",
-
-
             // 👇 关键：只做调试连接，不杀进程！
             "preRunCommands": [
                 "shell sleep 0.5"

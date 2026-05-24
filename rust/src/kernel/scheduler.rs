@@ -202,14 +202,12 @@ pub extern "C" fn rust_main() {
         ffi::c_print_str(c"[RUST] All alloc tests passed!\n".as_ptr());
     }
     
-    println!("[kernel] Rust main starting...");
+    // println!("[kernel] Rust main starting...");
 
-    // 1. idle 线程，永远循环，不会返回。
-    fn idle_func(_: usize) {
-        loop {
-            // 低功耗等待中断，如 `wfi`
-            unsafe { core::arch::asm!("wfi"); }
-        }
+
+
+    unsafe {
+      ffi::c_print_str(c"[RUST] All alloc tests passed!\n".as_ptr());
     }
     let idle = task::create_kernel_thread(idle_func, 0, "idle");
     add_task(Arc::clone(&idle));
@@ -227,7 +225,7 @@ pub extern "C" fn rust_main() {
         let q = unsafe { &mut *READY_QUEUE.0.get() };
         q.pop_front().expect("rust_main: no task to start!")
     };
-    let first_ptr = Arc::into_raw(first_arc) as *mut Task;
+    let first_ptr =     Arc::into_raw(first_arc) as *mut Task;
     CURRENT_TASK.store(first_ptr, Ordering::Relaxed);
 
     unsafe {
@@ -242,3 +240,10 @@ pub extern "C" fn rust_main() {
 }
 
 
+    // 1. idle 线程，永远循环，不会返回。
+    fn idle_func(_: usize) {
+        loop {
+            // 低功耗等待中断，如 `wfi`
+            unsafe { core::arch::asm!("wfi"); }
+        }
+    }

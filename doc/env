@@ -1,0 +1,60 @@
+info: profile set to default
+info: default host triple is x86_64-unknown-linux-gnu
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: latest update on 2026-04-16 for version 1.95.0 (59807616e 2026-04-14)
+info: downloading 6 components
+        cargo installed                       10.48 MiB
+       clippy installed                        4.48 MiB
+    rust-docs installed                       21.18 MiB
+     rust-std installed                       28.20 MiB
+        rustc installed                       76.63 MiB
+      rustfmt installed                        2.06 MiB                                                                      info: default toolchain set to stable-x86_64-unknown-linux-gnu
+
+  stable-x86_64-unknown-linux-gnu installed - rustc 1.95.0 (59807616e 2026-04-14)
+
+
+Rust is installed now. Great!
+
+To get started you may need to restart your current shell.
+This would reload your PATH environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source
+the corresponding env file under $HOME/.cargo.
+
+This is usually done by running one of the following (note the leading DOT):
+. "$HOME/.cargo/env"            # For sh/bash/zsh/ash/dash/pdksh
+source "$HOME/.cargo/env.fish"  # For fish
+source "~/.cargo/env.nu"  # For nushell
+source "$HOME/.cargo/env.tcsh"  # For tcsh
+. "$HOME/.cargo/env.ps1"        # For pwsh
+source "$HOME/.cargo/env.xsh"   # For xonsh
+
+
+mkdir -p ~/.cargo
+cat > ~/.cargo/config.toml << EOF
+[source.crates-io]
+replace-with = "tuna"
+[source.tuna]
+registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+EOF
+
+liuweiji@ubuntu:~/code/myos-arm64/doc$ rustup show
+Default host: x86_64-unknown-linux-gnu
+rustup home:  /home/liuweiji/.rustup
+
+installed toolchains
+--------------------
+stable-x86_64-unknown-linux-gnu (active, default)
+
+active toolchain
+----------------
+name: stable-x86_64-unknown-linux-gnu
+active because: it's the default toolchain
+installed targets:
+  x86_64-unknown-linux-gnu
+liuweiji@ubuntu:~/code/myos-arm64/doc$ rustup target list --installed
+x86_64-unknown-linux-gnu
+liuweiji@ubuntu:~/code/myos-arm64/doc$ rustup target add aarch64-unknown-none
+info: downloading component rust-std
+     rust-std installed                       12.66 MiB                                                                      liuweiji@ubuntu:~/code/myos-arm64/doc$ 
