@@ -1,0 +1,3 @@
+# 强制将所有 .rs 文件识别为 Rust
+*.rs linguist-language=Rust
+
