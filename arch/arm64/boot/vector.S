@@ -741,8 +741,8 @@ el1_exception_entry:
  * 这里是出口标签，无论从 C 正常返回，还是 Rust 偷换 SP 后跳过来，
  * 都会落到这里，无脑恢复当前 SP 指向的现场。
  * --------------------------------------------- */
-.global el1_exception_exit
-el1_exception_exit:
+// .global el1_exception_exit
+// el1_exception_exit:
     /* 恢复 EL1 专用返回地址和状态寄存器 */
     ldp x2, x3, [sp], #16
     msr elr_el1, x2

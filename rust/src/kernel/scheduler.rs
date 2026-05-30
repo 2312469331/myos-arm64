@@ -19,10 +19,10 @@ use ffi::Console;
 use crate::irq;
 use crate::println;
 
-// 外部汇编标签：直接跳转回异常退出恢复现场，不经过 C 函数尾幕。
-unsafe extern "C" {
-      unsafe fn el1_exception_exit();
-}
+// // 外部汇编标签：直接跳转回异常退出恢复现场，不经过 C 函数尾幕。
+// unsafe extern "C" {
+//       unsafe fn el1_exception_exit();
+// }
 
 // ---- 就绪队列 -----
 struct RQInner(UnsafeCell<VecDeque<Arc<Task>>>);
@@ -118,12 +118,12 @@ pub unsafe extern "C" fn rust_check_and_schedule() -> usize {
             NEED_RESCHED.store(false, Ordering::Relaxed);
             schedule();
 
-            // 内联汇编
-            core::arch::asm!(
-                "b {}",
-                sym el1_exception_exit,
-                options(noreturn)
-            );
+            // // 内联汇编
+            // core::arch::asm!(
+            //     "b {}",
+            //     sym el1_exception_exit,
+            //     options(noreturn)
+            // );
         }
 
         // 未发生切换，安全返回 C 层继续原有逻辑。

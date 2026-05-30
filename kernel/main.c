@@ -502,13 +502,14 @@ void timer_irq_handler(uint32_t irq) {
 
   // 4. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
   cntp_set_tval(load_val);
-  rust_timer_tick();
+  // rust_timer_tick();
 
   // 5. 系统时间++
   system_tick++;
 
   // 6. 每 1000 个 tick（1秒）打印一次信息
   if (system_tick % 1000 == 0) {
+    rust_timer_tick();
     printk("[TIMER] Tick: %lu, Time: %lu seconds\n", system_tick,
            system_tick / 1000);
   }
