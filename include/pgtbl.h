@@ -87,6 +87,18 @@
   (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
    ARM64_PTE_SH_NON_SHAREABLE | ARM64_PTE_AP_KERNEL_RW_EL0_NONE |           \
    ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(2) | ARM64_PTE_UXN | ARM64_PTE_PXN)
+
+// 用户态可读写（EL0 可访问）
+#define PAGE_USER_RW                                                           \
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_INNER_SHAREABLE | ARM64_PTE_AP_KERNEL_RW_EL0_RW |           \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(0) | ARM64_PTE_UXN | ARM64_PTE_PXN)
+
+// 用户态可读可执行（EL0 可访问，代码段用）
+#define PAGE_USER_RX                                                           \
+  (ARM64_PTE_VALID | ARM64_PTE_TYPE_PAGE | ARM64_PTE_AF | ARM64_PTE_NG |      \
+   ARM64_PTE_SH_INNER_SHAREABLE | ARM64_PTE_AP_KERNEL_RO_EL0_RO |           \
+   ARM64_PTE_NS_RES0 | ARM64_PTE_ATTRIDX(0) | ARM64_PTE_UXN | ARM64_PTE_PXN)
 typedef uint64_t pte_t;
 
 /* ===============================================

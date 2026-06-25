@@ -252,7 +252,6 @@ uint64_t get_sctlr_el1(void) {
 /* EL3 阶段 GIC 初始化：设置 NSACR、IGROUPR、ISENABLER */
 BOOT_CODE
 void gic_el3_init(void) {
-  __enable_irq();
   volatile uint32_t *gicd_base = (volatile uint32_t *)0x8000000;
   volatile uint32_t *gicc_base = (volatile uint32_t *)0x08010000;
 
@@ -267,17 +266,16 @@ void gic_el3_init(void) {
   for (int i = 0; i < 32; i++) {
     gicd_base[(0x180 + i * 4) / 4] = 0xFFFFFFFF;
   }
-//单独启用定时器中断
-  uint32_t timer_irqs[] = {26, 27, 28, 29};
-  for (int i = 0; i < 4; i++) {
-    uint32_t idx = timer_irqs[i] / 32;
-    uint32_t bit = timer_irqs[i] % 32;
-    gicd_base[(0x100 + idx * 4) / 4] |= (1 << bit);
-  }
+
 //同时开启C/D侧中断转发
   gicd_base[0x000 / 4] = 0x3;
-  gicc_base[0x000 / 4] = 0x3;
   gicc_base[0x004 / 4] = 0xFF;
-  // gicc_base[0x008 / 4] = 0x3;
+
+  // // Test: 在 EL3 写 GICD_ISENABLER(2) 看能否写进去
+  // // offset 0x108 = ISENABLER(2), 0x188 = ICENABLER(2)
+  // gicd_base[0x108 / 4] = 0xFFFFFFFF;
+  // gicd_base[0x188 / 4] = 0xFFFFFFFF;
+  // // 用 GDB breakpoint 停住，读 0x108/4 确认
+
   mb();
 }

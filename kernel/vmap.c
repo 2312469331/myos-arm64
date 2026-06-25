@@ -8,7 +8,7 @@
 #define VMALLOC_END (VMALLOC_START + VMALLOC_SIZE)
 #endif
 
-static struct vmap_manager vm;
+struct vmap_manager va_mgr;
 
 static inline uint64_t va_size(struct vmap_area *va) {
     return va->va_end - va->va_start;
@@ -31,7 +31,7 @@ static int va_compare_size(rb_node_t *a, rb_node_t *b) {
 static void va_insert_free(struct vmap_area *va) {
     struct list_head *pos;
     // 遍历找到第一个 va_start 大于当前节点 va_start 的位置
-    list_for_each(pos, &vm.free_list) {
+    list_for_each(pos, &va_mgr.free_list) {
         struct vmap_area *tmp = list_entry(pos, struct vmap_area, free_list);
         if (tmp->va_start > va->va_start) {
             break;
@@ -40,11 +40,11 @@ static void va_insert_free(struct vmap_area *va) {
     // 插入到找到的位置之前，保证链表始终按地址递增
     list_add_tail(&va->free_list, pos);
     
-    rb_tree_insert(&vm.free_tree, &va->free_rb_node);
+    rb_tree_insert(&va_mgr.free_tree, &va->free_rb_node);
 }
 
 static void va_remove_free(struct vmap_area *va) {
-    rb_tree_delete(&vm.free_tree, &va->free_rb_node);
+    rb_tree_delete(&va_mgr.free_tree, &va->free_rb_node);
     list_del(&va->free_list);
 }
 
@@ -54,7 +54,7 @@ static struct vmap_area *va_find_best_fit(uint64_t size) {
     target.va_start = 0;
     target.va_end = size;
     
-    rb_node_t *result_node = rb_tree_search(&vm.free_tree, &target.free_rb_node);
+    rb_node_t *result_node = rb_tree_search(&va_mgr.free_tree, &target.free_rb_node);
     if (result_node) {
         return rb_entry(result_node, struct vmap_area, free_rb_node);
     }
@@ -62,7 +62,7 @@ static struct vmap_area *va_find_best_fit(uint64_t size) {
     // 红黑树没找到（可能红黑树实现不支持大于等于查找），退化到遍历链表找 Best-Fit
     struct vmap_area *best = NULL;
     struct vmap_area *va;
-    list_for_each_entry(va, &vm.free_list, free_list) {
+    list_for_each_entry(va, &va_mgr.free_list, free_list) {
         if (va_size(va) >= size) {
             if (!best || va_size(va) < va_size(best)) {
                 best = va;
@@ -74,7 +74,7 @@ static struct vmap_area *va_find_best_fit(uint64_t size) {
 
 static struct vmap_area *va_find_by_addr(uint64_t addr) {
     struct vmap_area *va;
-    list_for_each_entry(va, &vm.busy_list, busy_list) {
+    list_for_each_entry(va, &va_mgr.busy_list, busy_list) {
         if (va->va_start == addr) return va;
     }
     return NULL;
@@ -84,7 +84,7 @@ static struct vmap_area *va_find_by_addr(uint64_t addr) {
 static struct vmap_area *va_find_prev_free(uint64_t addr) {
     struct vmap_area *va;
     struct vmap_area *prev = NULL;
-    list_for_each_entry(va, &vm.free_list, free_list) {
+    list_for_each_entry(va, &va_mgr.free_list, free_list) {
         if (va->va_end <= addr) prev = va;
         else break; // 遇到地址比们大的，说明后面的都不可能是前驱了
     }
@@ -93,21 +93,21 @@ static struct vmap_area *va_find_prev_free(uint64_t addr) {
 
 static struct vmap_area *va_find_next_free(uint64_t addr) {
     struct vmap_area *va;
-    list_for_each_entry(va, &vm.free_list, free_list) {
+    list_for_each_entry(va, &va_mgr.free_list, free_list) {
         if (va->va_start > addr) return va;
     }
     return NULL;
 }
 
 void va_manager_init(void) {
-    vm.start = VMALLOC_START;
-    vm.end = VMALLOC_END;
-    rb_tree_init(&vm.free_tree, va_compare_size);
-    INIT_LIST_HEAD(&vm.free_list);
-    INIT_LIST_HEAD(&vm.busy_list);
-    spin_lock_init(&vm.lock);
-    vm.total_free = VMALLOC_END - VMALLOC_START;
-    vm.nr_busy = 0;
+    va_mgr.start = VMALLOC_START;
+    va_mgr.end = VMALLOC_END;
+    rb_tree_init(&va_mgr.free_tree, va_compare_size);
+    INIT_LIST_HEAD(&va_mgr.free_list);
+    INIT_LIST_HEAD(&va_mgr.busy_list);
+    spin_lock_init(&va_mgr.lock);
+    va_mgr.total_free = VMALLOC_END - VMALLOC_START;
+    va_mgr.nr_busy = 0;
     
     struct vmap_area *init_area = (struct vmap_area *)kmalloc(sizeof(struct vmap_area), GFP_KERNEL);
     if (!init_area) return;
@@ -125,11 +125,11 @@ void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
     size = (size + VA_ALIGN_DEFAULT - 1) & ~(VA_ALIGN_DEFAULT - 1);
     
     unsigned long irq_flags;
-    spin_lock_irqsave(&vm.lock, irq_flags);
+    spin_lock_irqsave(&va_mgr.lock, irq_flags);
     
     struct vmap_area *va = va_find_best_fit(size);
     if (!va) {
-        spin_unlock_irqrestore(&vm.lock, irq_flags);
+        spin_unlock_irqrestore(&va_mgr.lock, irq_flags);
         // printk("[VMAP] va_alloc failed: no suitable free area for size %lu\n", size);
         return NULL;
     }
@@ -166,11 +166,11 @@ void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
     
     // 4. 核心节点加入忙碌链表
     va->flags = flags;
-    list_add(&va->busy_list, &vm.busy_list);
-    vm.nr_busy++;
-    vm.total_free -= va_size(va);
+    list_add(&va->busy_list, &va_mgr.busy_list);
+    va_mgr.nr_busy++;
+    va_mgr.total_free -= va_size(va);
     
-    spin_unlock_irqrestore(&vm.lock, irq_flags);
+    spin_unlock_irqrestore(&va_mgr.lock, irq_flags);
     return (void *)va->va_start;
 }
 
@@ -178,18 +178,18 @@ void *va_alloc(unsigned long size, unsigned long align, unsigned long flags) {
 void va_free(void *addr) {
     if (!addr) return;
     unsigned long irq_flags;
-    spin_lock_irqsave(&vm.lock, irq_flags);
+    spin_lock_irqsave(&va_mgr.lock, irq_flags);
     
     struct vmap_area *va = va_find_by_addr((uint64_t)addr);
     if (!va) {
-        spin_unlock_irqrestore(&vm.lock, irq_flags);
+        spin_unlock_irqrestore(&va_mgr.lock, irq_flags);
         // printk("[VMAP] va_free failed: address %p not found\n", addr);
         return;
     }
     
     // 从忙碌链表摘除
     list_del(&va->busy_list);
-    vm.nr_busy--;
+    va_mgr.nr_busy--;
     
     // 定义最终要插回空闲空间的“候选节点”，初始就是当前释放的节点
     struct vmap_area *to_insert = va;
@@ -219,10 +219,10 @@ void va_free(void *addr) {
     
     // 3. 统计修正：不管有没有发生合并，真正从“忙碌”变成“空闲”的只有最初那个 va 的空间。
     // prev 和 next 本来就是空闲的，它们的空间已经被统计过了，所以绝对不能再加！
-    vm.total_free += va_size(va);
+    va_mgr.total_free += va_size(va);
     
     // 4. 将最终合并好的孤立节点，统一插回红黑树和链表（此时它绝对不在里面，安全！）
     va_insert_free(to_insert);
     
-    spin_unlock_irqrestore(&vm.lock, irq_flags);
+    spin_unlock_irqrestore(&va_mgr.lock, irq_flags);
 }

@@ -33,8 +33,8 @@ static inline void spin_unlock(spinlock_t *lock) {
 /* 结合中断控制的自旋锁 (最常用的安全组合) */
 #define spin_lock_irqsave(lock, flags) \
     do { \
-        arch_spin_lock(&(lock)->raw_lock); \
         (flags) = arch_local_irq_save(); \
+        arch_spin_lock(&(lock)->raw_lock); \
     } while (0)
 
 static inline void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags) {

@@ -25,11 +25,15 @@ void cntp_set_tval(uint64_t tval) {
 extern void rust_timer_tick(void);
 __attribute__((weak)) void timer_irq_handler(uint32_t irq) {
     (void)irq;
+
+    // 1. 最先重装定时器，防止后续处理耗时导致丢 tick
+    cntp_set_tval(timer_load_val);
+
+    // 2. tick 处理
     rust_timer_tick();
     system_tick++;
     
-    cntp_set_tval(timer_load_val);
-    
+    // 3. 执行到期的软件定时器 callback
     unsigned long flags;
     spin_lock_irqsave(&timer_lock, flags);
     

@@ -41,4 +41,7 @@ void va_manager_init(void);
 void *va_alloc(unsigned long size, unsigned long align, unsigned long flags);
 void va_free(void *addr);
 
+// 全局 vmap 管理器（供 page_fault 等模块访问）
+extern struct vmap_manager va_mgr;
+
 #endif

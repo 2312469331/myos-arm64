@@ -12,7 +12,7 @@ bench = false
 [profile.dev]
 panic = "abort"
 # 裸机强烈建议开优化！防止内联展开导致栈溢出或者未被优化的死循环消耗资源
-opt-level = 0    # 👈 只改这一行！从 0 改成 1
+opt-level = 0
 debug = true     # 👈 调试信息全开
 
 [profile.release]

@@ -8,18 +8,16 @@
 static inline unsigned long arch_local_irq_save(void) {
     unsigned long flags;
     asm volatile("mrs %0, daif\n"
-                 "msr daifset, #2\n" // #2 对应 IRQ bit
+                 "msr daifset, #2\n" // #2 = CRm bit1 = I(IRQ) bit
                  : "=r" (flags) :: "memory");
     return flags;
 }
 
 static inline void arch_local_irq_enable(void) {
-    // 注意这里变成了三个冒号 :::
     asm volatile("msr daifclr, #2\n" ::: "memory");
 }
 
 static inline void arch_local_irq_disable(void) {
-    // 注意这里变成了三个冒号 :::
     asm volatile("msr daifset, #2\n" ::: "memory");
 }
 

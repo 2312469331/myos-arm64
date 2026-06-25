@@ -23,16 +23,13 @@
             "targetCreateCommands": ["target create ${workspaceFolder}/build/kernel.elf"],
             "processCreateCommands": ["gdb-remote localhost:1234"],
             "preLaunchTask": "ubuntu启动 QEMU 调试服务器",
-            // 👇 关键：只做调试连接，不杀进程！
             "preRunCommands": [
                 "shell sleep 0.5"
             ],
-
-            // 👇 关键：停止时只 detach，不杀 QEMU（交给 task 处理）
-            "preTerminateCommands": [],
-            "gracefulShutdown": "",
-            "stopOnEntry": true
-
+            "preTerminateCommands": [
+                "shell pkill -f qemu-system-aarch64"
+            ],
+            "stopOnEntry": false
         },
 
         {
@@ -49,6 +46,21 @@
             "miDebuggerPath": "C:/Users/chanpinkaifa/scoop/apps/bin/aarch64-none-elf-gdb.exe",
             "miDebuggerServerAddress": "localhost:1234",
             "preLaunchTask": "windows启动 QEMU 调试服务器",
+        },
+        {
+            "name": "QEMU ARM64 内核调试 (Linux GDB)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kernel.elf",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:1234",
+            "preLaunchTask": "ubuntu启动 QEMU 调试服务器",
         }
     ]
 }

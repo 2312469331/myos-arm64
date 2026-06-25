@@ -15,7 +15,7 @@ VIRT_BASE = 0xffff800000000000;
 el1_stack_top_phys = el1_stack_top - 0xffff800000000000  ;
 el2_stack_top_phys = el2_stack_top - 0xffff800000000000  ;
 el3_stack_top_phys = el3_stack_top - 0xffff800000000000  ;
-kernel_end =  __kernel_end - VIRT_BASE;
+kernel_end =  __kernel_end;
 /* ==============================================
    LLD 规范版内核链接脚本
    特性：严格遵循 LLD 文档，无单位解析错误，覆盖核心语法
@@ -46,10 +46,11 @@ SECTIONS
     /* 3.1 早期启动段：物理地址 1:1 映射 */
     .boot :
     {
-        KEEP(*(.boot.text))  /* 保留启动汇编代码 */
-        KEEP(*(.boot.data))  /* 保留早期数据 */
+        KEEP(*(.boot.text))   /* 保留启动汇编代码 */
+        KEEP(*(.boot.data))   /* 保留早期数据 */
+        KEEP(*(.boot.rodata)) /* 保留早期只读数据 (MMU开启前使用) */
 
-        . = ALIGN(4096);    /* 4K 对齐，符合 LLD 段对齐规则 */
+        . = ALIGN(4096);     /* 4K 对齐，符合 LLD 段对齐规则 */
     } > BOOT_PHYS
 
     .debug_gdb_scripts :

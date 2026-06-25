@@ -7,9 +7,26 @@
 #include <sync/spinlock.h>
 #include <types.h>
 #include <uart.h>
+#include <page_fault.h>
 // 1. 声明 Rust 侧接口
 extern uint64_t rust_check_and_schedule(void);
+extern uint64_t rust_handle_syscall(uint64_t num, uint64_t a0, uint64_t a1, uint64_t a2, uint64_t a3);
+extern int rust_check_signals(void);
+extern int rust_deliver_signal_to_user(struct pt_regs *regs);
+extern void get_current_task_info(uint64_t *pid_out, uint64_t *ppid_out, uint64_t *pgd_out, const char **name_out);
 static spinlock_t irq_table_lock = SPIN_LOCK_UNLOCKED;
+
+// 无锁打印：异常处理中不能用 printk（会死锁）
+static void safe_print_str(const char *s) {
+    while (*s) uart_putc(*s++);
+}
+static void safe_print_hex(uint64_t val) {
+    uart_putc('0'); uart_putc('x');
+    for (int i = 60; i >= 0; i -= 4) {
+        int digit = (val >> i) & 0xF;
+        uart_putc(digit < 10 ? '0' + digit : 'a' + digit - 10);
+    }
+}
 
 // ==============================
 // AArch64 ESR_ELx 异常类型宏
@@ -19,11 +36,14 @@ static spinlock_t irq_table_lock = SPIN_LOCK_UNLOCKED;
 
 #define ESR_EC_UNKNOWN 0x00
 #define ESR_EC_UNDEF_INSTR 0x01
+#define ESR_EC_BRK 0x3C
 #define ESR_EC_SVC_AARCH64 0x15
 #define ESR_EC_IABORT 0x20
+#define ESR_EC_IABORT_LOW 0x21
 #define ESR_EC_IRQ 0x22
 #define ESR_EC_FIQ 0x23
 #define ESR_EC_DABORT 0x24
+#define ESR_EC_DABORT_LOW 0x25
 #define ESR_EC_SERROR 0x2F
 
 // ==============================
@@ -118,43 +138,7 @@ void c_exception_handler_el2(void) {
   while (1)
     ;
 }
-// 2. pt_regs 结构体（顺序必须和你汇编 stp 的顺序严格对应！
-// 第一个必须是 elr 和 spsr，因为你是在存完它们之后才 bl 到 C 的
-struct pt_regs {
-    uint64_t elr_el1;
-    uint64_t spsr_el1;
-    uint64_t x30;
-    uint64_t x29;
-    uint64_t x28;
-    uint64_t x27;
-    uint64_t x26;
-    uint64_t x25;
-    uint64_t x24;
-    uint64_t x23;
-    uint64_t x22;
-    uint64_t x21;
-    uint64_t x20;
-    uint64_t x19;
-    uint64_t x18;
-    uint64_t x17;
-    uint64_t x16;
-    uint64_t x15;
-    uint64_t x14;
-    uint64_t x13;
-    uint64_t x12;
-    uint64_t x11;
-    uint64_t x10;
-    uint64_t x9;
-    uint64_t x8;
-    uint64_t x7;
-    uint64_t x6;
-    uint64_t x5;
-    uint64_t x4;
-    uint64_t x3;
-    uint64_t x2;
-    uint64_t x1;
-    uint64_t x0;  // 原始的 x0 保存在栈的最底下
-};
+
 // ==============================
 // EL1 异常处理入口
 // x0: 异常类型标识
@@ -164,82 +148,159 @@ struct pt_regs {
 //     3 = SError 系统错误
 // ==============================
 
-void c_exception_handler_el1(uint64_t x0) {
+void c_exception_handler_el1(uint64_t ex_type, struct pt_regs *regs){
   uint64_t esr = read_esr_el1();
   uint64_t elr = read_elr_el1();
   uint64_t far = read_far_el1();
   uint64_t spsr = read_spsr_el1();
   uint64_t ec = (esr & ESR_ELx_EC_MASK) >> ESR_ELx_EC_SHIFT;
 
-  switch (x0) {
+  switch (ex_type) {
   case 0:
-    printk("[Exception] Synchronous exception\n");
-    printk("[Exception] ELR (Fault PC): 0x%lx\n", elr);
-    printk("[Exception] FAR (Fault Address): 0x%lx\n", far);
-    printk("[Exception] ESR (Exception Syndrome): 0x%lx\n", esr);
-    printk("[Exception] ESR EC (Exception Class): 0x%lx\n", ec);
-    printk("[Exception] SPSR (PSTATE): 0x%lx\n", spsr);
+    // SVC 系统调用是正常路径，不打印 debug 信息
+    if (ec != ESR_EC_SVC_AARCH64) {
+      safe_print_str("[Exception] Synchronous exception\n");
+      safe_print_str("[Exception] ESR=");
+      safe_print_hex(esr);
+      safe_print_str(" EC=");
+      safe_print_hex(ec);
+      safe_print_str(" FAR=");
+      safe_print_hex(far);
+      safe_print_str(" ELR=");
+      safe_print_hex(elr);
+      safe_print_str("\n");
+
+      {
+          uint64_t pid, ppid, pgd;
+          const char *name;
+          get_current_task_info(&pid, &ppid, &pgd, &name);
+          safe_print_str("[Exception] Current task: pid=");
+          safe_print_hex(pid);
+          safe_print_str(" ppid=");
+          safe_print_hex(ppid);
+          safe_print_str(" pgd=");
+          safe_print_hex(pgd);
+          safe_print_str(" name=");
+          if (name) safe_print_str(name);
+          else safe_print_str("(null)");
+          safe_print_str("\n");
+      }
+    }
 
     switch (ec) {
+    case ESR_EC_BRK:
+      safe_print_str("[Exception] Breakpoint instruction\n");
+      // {
+      //   uint64_t *stack;
+      //   asm volatile("mov %0, sp" : "=r"(stack));
+      //   stack[1] += 4;
+      // }
+      return;
+      break;
+
     case ESR_EC_UNDEF_INSTR:
-      printk("[Exception] Undefined instruction at PC: 0x%lx\n", elr);
+      safe_print_str("[Exception] Undefined instruction\n");
       panic("Undefined instruction");
       break;
 
     case ESR_EC_SVC_AARCH64: {
-      uint32_t svc_number = esr & 0xFFFF;
-      printk("[Exception] SVC system call #%u at PC: 0x%lx\n", svc_number, elr);
-      panic("System call not implemented");
-    } break;
+      uint64_t syscall_num = regs->x8;
+      uint64_t arg0 = regs->x0;
+      uint64_t arg1 = regs->x1;
+      uint64_t arg2 = regs->x2;
+      uint64_t arg3 = regs->x3;
 
-    case ESR_EC_IABORT: {
-      printk("[Exception] Instruction abort at PC: 0x%lx\n", elr);
-      printk("[Exception] Fault address: 0x%lx\n", far);
-      uint64_t iss = esr & 0x1FFFFFF;
-      printk("[Exception] ISS: 0x%lx\n", iss);
-      panic("Instruction abort");
-    } break;
-
-    case ESR_EC_DABORT: {
-      printk("[Exception] Data abort at PC: 0x%lx\n", elr);
-      printk("[Exception] Fault address: 0x%lx\n", far);
-      uint64_t iss = esr & 0x1FFFFFF;
-      printk("[Exception] ISS: 0x%lx\n", iss);
-
-      uint8_t dfsc = (iss >> 0) & 0x3F;
-      printk("[Exception] DFSC: 0x%x\n", dfsc);
-
-      switch (dfsc) {
-      case 0x04:
-        printk("[Exception] Translation fault - Level 3\n");
-        break;
-      default:
-        printk("[Exception] Unknown data fault\n");
-        break;
+      uint64_t ret;
+      if (syscall_num == 220) {
+        // SYS_FORK: 需要传递 pt_regs 指针
+        ret = rust_handle_syscall(syscall_num, (uint64_t)regs, 0, 0, 0);
+      } else if (syscall_num == 221) {
+        // SYS_EXECVE: 需要传递 pt_regs 指针以修改 ELR/寄存器
+        ret = rust_handle_syscall(syscall_num, arg0, (uint64_t)regs, arg2, arg3);
+      } else {
+        ret = rust_handle_syscall(syscall_num, arg0, arg1, arg2, arg3);
       }
 
-      panic("Data abort");
+      // 系统调用返回值写入 x0
+      regs->x0 = ret;
+
+      // 信号检查：如果进程被终止，不再继续执行用户态代码
+      if (rust_check_signals()) {
+          // 进程被信号终止，执行 do_exit() 清理资源并调度到下一个进程
+          // do_exit() 内部调用 schedule()，context_switch 会切换到新任务的栈
+          // 之后 C 代码在新任务栈上继续执行，最终通过 el1_exception_exit 恢复新任务现场
+          extern void rust_do_exit(void);
+          rust_do_exit();
+      }
+    } break;
+
+    case ESR_EC_IABORT:
+    case ESR_EC_IABORT_LOW: {
+      uint64_t iss = esr & 0x1FFFFFF;
+      uint8_t dfsc = (iss >> 0) & 0x3F;
+      if (dfsc >= 0x04 && dfsc <= 0x0F) {
+        page_fault_handler(far, esr, far);
+        /* 直接检查任务是否已被标记 DEAD（SIGKILL 已设 TASK_DEAD 但 pending 被清） */
+        extern void rust_do_exit_if_dead(void);
+        rust_do_exit_if_dead();
+        /* 另外检查信号 pending（SIGSEGV 等走信号路径） */
+        if (rust_check_signals()) {
+            extern void rust_do_exit(void);
+            rust_do_exit();
+        }
+      } else {
+        safe_print_str("[Exception] Instruction abort\n");
+        safe_print_str("[Exception] DFSC=");
+        safe_print_hex(dfsc);
+        safe_print_str("\n");
+        panic("Instruction abort");
+      }
+    } break;
+
+    case ESR_EC_DABORT:
+    case ESR_EC_DABORT_LOW: {
+      uint64_t iss = esr & 0x1FFFFFF;
+      uint8_t dfsc = (iss >> 0) & 0x3F;
+
+      if (dfsc >= 0x04 && dfsc <= 0x0F) {
+        page_fault_handler(far, esr, far);
+        /* 直接检查任务是否已被标记 DEAD */
+        extern void rust_do_exit_if_dead(void);
+        rust_do_exit_if_dead();
+        /* 另外检查信号 pending */
+        if (rust_check_signals()) {
+            extern void rust_do_exit(void);
+            rust_do_exit();
+        }
+      } else {
+        safe_print_str("[Exception] Data abort\n");
+        panic("Data abort");
+      }
     } break;
 
     case ESR_EC_SERROR:
-      printk("[Exception] SError hardware/bus error\n");
+      safe_print_str("[Exception] SError\n");
       panic("SError");
       break;
 
     default:
-      printk("[Exception] Unknown synchronous exception (EC: 0x%lx)\n", ec);
+      safe_print_str("[Exception] Unknown exception\n");
       panic("Unknown exception");
       break;
     }
     break;
 
   case 1:
-    // printk("[Exception] IRQ interrupt\n");
     // IRQ 中断处理
-    el1_irq_handler(); // 你的具体中断处理逻辑
-    
-    // 【唯一的调度检查点】
-    // 如果这里返回 1，说明 Rust 已经偷换了 SP 并跳到汇编恢复新现场了，不会 return。
+    el1_irq_handler();
+
+    // 信号检查（确保纯用户态循环也能处理 Ctrl+C 等信号）
+    if (rust_check_signals()) {
+        extern void rust_do_exit(void);
+        rust_do_exit();
+    }
+
+    // 调度检查
     if (rust_check_and_schedule()) {
         __builtin_unreachable(); 
     }
@@ -258,7 +319,7 @@ void c_exception_handler_el1(uint64_t x0) {
     break;
 
   default:
-    printk("[Exception] Unknown exception type: %lu\n", x0);
+    printk("[Exception] Unknown exception type: %lu\n", ex_type);
     panic("Unknown exception type");
     break;
   }

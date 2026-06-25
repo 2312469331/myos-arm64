@@ -38,7 +38,13 @@ static inline bool va_in_linear_map(const void *va) {
 
 /* 页表操作函数 */
 int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot);
-void arm64_unmap_one_page(uintptr_t va) ;
+void arm64_unmap_one_page(uintptr_t va);
+phys_addr_t arm64_get_phys_from_va(uintptr_t va);
+void copy_user_page_table(phys_addr_t src_pgd_pa, phys_addr_t dst_pgd_pa);
+void free_page_table_tree(phys_addr_t pgd_pa);
+
+/// 调试：以树状格式打印页表结构
+void dump_page_table(phys_addr_t pgd_pa);
 
 
 
@@ -87,6 +93,12 @@ void set_sctlr_el1(void);
 
 /* 切换 TTBR0_EL1（用户态页表基地址） */
 void switch_ttbr0(phys_addr_t ttbr0_pa);
+
+/* 读取 TTBR0_EL1（用户态页表基地址） */
+phys_addr_t read_ttbr0_el1(void);
+
+/* 读取 TTBR1_EL1（内核态页表基地址） */
+phys_addr_t read_ttbr1_el1(void);
 
 /* 刷新 EL1 所有 TLB 表项 */
 void flush_tlb(void);

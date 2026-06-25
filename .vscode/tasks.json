@@ -4,7 +4,7 @@
         {
             "label": "ubuntu启动 QEMU 调试服务器",
             "type": "shell",
-    "command": "gnome-terminal --title=\"QEMU AArch64 调试\" -- bash -i -c \"cd ${workspaceFolder} && ./tools/debug_ubuntu.sh\"",
+            "command": "gnome-terminal --title=\"QEMU AArch64 调试\" -- bash -i -c \"cd ${workspaceFolder} && ./tools/debug_ubuntu.sh\" & sleep 0.3 && wmctrl -r \"QEMU AArch64 调试\" -b add,above",
             "args": [],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -15,6 +15,15 @@
                 "runOn": "default"
             }
             
+        },
+        {
+            "label": "停止 QEMU",
+            "type": "shell",
+            "command": "./tools/stop-qemu.sh",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
         },
         {
             "label": "windows启动 QEMU 调试服务器",

@@ -30,5 +30,6 @@
 #define L0_TABLES_NEEDED 1
 /* 5. 保持原属性定义 */
 #define BOOT_DATA __attribute__((section(".boot.data")))
+#define BOOT_RODATA __attribute__((section(".boot.rodata")))
 #define BOOT_CODE __attribute__((section(".boot.text")))
 #endif

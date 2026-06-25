@@ -14,11 +14,10 @@
 #define NR_ORDERS (MAX_ORDER + 1U)
 
 /*
- * 总页数：
- * 0x80000000 ~ 0x8FFFFFFF 为 256MB
- * 256MB / 4KB = 65536 pages
+ * 总页数：基于整个物理内存范围（PHYS_MEM_START ~ PHYS_MEM_END）
+ * buddy_mem_start 运行时确定，内核占用的页标记为 RESERVED
  */
-#define PHYS_MEM_SIZE (BUDDY_MEM_END - BUDDY_MEM_START + 1UL)
+#define PHYS_MEM_SIZE (PHYS_MEM_END - PHYS_MEM_START + 1UL)
 #define TOTAL_PAGES (PHYS_MEM_SIZE >> PAGE_SHIFT)
 
 /*
@@ -26,12 +25,12 @@
  * 若区间不是页对齐，会向下/向上裁剪才合理。
  * 这里直接要求宏配置满足页对齐。
  */
-#if ((BUDDY_MEM_START & (PAGE_SIZE - 1UL)) != 0)
-#error "BUDDY_MEM_START must be page aligned"
+#if ((PHYS_MEM_START & (PAGE_SIZE - 1UL)) != 0)
+#error "PHYS_MEM_START must be page aligned"
 #endif
 
-#if (((BUDDY_MEM_END + 1UL) & (PAGE_SIZE - 1UL)) != 0)
-#error "BUDDY_MEM_END+1 must be page aligned"
+#if (((PHYS_MEM_END + 1UL) & (PAGE_SIZE - 1UL)) != 0)
+#error "PHYS_MEM_END+1 must be page aligned"
 #endif
 
 /* ============================================================
@@ -58,9 +57,9 @@ extern struct page mem_map[TOTAL_PAGES];
 static inline struct page *pfn_to_page(unsigned long pfn) { return &mem_map[pfn]; }
 static inline unsigned long page_to_pfn(struct page *page) { return (unsigned long)(page - mem_map); }
 
-/* 地址与 PFN 互转 */
-static inline phys_addr_t pfn_to_pa(unsigned long pfn) { return (phys_addr_t)(BUDDY_MEM_START + (pfn << PAGE_SHIFT)); }
-static inline unsigned long pa_to_pfn(phys_addr_t pa) { return (unsigned long)((pa - BUDDY_MEM_START) >> PAGE_SHIFT); }
+/* 地址与 PFN 互转（PFN 基于 PHYS_MEM_START） */
+static inline phys_addr_t pfn_to_pa(unsigned long pfn) { return (phys_addr_t)(PHYS_MEM_START + (pfn << PAGE_SHIFT)); }
+static inline unsigned long pa_to_pfn(phys_addr_t pa) { return (unsigned long)((pa - PHYS_MEM_START) >> PAGE_SHIFT); }
 
 /* page 状态检查 */
 static inline int page_is_buddy(struct page *page) { return (page->flags & PG_BUDDY) != 0; }
@@ -127,6 +126,9 @@ struct page *alloc_page(gfp_t flags);
 void free_page(struct page *page);
 void map_kernel_page(uint64_t va, uint64_t pa, uint64_t prot);
 void unmap_kernel_page(uint64_t va);
+
+void get_page(phys_addr_t pa);
+void put_page(phys_addr_t pa);
 
 enum buddy_error buddy_get_last_error(void);
 
