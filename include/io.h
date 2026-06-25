@@ -57,7 +57,7 @@ static inline void io_write32_log(volatile void *addr, uint32_t val,
 }
 
 #ifdef __cplusplus
-}
+
 #endif
 
 #endif // __IO_H__

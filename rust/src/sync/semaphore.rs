@@ -1,57 +1,75 @@
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
-use core::cell::UnsafeCell;
 use core::sync::atomic::Ordering;
-use crate::arch::aarch64::cpu;
-use crate::kernel::task::{Task, CURRENT_TASK};
+use crate::kernel::task::{self, Task, CURRENT_TASK};
 use crate::kernel::scheduler;
+use super::KMutex;
 
-/// 计数信号量。
+struct SemInner {
+    count: isize,
+    queue: VecDeque<Arc<Task>>,
+    owner: Option<Arc<Task>>,  // 当前持有者（优先级继承用）
+}
+
+/// 计数信号量（多核安全）。
 ///
 /// `down` 在 count == 0 时会阻塞当前任务并调度出去，
 /// `up` 会递增 count 并唤醒一个等待者。
 ///
-/// 所有操作都通过关中断保证原子性（单核 UP 安全）。
+/// 内部通过 KMutex（TicketLock + disable_irq）保证原子性。
 pub struct Semaphore {
-    count: UnsafeCell<isize>,
-    queue: UnsafeCell<VecDeque<Arc<Task>>>,
+    inner: KMutex<SemInner>,
 }
 
 unsafe impl Send for Semaphore {}
 unsafe impl Sync for Semaphore {}
 
 impl Semaphore {
-    /// 创建一个新信号量，初始值为 `count`。
-    ///
-    /// 二进制信号量用 `Semaphore::new(1)`（此时等价于互斥锁）。
     pub const fn new(count: isize) -> Self {
         Semaphore {
-            count: UnsafeCell::new(count),
-            queue: UnsafeCell::new(VecDeque::new()),
+            inner: KMutex::new(SemInner {
+                count,
+                queue: VecDeque::new(),
+                owner: None,
+            }),
         }
     }
 
     /// P 操作：获取信号量。
     ///
     /// 如果 count > 0，立即递减并返回；
-    /// 否则将当前任务放入等待队列并调度出去。
-    /// 被唤醒后重新竞争，保证不会丢失唤醒。
+    /// 否则将当前任务设为 SLEEPING 放入等待队列，释放锁后调度出去。
+    /// 实现优先级继承：当高优先级任务因低优先级任务持有信号量而阻塞时，
+    /// 临时提升持有者的优先级。
     pub fn down(&self) {
         loop {
-            cpu::disable_irq();
-            unsafe {
-                if *self.count.get() > 0 {
-                    *self.count.get() -= 1;
-                    cpu::enable_irq();
+            {
+                let mut inner = self.inner.lock();
+                if inner.count > 0 {
+                    inner.count -= 1;
+                    // 跟踪持有者
+                    let cur = CURRENT_TASK.load(Ordering::Relaxed);
+                    let arc = unsafe { (*((*cur).arc_self.get())).as_ref().unwrap().upgrade().unwrap() };
+                    inner.owner = Some(arc);
                     return;
                 }
                 let task_ptr = CURRENT_TASK.load(Ordering::Relaxed);
-                let task = &*task_ptr;
-                let arc_self = (*task.arc_self.get()).as_ref().unwrap().clone();
-                (*self.queue.get()).push_back(arc_self);
+                let task = unsafe { &*task_ptr };
+                let arc_self = unsafe { (*task.arc_self.get()).as_ref().unwrap().upgrade().unwrap() };
+
+                // 优先级继承：如果持有者的优先级低于当前任务，提升持有者
+                if let Some(ref owner) = inner.owner {
+                    if task.prio > owner.prio {
+                        owner.original_prio.store(owner.prio, Ordering::Relaxed);
+                        let owner_ptr = Arc::as_ptr(owner) as *mut Task;
+                        unsafe { (*owner_ptr).prio = task.prio; }
+                    }
+                }
+
+                inner.queue.push_back(arc_self);
+                task.state.store(task::TASK_SLEEPING, Ordering::Relaxed);
             }
-            cpu::enable_irq();
             scheduler::schedule();
         }
     }
@@ -59,33 +77,38 @@ impl Semaphore {
     /// V 操作：释放信号量。
     ///
     /// 递增 count。如果有任务在等待队列中，唤醒最早的一个。
+    /// 同时恢复持有者的原始优先级（优先级继承）。
     pub fn up(&self) {
-        cpu::disable_irq();
-        let task_to_wake = unsafe {
-            *self.count.get() += 1;
-            (*self.queue.get()).pop_front()
+        let task_to_wake = {
+            let mut inner = self.inner.lock();
+            inner.count += 1;
+
+            // 恢复持有者的原始优先级
+            if let Some(ref owner) = inner.owner {
+                let orig = owner.original_prio.load(Ordering::Relaxed);
+                if owner.prio != orig {
+                    let owner_ptr = Arc::as_ptr(owner) as *mut Task;
+                    unsafe { (*owner_ptr).prio = orig; }
+                }
+            }
+            inner.owner = None;
+
+            inner.queue.pop_front()
         };
-        cpu::enable_irq();
         if let Some(task) = task_to_wake {
+            task.state.store(task::TASK_RUNNING, Ordering::Relaxed);
             scheduler::add_task(task);
         }
     }
 
     /// 非阻塞尝试获取信号量。
-    ///
-    /// 返回 `true` 表示获取成功（count 已递减），
-    /// 返回 `false` 表示资源暂不可用。
     pub fn try_down(&self) -> bool {
-        cpu::disable_irq();
-        unsafe {
-            if *self.count.get() > 0 {
-                *self.count.get() -= 1;
-                cpu::enable_irq();
-                true
-            } else {
-                cpu::enable_irq();
-                false
-            }
+        let mut inner = self.inner.lock();
+        if inner.count > 0 {
+            inner.count -= 1;
+            true
+        } else {
+            false
         }
     }
 }
@@ -94,8 +117,6 @@ impl Semaphore {
 // FFI 导出，供 C 侧调用
 // ============================================================
 
-/// C 侧 opaque 句柄（仅指针，不关心内部布局）
-/// C 侧只需前向声明 `struct semaphore;`，不暴露字段。
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rust_sem_create(initial_count: isize) -> *mut Semaphore {
     unsafe { Box::into_raw(Box::new(Semaphore::new(initial_count))) }

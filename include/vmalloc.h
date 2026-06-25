@@ -21,6 +21,6 @@ void vfree(const void *addr);
 
 // 硬件 IO 映射
 void *ioremap(uint64_t phys_addr, unsigned long size);
-void iounmap(const void *addr);
+void iounmap(volatile const void *addr);
 
 #endif

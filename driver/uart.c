@@ -209,9 +209,9 @@ void uart_set_loopback(bool enable) {
 }
 // 配置 UART 接收中断（半满触发）
 void uart_irq_init(void) {
-  // 设置接收FIFO半满触发
+  // 设置接收FIFO半满触发 -> 改成1/8满（1字节）触发
   io_write32(UART_REG(UART_IFLS),
-             UART_IFLS_RXIFLSEL_1_2 | UART_IFLS_TXIFLSEL_1_2);
+             UART_IFLS_RXIFLSEL_1_8 | UART_IFLS_TXIFLSEL_1_2);
 
   // 使能接收中断
   io_write32(UART_REG(UART_IMSC), UART_IMSC_RXIM);

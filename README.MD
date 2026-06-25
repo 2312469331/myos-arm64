@@ -4,13 +4,14 @@
 
 ## 项目特性
 
-- **架构**: ARM64 (AArch64)
-- **CPU**: Cortex-A53
-- **平台**: QEMU virt
-- **内存管理**: 支持物理内存管理（Buddy 系统）、虚拟内存管理（vmalloc/vmap）
-- **中断**: 支持 GICv2 中断控制器
-- **设备树**: 支持 FDT 设备树解析
-- **Rust 支持**: 集成 Rust 代码（可选）
+- **架构**: ARM64 (AArch64)，QEMU virt 平台
+- **内存管理**: Buddy 物理分配器 + Slab 内核堆 + vmap/vmalloc + VMA 进程地址空间 + COW
+- **进程调度**: 多级优先级队列、时间片轮转、fork/execve/wait4、Zombie 回收
+- **文件系统**: FAT32 读写（创建/删除/截断/重定向）、VFS 抽象层
+- **信号**: 位图信号量 pending/blocked/handler、用户态信号帧传递
+- **Shell**: cat/mkdir/rm/touch 内置命令、`>` 重定向、外部命令执行
+- **驱动**: UART、GICv2 中断控制器、ARM Generic Timer、Virtio-blk、FDT 设备树
+- **混合编程**: C 编写底层（MMU、中断、Buddy、Slab）、Rust 编写上层（调度、VFS、信号、Shell）
 
 ## 编译说明
 
@@ -294,11 +295,11 @@ static ALLOCATOR: KernelAllocator = KernelAllocator;
 
 ### 内存分配策略
 
-本项目的 Rust 内存分配器采用**永不返回 NULL** 的设计：
+Rust 分配器对接 C 的 `kmalloc`/`kfree`：
 
-1. **优先使用 kmalloc**：正常情况下调用 C 侧的 `rust_kmalloc`
-2. **备用内存池**：当 kmalloc 失败时，从 4KB 备用池分配
-3. **永不返回 NULL**：确保 `handle_alloc_error` 永远不会被调用，避免 panic
+1. **≤ 64KB**: 走 C 侧 kmalloc → Slab 或 large_alloc
+2. **> 64KB**: 直接走 Buddy 分配物理页
+3. **失败**: 返回 NULL 触发 alloc_error（目前不处理，直接 panic）
 
 ### FFI 接口
 
@@ -344,26 +345,43 @@ rust_main();
 
 ```
 myos-arm64/
-├── arch/arm64/          # ARM64 架构相关代码
-│   ├── boot/           # 启动代码
+├── arch/arm64/          # ARM64 启动代码 + 异常向量表 + MMU 页表操作
+│   ├── boot/           # boot.S + link.ld + vector.S
 │   ├── Core/           # CMSIS-Core 代码
-│   └── device/         # 设备特定代码
-├── kernel/             # 内核代码
+│   └── device/         # 设备初始化
+├── kernel/              # C 内核（内存分配器 + 缺页处理 + 驱动）
 │   ├── main.c          # 主函数
-│   ├── pmm.c           # 物理内存管理
-│   ├── vmalloc.c       # 虚拟内存分配
+│   ├── pmm.c           # Buddy 物理内存分配器
+│   ├── slab.c          # Slab 内核堆分配器
+│   ├── mmu.c           # 页表映射（arm64_map_one_page）
+│   ├── vmalloc.c       # vmalloc 内核虚拟内存
+│   ├── vmap.c          # vmap 红黑树+链表区间管理
+│   ├── page_fault.c    # COW + 按需缺页处理
 │   └── ...
-├── driver/             # 驱动代码
-│   ├── uart.c          # UART 驱动
-│   ├── gic.c           # GIC 中断控制器驱动
-│   ├── timer.c         # 定时器驱动
-│   └── fdt/            # FDT 库
-├── include/            # 头文件
-├── doc/                # 文档
-├── rust/               # Rust 代码（可选）
-├── Makefile            # 主 Makefile
-├── config.mk           # 配置选项
-└── virt.dts            # 设备树源文件
+├── rust/src/            # Rust 上层（调度 + VFS + 信号 + syscall + Shell）
+│   ├── kernel/
+│   │   ├── scheduler.rs  # 进程调度 + rust_main
+│   │   ├── task.rs       # PCB + fork/exit/wait4
+│   │   ├── syscall.rs    # 30+ 系统调用
+│   │   ├── elf.rs        # ELF 加载器
+│   │   ├── fs/           # VFS + FAT32 驱动
+│   │   ├── mm.rs         # VMA 地址空间管理
+│   │   ├── signal.rs     # 信号位图
+│   │   ├── tty.rs        # TTY 输入环形缓冲
+│   │   ├── virtio.rs     # Virtio-blk 驱动
+│   │   └── wait.rs       # 等待队列
+│   ├── arch/aarch64/     # TaskContext + context_switch
+│   └── allocator.rs      # 全局分配器（对接 C kmalloc）
+├── driver/              # C 驱动
+│   ├── uart.c           # UART 串口
+│   ├── gic.c            # GICv2 中断控制器
+│   ├── timer.c          # Cortex-A53 定时器
+│   └── fdt/             # FDT 设备树解析
+├── user_bin/            # 用户态程序
+│   ├── shell.c          # Shell（cat/mkdir/rm/touch/重定向）
+│   └── echo.S           # 测试 ELF
+├── include/             # C 头文件
+└── doc/                 # 文档
 ```
 
 ## 文档

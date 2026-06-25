@@ -17,7 +17,9 @@ typedef unsigned long size_t;
 /* 可修改的物理内存管理范围 */
 #define PHYS_MEM_START 0x40000000UL
 #define PHYS_MEM_END 0x4FFFFFFFUL
-#define BUDDY_MEM_START 0x405c8000UL
+/* BUDDY_MEM_START 由 kernel_end 链接符号自动推导，无需手动调整 */
+extern char kernel_end[];
+extern phys_addr_t buddy_mem_start;
 #define BUDDY_MEM_END 0x4FFFFFFFUL
 /* 可修改的虚拟内存管理范围 */
 #define VIRT_START      0xffff000000000000UL  // 用户空间起始地址
@@ -54,28 +56,30 @@ struct page {
 
 
 
-// struct vmap_area {
-//     unsigned long va_start;
-//     unsigned long va_end;
-//     struct rb_node rb_node;   // 红黑树，快速找空闲虚拟地址
-//     struct vm_struct *vm;     // 指向上面的 vm_struct
-// };
+// 虚拟内存区域（VMA）
+struct vma_area {
+    uint64_t vm_start;           // 起始虚拟地址
+    uint64_t vm_end;             // 结束虚拟地址（不含）
+    unsigned long vm_flags;      // PROT_READ | PROT_WRITE | MAP_ANONYMOUS 等
+    struct vma_area *vm_next;    // 链表：按地址递增排列
+};
+
+// VMA 标志位（与 vm_flags 配合使用）
+#define VM_READ     (1UL << 0)
+#define VM_WRITE    (1UL << 1)
+#define VM_EXEC     (1UL << 2)
+#define VM_ANONYMOUS (1UL << 3)
 
 #include <sync/spinlock.h>
 
-
-// 内存管理结构
+// 进程地址空间描述符
 struct mm_struct {
-    uint64_t start_code;  // 代码段起始
-    uint64_t end_code;  // 代码段结束
-    uint64_t start_data;  // 数据段起始
-    uint64_t end_data;  // 数据段结束
-    uint64_t start_brk;  // 堆起始
-    uint64_t brk;  // 堆当前位置
-    uint64_t start_stack;  // 栈起始
-    struct vma_area *mmap;  // 虚拟内存区域链表
-    struct page *page_table;  // 页表
-    spinlock_t page_table_lock;  // 页表锁
+    struct vma_area *mmap;       // VMA 链表头（按地址递增）
+    uint64_t start_brk;          // 堆起始地址
+    uint64_t brk;                // 堆当前位置（brk 指针）
+    uint64_t start_stack;        // 栈起始地址
+    uint64_t pgd;                // 页表物理地址（PGD），0=内核线程
+    spinlock_t lock;
 };
 
 /* =========================================================

@@ -18,6 +18,16 @@
 #include <pmm.h>
 #include <mm_defs.h>
 
+/* buddy_mem_start 由 kernel_end 链接符号自动推导 */
+phys_addr_t buddy_mem_start;
+
+/* DMA zone 上限（PFN，相对 buddy_mem_start），初始化时计算 */
+#define DMA_ZONE_SIZE (16UL * 1024 * 1024)  // 16MB
+static unsigned long dma_end_pfn;
+
+/* 向上页对齐宏 */
+#define ALIGN(x, a) (((x) + (a) - 1) & ~((a) - 1))
+
 /* 链表操作函数和 container_of 宏已在 list.h 中定义 */
 
 /* ============================================================
@@ -48,7 +58,7 @@ static void buddy_set_error(enum buddy_error err) { buddy_last_error = err; }
  */
 
 static int pa_in_range(phys_addr_t pa) {
-  return (pa >= BUDDY_MEM_START) && (pa <= BUDDY_MEM_END);
+  return (pa >= buddy_mem_start) && (pa <= BUDDY_MEM_END);
 }
 
 static int valid_order(unsigned int order) { return (order <= MAX_ORDER); }
@@ -133,7 +143,7 @@ static unsigned long expand_block(unsigned long pfn, unsigned int high,
  * 找到一个 >= order 的空闲块并分裂
  * 成功返回首页 pfn，失败返回 TOTAL_PAGES 作为非法值
  */
-static unsigned long buddy_alloc_pfn(unsigned int order) {
+static unsigned long buddy_alloc_pfn(unsigned int order, int dma_only) {
   unsigned int cur;
 
   for (cur = order; cur <= MAX_ORDER; cur++) {
@@ -141,6 +151,10 @@ static unsigned long buddy_alloc_pfn(unsigned int order) {
       struct list_head *node = free_area[cur].free_list.next;
       struct page *page = container_of(node, struct page, node);
       unsigned long pfn = (unsigned long)(page - &mem_map[0]);
+
+      /* GFP_DMA：跳过超限页 */
+      if (dma_only && pfn >= dma_end_pfn)
+        continue;
 
       remove_from_free_area(pfn, cur);
 
@@ -211,10 +225,25 @@ static unsigned long buddy_merge_pfn(unsigned long pfn, unsigned int *order) {
  */
 void buddy_init(void) {
   unsigned long i;
-  unsigned long pfn = 0;
-  unsigned long remain = TOTAL_PAGES;
+  unsigned long pfn;
+  unsigned long remain;
 
   buddy_set_error(BUDDY_OK);
+
+  /* 从 kernel_end 链接符号自动推导 buddy 可用内存起始地址 */
+  buddy_mem_start = ALIGN((phys_addr_t)kernel_end - 0xffff800000000000ULL, PAGE_SIZE);
+
+  /* 计算 DMA zone 上限（PFN 相对 PHYS_MEM_START） */
+  phys_addr_t dma_end_pa = buddy_mem_start + DMA_ZONE_SIZE;
+  if (dma_end_pa > BUDDY_MEM_END) dma_end_pa = BUDDY_MEM_END;
+  dma_end_pfn = pa_to_pfn(dma_end_pa);
+
+  // printk("[BUDDY] buddy_mem_start=0x%lx, dma_end_pfn=%lu\n",
+  //        (unsigned long)buddy_mem_start, dma_end_pfn);
+
+  /* 计算 buddy 管理的页范围 */
+  pfn = pa_to_pfn(buddy_mem_start);
+  remain = (BUDDY_MEM_END - buddy_mem_start + 1UL) >> PAGE_SHIFT;
 
   /* 初始化 free_area */
   for (i = 0; i < NR_ORDERS; i++) {
@@ -230,28 +259,22 @@ void buddy_init(void) {
     INIT_LIST_HEAD(&mem_map[i].node);
   }
 
-  /*
-   * 如果有内核镜像、自举页表、设备保留区等，
-   * 可以先全部标记 reserved，再单独释放可用区。
-   *
-   * 当前示例：默认整个区间都可分配。
-   */
-
-  /* 先全部标记为 reserved，再按块释放到 buddy */
-  for (i = 0; i < TOTAL_PAGES; i++) {
+  /* 内核占用的页（PHYS_MEM_START ~ buddy_mem_start）标记 reserved */
+  unsigned long kernel_pages = pa_to_pfn(buddy_mem_start);
+  for (i = 0; i < kernel_pages; i++) {
     mark_page_reserved(&mem_map[i]);
+  }
+
+  /* buddy 可用区先全部标记 reserved，再按块释放 */
+  unsigned long buddy_total = (BUDDY_MEM_END - buddy_mem_start + 1UL) >> PAGE_SHIFT;
+  for (i = 0; i < buddy_total; i++) {
+    mark_page_reserved(&mem_map[kernel_pages + i]);
   }
 
   while (remain > 0) {
     unsigned int order = MAX_ORDER;
     unsigned long block_pages;
 
-    /*
-     * 找到一个：
-     *  1. 不超过剩余页数
-     *  2. pfn 对齐
-     * 的最大 order
-     */
     while (1) {
       block_pages = (1UL << order);
 
@@ -267,7 +290,6 @@ void buddy_init(void) {
     clear_page_flags(&mem_map[pfn]);
     add_to_free_area(pfn, order);
 
-    /* 非首页页仅保留"已被系统管理但不是块头"的普通状态 */
     for (i = 1; i < (1UL << order); i++) {
       clear_page_flags(&mem_map[pfn + i]);
     }
@@ -293,13 +315,12 @@ phys_addr_t alloc_phys_pages(unsigned int order, gfp_t flags) {
   unsigned long pfn;
   struct page *page;
 
-
   if (!valid_order(order)) {
     buddy_set_error(BUDDY_ERR_BAD_ORDER);
     return (phys_addr_t)0;
   }
 
-  pfn = buddy_alloc_pfn(order);
+  pfn = buddy_alloc_pfn(order, (flags & GFP_DMA) != 0);
   if (pfn >= TOTAL_PAGES) {
     buddy_set_error(BUDDY_ERR_NO_MEMORY);
     return (phys_addr_t)0;
@@ -307,6 +328,7 @@ phys_addr_t alloc_phys_pages(unsigned int order, gfp_t flags) {
 
   page = pfn_to_page(pfn);
   mark_page_allocated(page, order);
+  page->ref_count = 1;
 
   /*
    * 对于块中其他页，这里不强制写特殊状态。
@@ -467,7 +489,35 @@ void free_page(struct page *page) {
 }
 
 /* ============================================================
- * 9. 内存使用统计函数
+ * 9. 引用计数
+ * ============================================================ */
+
+/**
+ * get_page - 增加物理页引用计数
+ * @pa: 物理地址（页对齐）
+ */
+void get_page(phys_addr_t pa) {
+    unsigned long pfn = pa_to_pfn(pa);
+    if (pfn >= TOTAL_PAGES) return;
+    mem_map[pfn].ref_count++;
+}
+
+/**
+ * put_page - 减少物理页引用计数，归零时释放
+ * @pa: 物理地址（页对齐）
+ */
+void put_page(phys_addr_t pa) {
+    unsigned long pfn = pa_to_pfn(pa);
+    if (pfn >= TOTAL_PAGES) return;
+    struct page *page = &mem_map[pfn];
+    if (page->ref_count == 0) return;
+    if (--page->ref_count == 0) {
+        free_phys_pages(pa, 0);
+    }
+}
+
+/* ============================================================
+ * 10. 内存使用统计函数
  * ============================================================
  */
 
@@ -498,8 +548,8 @@ unsigned long total_phys_pages(void) {
  * total_used_pages - 返回总已使用页数（包括内核占用部分）
  */
 unsigned long total_used_pages(void) {
-  // 内核占用的页数 = (BUDDY_MEM_START - PHYS_MEM_START) / PAGE_SIZE
-  unsigned long kernel_pages = (BUDDY_MEM_START - PHYS_MEM_START) / PAGE_SIZE;
+  // 内核占用的页数 = (buddy_mem_start - PHYS_MEM_START) / PAGE_SIZE
+  unsigned long kernel_pages = (buddy_mem_start - PHYS_MEM_START) / PAGE_SIZE;
   // 总已使用页数 = 内核占用的页数 + buddy 已使用的页数
   return kernel_pages + buddy_nr_used_pages_total();
 }

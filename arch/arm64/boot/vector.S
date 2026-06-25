@@ -191,7 +191,7 @@ el3_lower_a32_serror:
  */
 el3_exception_entry:
     /* 保存所有通用寄存器 */
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
     stp x2, x3, [sp, #-16]!
     stp x4, x5, [sp, #-16]!
     stp x6, x7, [sp, #-16]!
@@ -211,7 +211,7 @@ el3_exception_entry:
     /* 保存 EL3 专用返回地址和状态寄存器 */
     mrs x0, elr_el3
     mrs x1, spsr_el3
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     /* 调用 C 语言异常处理函数 */
     bl c_exception_handler_el3
@@ -431,7 +431,7 @@ el2_lower_a32_serror:
  */
 el2_exception_entry:
     /* 保存所有通用寄存器 */
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
     stp x2, x3, [sp, #-16]!
     stp x4, x5, [sp, #-16]!
     stp x6, x7, [sp, #-16]!
@@ -451,10 +451,13 @@ el2_exception_entry:
     /* 保存 EL2 专用返回地址和状态寄存器 */
     mrs x0, elr_el2
     mrs x1, spsr_el2
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     /* 调用 C 语言异常处理函数 */
     bl c_exception_handler_el2
+
+    /* 恢复过程中禁用中断，防止嵌套破坏栈 */
+    msr daifset, #0xf
 
     /* 恢复 EL2 专用返回地址和状态寄存器 */
     ldp x0, x1, [sp], #16
@@ -506,8 +509,9 @@ vector_table_el1:
  */ 
 .align 7 
 el1_sp0_sync_e0: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 0 放入 x0
     mov x0, #0  // 异常类型 (0 = 同步异常)
@@ -520,8 +524,9 @@ el1_sp0_sync_e0:
  */ 
 .align 7 
 el1_sp0_irq: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 1 放入 x0
     mov x0, #1  // 异常类型 (1 = 中断)
@@ -534,8 +539,9 @@ el1_sp0_irq:
  */ 
 .align 7 
 el1_sp0_fiq: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 2 放入 x0
     mov x0, #2  // 异常类型 (2 = 中断)
@@ -548,8 +554,9 @@ el1_sp0_fiq:
  */ 
 .align 7 
 el1_sp0_serror: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 3 放入 x0
     mov x0, #3  // 异常类型 (3 = 系统错误)
@@ -569,8 +576,9 @@ el1_sp0_serror:
  */ 
 .align 7 
 el1_spx_sync_e0: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 0 放入 x0
     mov x0, #0  // 异常类型 (0 = 同步异常)
@@ -584,8 +592,9 @@ el1_spx_sync_e0:
  */ 
 .align 7 
 el1_spx_irq: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 0 放入 x0
     mov x0, #1  // 异常类型 (1 = 中断)
@@ -598,8 +607,9 @@ el1_spx_irq:
  */ 
 .align 7 
 el1_spx_fiq: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 0 放入 x0
     mov x0, #2  // 异常类型 (2 = 中断)
@@ -612,8 +622,9 @@ el1_spx_fiq:
  */ 
 .align 7 
 el1_spx_serror: 
+    msr daifset, #0xf
     // 保存 x0
-    stp x0, x1, [sp, #-16]!
+    stp x1, x0, [sp, #-16]!
 
     // 把 0 放入 x0
     mov x0, #3  // 异常类型 (3 = 系统错误)
@@ -633,6 +644,9 @@ el1_spx_serror:
  */ 
 .align 7 
 el1_lower_a64_sync_e0: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #0  // 异常类型 (0 = 同步异常)
     b el1_exception_entry
 
 /* 
@@ -642,6 +656,9 @@ el1_lower_a64_sync_e0:
  */ 
 .align 7 
 el1_lower_a64_irq: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #1  // 异常类型 (1 = 中断)
     b el1_exception_entry
 
 /* 
@@ -651,6 +668,9 @@ el1_lower_a64_irq:
  */ 
 .align 7 
 el1_lower_a64_fiq: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #2  // 异常类型 (2 = 中断)
     b el1_exception_entry
 
 /* 
@@ -660,6 +680,9 @@ el1_lower_a64_fiq:
  */ 
 .align 7 
 el1_lower_a64_serror: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #3  // 异常类型 (3 = 系统错误)
     b el1_exception_entry
 
 /* 
@@ -676,6 +699,9 @@ el1_lower_a64_serror:
  */ 
 .align 7 
 el1_lower_a32_sync_e0: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #0  // 异常类型 (0 = 同步异常)
     b el1_exception_entry
 
 /* 
@@ -685,6 +711,9 @@ el1_lower_a32_sync_e0:
  */ 
 .align 7 
 el1_lower_a32_irq: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #1  // 异常类型 (1 = 中断)
     b el1_exception_entry
 
 /* 
@@ -694,6 +723,9 @@ el1_lower_a32_irq:
  */ 
 .align 7 
 el1_lower_a32_fiq: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #2  // 异常类型 (2 = 中断)
     b el1_exception_entry
 
 /* 
@@ -703,6 +735,9 @@ el1_lower_a32_fiq:
  */ 
 .align 7 
 el1_lower_a32_serror: 
+    msr daifset, #0xf
+    stp x1, x0, [sp, #-16]!
+    mov x0, #3  // 异常类型 (3 = 系统错误)
     b el1_exception_entry
 
 /* 
@@ -711,60 +746,91 @@ el1_lower_a32_serror:
  * ============================================================================== 
  */
 el1_exception_entry:
-    /* 保存所有通用寄存器 */
-    // stp x0, x1, [sp, #-16]!  //拿来传参
-    stp x2, x3, [sp, #-16]!
-    stp x4, x5, [sp, #-16]!
-    stp x6, x7, [sp, #-16]!
-    stp x8, x9, [sp, #-16]!
-    stp x10, x11, [sp, #-16]!
-    stp x12, x13, [sp, #-16]!
-    stp x14, x15, [sp, #-16]!
-    stp x16, x17, [sp, #-16]!
-    stp x18, x19, [sp, #-16]!
-    stp x20, x21, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    stp x24, x25, [sp, #-16]!
-    stp x26, x27, [sp, #-16]!
-    stp x28, x29, [sp, #-16]!
-    stp x30, xzr, [sp, #-16]!
+    /* 保存所有通用寄存器（pair 反转，让结构体字段递减） */
+    stp x3, x2, [sp, #-16]!
+    stp x5, x4, [sp, #-16]!
+    stp x7, x6, [sp, #-16]!
+    stp x9, x8, [sp, #-16]!
+    stp x11, x10, [sp, #-16]!
+    stp x13, x12, [sp, #-16]!
+    stp x15, x14, [sp, #-16]!
+    stp x17, x16, [sp, #-16]!
+    stp x19, x18, [sp, #-16]!
+    stp x21, x20, [sp, #-16]!
+    stp x23, x22, [sp, #-16]!
+    stp x25, x24, [sp, #-16]!
+    stp x27, x26, [sp, #-16]!
+    stp x29, x28, [sp, #-16]!
+    stp xzr, x30, [sp, #-16]!
 
     /* 保存 EL1 专用返回地址和状态寄存器 */
     mrs x2, elr_el1
     mrs x3, spsr_el1
     stp x2, x3, [sp, #-16]!
-
+    /* 把 ex_type 保存到调用方保存寄存器 x19，防止嵌套 IRQ+调度 破坏 x0 */
+    mov x19, x0
+    /* 新增：把快照栈地址存入x1，作为第二个参数 */
+    mov x1, sp              
+              
+    /* 检查嵌套深度，限制最大4层 */
+    adrp x2, irq_nest_level
+    add x2, x2, :lo12:irq_nest_level
+    ldr x3, [x2]
+    add x3, x3, #1
+    str x3, [x2]
+    cmp x3, #4
+    b.gt 1f
+    /* 嵌套深度未超限，启用中断支持嵌套 */
+    msr daifclr, #0xf
+1:
+    /* 从 x19 恢复 ex_type（防止嵌套 IRQ+调度破坏 x0） */
+    mov x0, x19
+              
     /* 调用 C 语言异常处理函数 */
     bl c_exception_handler_el1
 
-/* ---------------------------------------------
- * 这里是出口标签，无论从 C 正常返回，还是 Rust 偷换 SP 后跳过来，
- * 都会落到这里，无脑恢复当前 SP 指向的现场。
- * --------------------------------------------- */
-// .global el1_exception_exit
-// el1_exception_exit:
-    /* 恢复 EL1 专用返回地址和状态寄存器 */
+    /* 恢复过程中禁用中断，防止嵌套破坏栈 */
+    msr daifset, #0xf
+
+    /* 递减嵌套深度 */
+    adrp x2, irq_nest_level
+    add x2, x2, :lo12:irq_nest_level
+    ldr x3, [x2]
+    sub x3, x3, #1
+    str x3, [x2]
+
+    .global el1_exception_exit
+el1_exception_exit:
     ldp x2, x3, [sp], #16
     msr elr_el1, x2
     msr spsr_el1, x3
     
-    /* 恢复所有通用寄存器 */
-    ldp x30, xzr, [sp], #16
-    ldp x28, x29, [sp], #16
-    ldp x26, x27, [sp], #16
-    ldp x24, x25, [sp], #16
-    ldp x22, x23, [sp], #16
-    ldp x20, x21, [sp], #16
-    ldp x18, x19, [sp], #16
-    ldp x16, x17, [sp], #16
-    ldp x14, x15, [sp], #16
-    ldp x12, x13, [sp], #16
-    ldp x10, x11, [sp], #16
-    ldp x8, x9, [sp], #16
-    ldp x6, x7, [sp], #16
-    ldp x4, x5, [sp], #16
-    ldp x2, x3, [sp], #16
-    ldp x0, x1, [sp], #16
+    /* 恢复所有通用寄存器（pair 反转，对应保存顺序） */
+    ldp x2, x3, [sp], #16    // x2=xzr(丢弃), x3=x30
+    mov x30, x3
+    ldp x29, x28, [sp], #16
+    ldp x27, x26, [sp], #16
+    ldp x25, x24, [sp], #16
+    ldp x23, x22, [sp], #16
+    ldp x21, x20, [sp], #16
+    ldp x19, x18, [sp], #16
+    ldp x17, x16, [sp], #16
+    ldp x15, x14, [sp], #16
+    ldp x13, x12, [sp], #16
+    ldp x11, x10, [sp], #16
+    ldp x9, x8, [sp], #16
+    ldp x7, x6, [sp], #16
+    ldp x5, x4, [sp], #16
+    ldp x3, x2, [sp], #16
+    ldp x1, x0, [sp], #16
 
     /* 异常返回 (EL1 -> 原异常等级) */
     eret
+
+/* 
+ * 嵌套深度限制变量 
+ */
+.data
+.global irq_nest_level
+irq_nest_level:
+    .dword 0

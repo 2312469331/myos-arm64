@@ -118,10 +118,15 @@ static struct slab_cache *find_slab_cache(size_t size) {
 
 static unsigned int slab_order_for_size(size_t obj_size) {
   /*
-   * 一个 slab 至少能容纳一个对象即可。
-   * 外部元数据管理，不占 slab 页内空间。
+   * 每个 slab 至少能容纳一个对象。
+   * 计算需要多少页，再取对应的 order。
    */
-  return get_order_ul(obj_size);
+  size_t needed_pages = (obj_size + PAGE_SIZE - 1) / PAGE_SIZE;
+  unsigned int order = 0;
+
+  while ((1UL << order) < needed_pages)
+    order++;
+  return order;
 }
 
 static void slab_cache_add_page(struct slab_cache *cache,

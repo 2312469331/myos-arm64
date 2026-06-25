@@ -5,6 +5,7 @@
 #include <mm_defs.h>
 #include <pmm.h>
 #include <mmu.h>       // 包含页表操作函数
+#include <sync/spinlock.h>
 
 // 全局链表，记录所有已映射的 vm_struct
 static LIST_HEAD(vm_list);
@@ -75,7 +76,7 @@ fail:
 
 // 1. 普通内核虚拟内存分配
 void *vmalloc(unsigned long size) {
-    return __vmalloc_node_range(size, PAGE_SIZE, VA_FLAG_VMALLOC, GFP_KERNEL);
+    return __vmalloc_node_range(size, PAGE_SIZE, VA_FLAG_VMALLOC, PAGE_KERNEL_RW);
 }
 
 // 2. 分配并清零
@@ -121,39 +122,147 @@ found:
 }
 
 // ==========================================
-// 特殊业务：ioremap (不走物理页分配器)
+// 特殊业务：ioremap / iounmap
+// 用链表追踪每次映射，确保 iounmap 能正确取消所有页
 // ==========================================
+
+struct io_mapping {
+    struct list_head list;
+    void *addr;              // va_alloc 返回的页对齐虚拟地址
+    unsigned long nr_pages;  // 实际映射页数
+};
+
+static LIST_HEAD(io_map_list);
+static spinlock_t io_map_lock = SPIN_LOCK_INIT;
+
 void *ioremap(uint64_t phys_addr, unsigned long size) {
-    // 1. 买地皮 (注意标志位不同)
-    void *addr = va_alloc(size, PAGE_SIZE, VA_FLAG_IOREMAP);
+    uint64_t offset = phys_addr & (PAGE_SIZE - 1);
+    uint64_t paddr_aligned = phys_addr & PAGE_MASK;
+    unsigned long map_size = size + offset;
+
+    void *addr = va_alloc(map_size, PAGE_SIZE, VA_FLAG_IOREMAP);
     if (!addr) return NULL;
 
-    // 2. 直接用物理地址建页表，不调 alloc_page！
-    unsigned long nr_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    unsigned long nr_pages = (map_size + PAGE_SIZE - 1) / PAGE_SIZE;
     uint64_t va_start = (uint64_t)addr;
     for (unsigned long i = 0; i < nr_pages; i++) {
-        map_kernel_page(va_start + i * PAGE_SIZE, phys_addr + i * PAGE_SIZE, GFP_KERNEL);
+        map_kernel_page(va_start + i * PAGE_SIZE,
+                        paddr_aligned + i * PAGE_SIZE,
+                        PAGE_DEVICE);
     }
 
-    // ioremap 不需要 vm_struct 记录物理页，因为物理页不是们分配的，iounmap 时不能 free
-    // (为了严谨，其实 Linux 也是有单独的 vmap 管理机制来追踪 ioremap，但最简实现可以先这样)
-    return addr;
+    // 记录映射信息
+    struct io_mapping *io = kmalloc(sizeof(struct io_mapping), GFP_KERNEL);
+    if (io) {
+        io->addr = addr;
+        io->nr_pages = nr_pages;
+        spin_lock(&io_map_lock);
+        list_add(&io->list, &io_map_list);
+        spin_unlock(&io_map_lock);
+    }
+
+    return (void *)(va_start + offset);
+}
+static LIST_HEAD(dma_map_list);
+static spinlock_t dma_map_lock = SPIN_LOCK_INIT;
+
+struct dma_mapping {
+    struct list_head list;
+    void *va;
+    phys_addr_t pa;
+    unsigned long nr_pages;
+    unsigned int order;
+};
+
+/**
+ * dma_alloc_coherent - 分配连续物理页并映射为 DMA 缓冲
+ * @size: 所需大小（字节）
+ * @dma_phys: 输出参数，返回物理地址
+ * 返回：虚拟地址（Non-cacheable，CPU 和设备通过此地址访问）
+ */
+void *dma_alloc_coherent(unsigned long size, uint64_t *dma_phys) {
+    unsigned long pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    unsigned int order = 0;
+    while ((1UL << order) < pages) order++;
+
+    phys_addr_t pa = alloc_phys_pages(order, GFP_DMA);
+    if (!pa) return NULL;
+    *dma_phys = pa;
+
+    void *va = va_alloc(pages * PAGE_SIZE, PAGE_SIZE, VA_FLAG_IOREMAP);
+    if (!va) {
+        free_phys_pages(pa, order);
+        return NULL;
+    }
+
+    uint64_t va_start = (uint64_t)va;
+    for (unsigned long i = 0; i < pages; i++) {
+        map_kernel_page(va_start + i * PAGE_SIZE, pa + i * PAGE_SIZE, PAGE_DMA);
+    }
+
+    struct dma_mapping *dma = kmalloc(sizeof(struct dma_mapping), GFP_KERNEL);
+    if (dma) {
+        dma->va = va;
+        dma->pa = pa;
+        dma->nr_pages = pages;
+        dma->order = order;
+        spin_lock(&dma_map_lock);
+        list_add(&dma->list, &dma_map_list);
+        spin_unlock(&dma_map_lock);
+    }
+    return va;
 }
 
-void iounmap(const void *addr) {
+void dma_free_coherent(void *va) {
+    if (!va) return;
+    uint64_t va_aligned = (uint64_t)va & PAGE_MASK;
+
+    spin_lock(&dma_map_lock);
+    struct dma_mapping *dma = NULL;
+    struct dma_mapping *pos;
+    list_for_each_entry(pos, &dma_map_list, list) {
+        if ((uint64_t)pos->va == va_aligned) {
+            dma = pos;
+            list_del(&pos->list);
+            break;
+        }
+    }
+    spin_unlock(&dma_map_lock);
+    if (!dma) return;
+
+    for (unsigned long i = 0; i < dma->nr_pages; i++) {
+        unmap_kernel_page(va_aligned + i * PAGE_SIZE);
+    }
+    free_phys_pages(dma->pa, dma->order);
+    kfree(dma);
+}
+
+void iounmap(volatile const void *addr) {
     if (!addr) return;
-    
-    // 简化处理：假设映射大小为 4096 字节（1 页）
-    unsigned long size = 4096;
-    unsigned long nr_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-    uint64_t va_start = (uint64_t)addr;
-    
-    // 解除页表映射
-    for (unsigned long i = 0; i < nr_pages; i++) {
-        unmap_kernel_page(va_start + i * PAGE_SIZE);
-    }
-    
-    // 释放虚拟地址空间
-    va_free((void *)addr);
-}
 
+    uint64_t va = (uint64_t)addr;
+    uint64_t va_aligned = va & PAGE_MASK;
+
+    // 从链表查找原始映射页数
+    unsigned long nr_pages = 1;
+    spin_lock(&io_map_lock);
+    struct io_mapping *io;
+    list_for_each_entry(io, &io_map_list, list) {
+        if (io->addr == (void *)va_aligned) {
+            nr_pages = io->nr_pages;
+            list_del(&io->list);
+            kfree(io);
+            break;
+        }
+    }
+    spin_unlock(&io_map_lock);
+
+    // 取消映射所有页
+    for (unsigned long i = 0; i < nr_pages; i++) {
+        unmap_kernel_page(va_aligned + i * PAGE_SIZE);
+    }
+    // 刷新 TLB
+    asm volatile("dsb ish\n\tisb" ::: "memory");
+
+    va_free((void *)va_aligned);
+}

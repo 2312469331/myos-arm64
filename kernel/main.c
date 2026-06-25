@@ -13,6 +13,9 @@
 #include <vmalloc.h>
 #include <vmap.h>
 
+// 定义是否为 1 来启用每 1000 tick 的计时器日志
+#define TIMER_LOG_ENABLED 0
+#define TEST_IRQ 0
 // // 测试 naked 属性
 // __attribute__((naked)) void test_naked_attribute(void) {
 //     __asm__ volatile (
@@ -29,19 +32,23 @@
 // #include <a-profile/armv8a.h>
 // 计算UART虚拟地址：在最后一个L3表的最后一项
 // L3表数量 = (内核大小 + 2MB - 1) / 2MB
+
 #define VIRT_BASE 0xffff800000000000UL
 #define LINEAR_MAP_BASE 0xFFFF800000000000UL // 线性分配区地址基地址
 // 从链接脚本导入的符号
 // 在 bootc.c 中定义函数指针类型和获取函数
-typedef uint64_t (*get_ttbr1_fn_t)(void);
+typedef uint64_t (*get_ttbr0_fn_t)(void);
 // 在 bootc.c 中定义函数指针类型和获取函数
 typedef uint64_t (*get_ttbr1_fn_t)(void);
 // 在 main.c 中使用
 extern uint64_t get_ttbr1_el1(void);
+extern uint64_t get_ttbr0_el1(void);
 extern uintptr_t __boot_phys_base; // 从 boot 段 boot 段物理基址
 void print_mem_usage(void);
 // 计算函数物理地址并调用
 uintptr_t func_pa = (uintptr_t)get_ttbr1_el1; // 物理地址 0x4020072c
+uintptr_t ttbr0_func_pa = (uintptr_t)get_ttbr0_el1;
+phys_addr_t ttbr0_pa;
 
 // ? 新增：函数声明（告诉编译器这些函数后面会定义）
 void uart_test(void);
@@ -66,7 +73,10 @@ void main(void *dtb) {
   // 设置slab分配器所需的全局变量
   extern uintptr_t slab_linear_map_base;
   extern phys_addr_t slab_l0_table_pa;
+  get_ttbr0_fn_t get_ttbr0_pa = (get_ttbr0_fn_t)ttbr0_func_pa;
+
   get_ttbr1_fn_t get_ttbr1_pa = (get_ttbr1_fn_t)func_pa;
+  ttbr0_pa = get_ttbr0_pa();
   slab_l0_table_pa = get_ttbr1_pa();
   // 线性映射基址：VA = PA + slab_linear_map_base
   slab_linear_map_base = LINEAR_MAP_BASE;
@@ -79,14 +89,7 @@ void main(void *dtb) {
   // 初始化vmap管理器
   va_manager_init();
   uart_init();
-  // 初始化GIC中断控制器
-  gic_init();
-  timer_init();
-  //先别开启中断，等rust kthread_entry 的第一条指令 msr daifclr, #2开启中断
-  // __enable_irq();
 
-  // irq_register(TIMER_IRQ_NUM, timer_irq_handler, "定时器");
-  // gic_enable_irq(TIMER_IRQ_NUM);
   print_mem_usage();
   printk("[PMM] Pages freed\n");
 
@@ -94,9 +97,7 @@ void main(void *dtb) {
   printk("[SLAB] L0 table PA: %lx\n", slab_l0_table_pa);
   // uart_base 现在在 uart_init 函数中通过 ioremap 动态映射
 
-  // while (1) {
-  // }
-  // test_smc_to_el3();
+
 
   printk("\n");
   printk("===============================================\n");
@@ -109,6 +110,21 @@ void main(void *dtb) {
   printk("===============================================\n");
   printk("\n");
   test_fdt();
+  // 初始化GIC中断控制器
+  gic_init();
+  timer_init();
+  // UART 中断注册（必须在 rust_main 启动调度器之前）
+  irq_register(IRQ_UART0, uart_irq_callback, "UART0");
+  // 先别开启中断，等rust kthread_entry 的第一条指令 msr daifclr, #2开启中断
+  if (TEST_IRQ) {
+    __enable_irq();
+      while (1) {
+    }
+  }
+
+  // test_smc_to_el3();
+
+
 
   // 全面测试伙伴系统性能和完整性
   test_buddy_system();
@@ -420,6 +436,56 @@ void test_kmalloc(void) {
     printk("[KMALLOC TEST]  Expected failure: kmalloc(0) returned NULL\n");
   }
 
+  // 测试6: 分配 512 个 8 字节 + 256 个 16 字节，验证 slab 页消耗
+  printk("\n[KMALLOC TEST] Test 6: Allocate 512 * 8B then 256 * 16B\n");
+  print_mem_usage();
+  printk("[KMALLOC TEST]  --- 512 * 8B ---\n");
+  void *a8[512];
+  for (int i = 0; i < 512; i++) {
+    a8[i] = kmalloc(8, GFP_KERNEL);
+    if (a8[i]) *(uint64_t *)a8[i] = i;
+    if (i == 0 || i == 511) {
+      printk("[KMALLOC TEST]   8B alloc'd %d/512\n", i + 1);
+      print_mem_usage();
+    }
+  }
+  printk("[KMALLOC TEST]  --- 256 * 16B ---\n");
+  void *a16[256];
+  for (int i = 0; i < 256; i++) {
+    a16[i] = kmalloc(16, GFP_KERNEL);
+    if (a16[i]) { *(uint64_t *)a16[i] = i; *(uint64_t *)(a16[i] + 8) = i + 1; }
+    if (i == 0 || i == 255) {
+      printk("[KMALLOC TEST]   16B alloc'd %d/256\n", i + 1);
+      print_mem_usage();
+    }
+  }
+  printk("[KMALLOC TEST]  Free all\n");
+  for (int i = 0; i < 512; i++) if (a8[i]) kfree(a8[i]);
+  for (int i = 0; i < 256; i++) if (a16[i]) kfree(a16[i]);
+  print_mem_usage();
+  // 测试7: 分配多个小对象，确保跨 slab 页正确
+  printk("\n[KMALLOC TEST] Test 7: Multi-slab-page stress\n");
+  #define N 200
+  void *ptrs[N];
+  int ok = 0;
+  for (int i = 0; i < N; i++) {
+    ptrs[i] = kmalloc(256, GFP_KERNEL);
+    if (ptrs[i]) {
+      memset(ptrs[i], i & 0xFF, 256);
+      ((uint32_t *)ptrs[i])[0] = i;
+      ok++;
+    }
+  }
+  printk("[KMALLOC TEST]  allocated %d/200 blocks of 256B\n", ok);
+  for (int i = 0; i < N; i++) {
+    if (ptrs[i]) {
+      kfree(ptrs[i]);
+    }
+  }
+  printk("[KMALLOC TEST]  all freed\n");
+  print_mem_usage();
+#undef N
+
   // 释放NULL指针
   kfree(NULL);
   printk("[KMALLOC TEST]  NULL pointer free handled correctly\n");
@@ -441,7 +507,6 @@ void gic_test(void) {
 
   // 3. 注册UART中断
   irq_register(IRQ_UART0, uart_irq_callback, "UART0");
-  gic_enable_irq(IRQ_UART0);
   // 4. 启用全局中断
   enable_irq();
   uart_puts("[Init] Global IRQ Enabled\n");
@@ -484,14 +549,12 @@ void uart_test(void) {
 }
 
 extern void rust_timer_tick(void);
+extern void rust_check_sleepers(void);
 
 // 强符号：覆盖 timer.c 里的弱符号
 void timer_irq_handler(uint32_t irq) {
   // 1. 标记参数（消除警告）
   (void)irq;
-
-  // 直接：使能=1，不屏蔽中断=0，靠写入自动清bit2
-  // asm volatile("mov x0, #1\n msr CNTP_CTL_EL0, x0");
 
   // 2. 读取系统计数器频率
   uint64_t freq;
@@ -502,44 +565,47 @@ void timer_irq_handler(uint32_t irq) {
 
   // 4. 重载定时器，保证持续 tick（必须写，否则中断只触发一次）
   cntp_set_tval(load_val);
-  // rust_timer_tick();
 
   // 5. 系统时间++
   system_tick++;
 
-  // 6. 每 1000 个 tick（1秒）打印一次信息
+  // 6. 每次 tick 检查 sleep 队列，唤醒到期线程
+  rust_check_sleepers();
+
+  // 7. 每次 tick 递减时间片（调度器用）
+  rust_timer_tick();
+
+  // 8. 每 1000 个 tick（1秒）打印一次信息
+#if TIMER_LOG_ENABLED
   if (system_tick % 1000 == 0) {
-    rust_timer_tick();
     printk("[TIMER] Tick: %lu, Time: %lu seconds\n", system_tick,
            system_tick / 1000);
   }
+#endif
 }
 
-void uart_irq_callback(uint32_t irq) {
-  printk("%s", "sbgxr????");
-  // 1. 标记参数（消除警告）
-  (void)irq;
+// Rust TTY 输入函数
+extern void rust_tty_input_char(uint8_t ch);
 
-  // 3. 检查UART接收FIFO是否有数据（非阻塞）
+void uart_irq_callback(uint32_t irq) {
+  (void)irq;
+  static int uart_irq_cnt = 0;
+  uart_irq_cnt++;
+  // 每 100 次打印一次
+  // if (uart_irq_cnt % 100 == 1)
+  //     printk("[UART IRQ #%d]\n", uart_irq_cnt);
   if (!uart_rx_ready()) {
-    return; // 无数据直接返回，不浪费中断时间
+    return;
   }
-  // 4. 非阻塞读+错误处理（规范）
+  // printk("中断了UART0\n");
   uart_error_t err;
   char ch;
-  uart_getc_nonblock(&ch, &err); // 现在 &ch 是 char*，和函数参数匹配
-  if (err != UART_ERR_NONE) {
-    // p
-    uart_clear_error(); // 清除错误标志，避免卡死
-    return;
+  // 读取所有可用字符
+  while (uart_getc_nonblock(&ch, &err) && err == UART_ERR_NONE) {
+    rust_tty_input_char((uint8_t)ch);
   }
-  // 5. 回显数据（仅做业务处理，快速退出）
-  // 修正后（正确）
-  uart_getc_nonblock(&ch, &err); // 现在 &ch 是 char*，和函数参数匹配
   if (err != UART_ERR_NONE) {
-    // p
-    uart_clear_error(); // 清除错误标志，避免卡死
-    return;
+    uart_clear_error();
   }
 }
 // 解析节点属性
@@ -705,6 +771,69 @@ void test_fdt(void) {
   }
 
   printk("[FDT TEST] FDT test completed!\n");
+
+  // Scan all virtio-mmio slots
+  int vnode = -1;
+  while ((vnode = fdt_node_offset_by_compatible(fdt, vnode, "virtio,mmio")) >= 0) {
+    int len;
+    const fdt32_t *reg = fdt_getprop(fdt, vnode, "reg", &len);
+    if (!reg || len < 8) continue;
+    uint64_t base = fdt64_to_cpu(*(const fdt64_t *)reg);
+    volatile void *vm = ioremap(base, 0x200);
+    if (!vm) continue;
+    uint32_t magic = io_read32(vm);
+    uint32_t ver = io_read32(vm + 0x04);
+    uint32_t devid = io_read32(vm + 0x08);
+    uint32_t slot = (base - 0xa000000) / 0x200;
+    printk("[VIRTIO]   slot%02d: magic=0x%x ver=%d id=%d\n", slot, magic, ver, devid);
+    iounmap(vm);
+  }
+}
+
+// 从 FDT 获取第一个 virtio block 设备的 MMIO 地址和 IRQ 号
+// @out_mmio_pa: 输出 MMIO 物理地址
+// @return: IRQ 号，0=未找到
+uint32_t rust_find_virtio_blk(uint64_t *out_mmio_pa) {
+  uint64_t dtb_phys;
+  if (dtb_base == NULL || (uint64_t)dtb_base == 0) {
+    dtb_phys = 0x40000000;
+  } else {
+    dtb_phys = (uint64_t)dtb_base;
+  }
+  void *fdt = (void *)(VIRT_BASE + dtb_phys);
+  if (fdt_check_header(fdt) != 0) return 0;
+
+  int vnode = -1;
+  int count = 0;
+  while ((vnode = fdt_node_offset_by_compatible(fdt, vnode, "virtio,mmio")) >= 0) {
+    count++;
+    int len;
+    const fdt32_t *reg = fdt_getprop(fdt, vnode, "reg", &len);
+    if (!reg || len < 8) continue;
+    uint64_t base = fdt64_to_cpu(*(const fdt64_t *)reg);
+
+    // 验证设备类型
+    volatile void *vm = ioremap(base, 0x200);
+    if (!vm) continue;
+    uint32_t devid = io_read32(vm + 0x08);
+    iounmap((void *)vm);
+    if (devid != 2) {  // 不是 block 设备
+      printk("[FDT] skip virtio @ %llx, devid=%d\n", base, devid);
+      continue;
+    }
+
+    // 读 interrupt 属性
+    const fdt32_t *irq = fdt_getprop(fdt, vnode, "interrupts", &len);
+    if (!irq || len < 12) return 0;
+    uint32_t irq_type = fdt32_to_cpu(irq[0]);  // 0=SPI, 1=PPI
+    uint32_t irq_num = fdt32_to_cpu(irq[1]);
+    printk("[FDT] found virtio-blk @ %llx, irq_type=%d irq_num=%d (count=%d)\n", base, irq_type, irq_num, count);
+    if (out_mmio_pa) *out_mmio_pa = base;
+    if (irq_type == 1) return 16 + irq_num;
+    else return 32 + irq_num;
+  }
+  printk("[FDT] virtio-blk not found, scanned %d nodes\n", count);
+  return 0;
 }
 
 // 测试 vmap 功能

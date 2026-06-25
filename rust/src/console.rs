@@ -31,11 +31,9 @@ impl fmt::Write for Console {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    cpu::disable_irq();
     // 实例化 Console 并格式化输出
     let mut console = Console;
     let _ = fmt::write(&mut console, args);
-    cpu::enable_irq();
 }
 
 /// 内核 `print!` 宏

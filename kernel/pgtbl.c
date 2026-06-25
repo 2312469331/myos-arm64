@@ -9,7 +9,7 @@ int pgtbl_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
     // 设置 pgtbl 所需的全局变量
     linear_map_base = slab_linear_map_base;
     l0_table_pa = slab_l0_table_pa;
-    return arm64_map_one_page(va, pa, prot);
+    return map_page(va, pa, prot);
 }
 
 void pgtbl_unmap_one_page(uintptr_t va) {
@@ -17,7 +17,7 @@ void pgtbl_unmap_one_page(uintptr_t va) {
     linear_map_base = slab_linear_map_base;
     l0_table_pa = slab_l0_table_pa;
     
-    arm64_unmap_one_page(va);
+    unmap_page(va);
 }
 
 int pgtbl_map_range(uintptr_t va, phys_addr_t pa, size_t size, uint64_t prot) {

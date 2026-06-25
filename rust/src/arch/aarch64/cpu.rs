@@ -25,6 +25,33 @@ pub fn enable_irq() {
     }
 }
 
+/// 禁用 IRQ 并返回之前的 DAIF 状态（用于 spin_lock_irqsave）。
+#[inline]
+pub fn disable_irq_save() -> u64 {
+    let daif: u64;
+    unsafe {
+        core::arch::asm!("mrs {}, daif", out(reg) daif);
+        core::arch::asm!("msr daifset, #2");
+    }
+    daif
+}
+
+/// 从保存的 DAIF 状态恢复（用于 spin_unlock_irqrestore）。
+#[inline]
+pub fn restore_irq(flags: u64) {
+    unsafe {
+        core::arch::asm!("msr daif, {}", in(reg) flags);
+    }
+}
+
+/// 读取当前 CPU 的 MPIDR_EL1（Aff0 域），支持 8 核以内。
+#[inline]
+pub fn cpu_id() -> usize {
+    let mpidr: u64;
+    unsafe { core::arch::asm!("mrs {}, mpidr_el1", out(reg) mpidr); }
+    (mpidr & 0xff) as usize
+}
+
 /// 增加抢占计数（禁止抢占）。
 #[inline]
 pub fn preempt_disable() {

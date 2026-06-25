@@ -36,9 +36,43 @@ static inline bool va_in_linear_map(const void *va) {
   return v >= slab_linear_map_base;
 }
 
-/* 页表操作函数 */
-int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot);
-void arm64_unmap_one_page(uintptr_t va) ;
+/* ===============================================
+ *  HAL — 架构无关页表接口（上层代码只用这些）
+ *  新增架构时，在 arch/xxx/ 下实现即可
+ * =============================================== */
+
+// 映射一页，prot 为页属性掩码（如 PAGE_KERNEL_RW、PAGE_DEVICE）
+int map_page(uintptr_t va, phys_addr_t pa, uint64_t prot);
+
+// 解除一页映射
+void unmap_page(uintptr_t va);
+
+// VA → PA 转换
+phys_addr_t get_phys_from_va(uintptr_t va);
+
+// 刷新全部 TLB
+void flush_tlb_all(void);
+
+// 复制用户态页表
+void copy_user_pgd(phys_addr_t src_pgd_pa, phys_addr_t dst_pgd_pa);
+
+// 递归释放整个页表树
+void free_pgd_tree(phys_addr_t pgd_pa);
+
+// 调试打印页表
+void dump_page_table(phys_addr_t pgd_pa);
+
+/* 架构层 TLB 刷新（实现在 arch/arm64/mm/tlb.c） */
+void arch_tlb_flush_all(void);
+
+/* ===============================================
+ *  ARM64 具体实现（HAL 下层，不直接调用）
+ * =============================================== */
+int map_page(uintptr_t va, phys_addr_t pa, uint64_t prot);
+void unmap_page(uintptr_t va);
+phys_addr_t get_phys_from_va(uintptr_t va);
+void copy_user_pgd(phys_addr_t src_pgd_pa, phys_addr_t dst_pgd_pa);
+void free_pgd_tree(phys_addr_t pgd_pa);
 
 
 
@@ -87,6 +121,12 @@ void set_sctlr_el1(void);
 
 /* 切换 TTBR0_EL1（用户态页表基地址） */
 void switch_ttbr0(phys_addr_t ttbr0_pa);
+
+/* 读取 TTBR0_EL1（用户态页表基地址） */
+phys_addr_t read_ttbr0_el1(void);
+
+/* 读取 TTBR1_EL1（内核态页表基地址） */
+phys_addr_t read_ttbr1_el1(void);
 
 /* 刷新 EL1 所有 TLB 表项 */
 void flush_tlb(void);

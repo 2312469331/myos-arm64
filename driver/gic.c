@@ -62,15 +62,11 @@ void gic_init(void) {
 void gic_enable_irq(uint32_t irq_num) {
   uint32_t idx = irq_num / 32;
   uint32_t bit = irq_num % 32;
-  // // 先读当前值
-  // uint32_t nsacr1 = io_read32(GICD_BASE + 0x0E0);
-  // // 把 bit10 置1，允许非安全使用该中断
-  // nsacr1 |= (1 << bit);
-  // io_write32(GICD_BASE + 0x0E0, nsacr1);
-      uint32_t val;
 
-  val=io_read32(GICD_IGROUPR(0));
-  io_write32(GICD_IGROUPR(0), val|(1<<bit));
+  // 设优先级（默认 0xA0，低于内核 0x80 的 PMR 阈值）
+  // gic_set_irq_priority(irq_num, 0xA0);
+
+  // 使能中断
   io_write32(GICD_ISENABLER(idx), 1 << bit);
 }
 

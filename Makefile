@@ -19,7 +19,9 @@ QEMU_MEM		= 256M
 QEMU_BASE_ARGS	:= \
 	-machine $(QEMU_MACHINE) \
 	-cpu $(QEMU_CPU) \
-	-m $(QEMU_MEM)
+	-m $(QEMU_MEM) \
+	-drive if=none,file=disk.img,format=raw,id=hd0 \
+	-device virtio-blk-device,drive=hd0
 
 # ---------------------------------------------------
 # 架构变量，可通过命令行指定：make ARCH=arm64 或 make ARCH=x86_64
@@ -76,7 +78,7 @@ ifeq ($(ARCH),arm64)
 CFLAGS += -D_RTE_
 # ARM64 特定优化
 CFLAGS += -mcpu=cortex-a53 -march=armv8-a
-ASFLAGS += -mcpu=cortex-a53 -march=armv8-a
+ASFLAGS += -mcpu=cortex-a53 -march=armv8-a 
 endif
 
 # ============================================================
@@ -106,13 +108,13 @@ else ifeq ($(OS),Windows_NT)
     OBJDUMP := $(CROSS_COMPILE)objdump
     QEMU    := qemu-system-aarch64
 else
-    # --- x86_64 Ubuntu 主机环境配置 ---
-    CROSS_COMPILE := aarch64-linux-gnu-
-    CC      := $(CROSS_COMPILE)gcc
-    AS      := $(CROSS_COMPILE)as
-    LD      := $(CROSS_COMPILE)ld
-    OBJCOPY := $(CROSS_COMPILE)objcopy
-    OBJDUMP := $(CROSS_COMPILE)objdump
+    # --- x86_64 Ubuntu 主机环境：Clang + LLD ---
+    CLANG_TARGET := --target=aarch64-linux-gnu
+    CC      := clang $(CLANG_TARGET)
+    AS      := clang $(CLANG_TARGET)
+    LD      := ld.lld
+    OBJCOPY := llvm-objcopy
+    OBJDUMP := llvm-objdump
     QEMU    := qemu-system-aarch64
 endif
 # =========================
@@ -121,16 +123,18 @@ endif
  SRC_ASM = arch/arm64/boot/boot.S \
            $(SRC_ASM_CONFIG)   # 来自 config.mk 的条件汇编文件
  SRC_C = kernel/main.c \
-                kernel/irq.c \
-                kernel/pmm.c \
-                kernel/printk.c \
-                kernel/libc.c \
-                kernel/slab.c \
-                kernel/mmu.c \
-                kernel/pgtbl.c \
-                kernel/vmalloc.c \
-                kernel/vmap.c \
-                kernel/page_fault.c \
+                 kernel/irq.c \
+                 kernel/pmm.c \
+                 kernel/printk.c \
+                 kernel/libc.c \
+                 kernel/slab.c \
+                 kernel/mmu.c \
+                 kernel/pgtbl.c \
+                 kernel/vmalloc.c \
+                 kernel/vmap.c \
+                 kernel/mm.c \
+                 kernel/brk.c \
+                 kernel/page_fault.c \
                 kernel/ds/rbtree.c \
                 kernel/sync/completion.c \
                 kernel/sync/rcupdate.c \
@@ -142,7 +146,8 @@ endif
 # ARM64 架构特定源文件
 ifeq ($(ARCH),arm64)
 SRC_C += arch/arm64/boot/bootc.c \
-         arch/arm64/Core/Source/irq_ctrl_gic.c
+         arch/arm64/Core/Source/irq_ctrl_gic.c \
+         arch/arm64/mm/tlb.c
 SRC_C += arch/arm64/device/ARMCA53/Source/startup_ARMCA53.c
 SRC_C += arch/arm64/device/ARMCA53/Source/system_ARMCA53.c
 endif
@@ -209,28 +214,49 @@ $(TARGET).img: $(TARGET).elf
 	$(OBJCOPY) -O binary $< $@
 
 # ======================
+# FAT32 磁盘镜像
+# ======================
+disk.img: user_bin/shell.elf user_bin/echo.elf
+	dd if=/dev/zero of=$@ bs=1M count=64 2>/dev/null
+	mkfs.fat -F 32 $@ >/dev/null 2>&1
+	echo "Hello from MyOS!" | mcopy -i $@ - ::/HELLO.TXT
+	echo "This is a test file on FAT32 filesystem." | mcopy -i $@ - ::/README.TXT
+	mcopy -i $@ user_bin/shell.elf ::/SHELL.ELF
+	mmd -i $@ ::/BIN
+	mcopy -i $@ user_bin/echo.elf ::/BIN/ECHO.ELF
+	mdir -i $@ /
+
+user_bin/shell.elf: user_bin/shell.c user_bin/shell.ld
+	clang --target=aarch64-linux-gnu -ffreestanding -nostdlib -O2 -c user_bin/shell.c -o user_bin/shell.o
+	aarch64-linux-gnu-ld -N -T user_bin/shell.ld user_bin/shell.o -o $@
+
+user_bin/echo.elf: user_bin/echo.S user_bin/echo.ld
+	aarch64-linux-gnu-as -c user_bin/echo.S -o user_bin/echo.o
+	aarch64-linux-gnu-ld -N -T user_bin/echo.ld user_bin/echo.o -o $@
+
+# ======================
 # IMG 启动 QEMU
 # ======================
 # 正常运行
-run: all
+run: all disk.img
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
 		-nographic
 
 # 串口独立调试
-serial: all
+serial: all disk.img
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).img \
 		-serial pty -daemonize -display none
 
 # GDB 阻塞等待调试
-debug: all
+debug: all disk.img
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
 		-nographic -s -S
 
 # GDB 不阻塞直接运行
-debug-no-suspend: all
+debug-no-suspend: all disk.img
 	$(QEMU) $(QEMU_BASE_ARGS) \
 		-kernel $(TARGET).elf \
 		-nographic -s
@@ -252,12 +278,15 @@ dtb:
 	@echo "✅ Done: virt.dtb (binary) + virt.dts (source) generated"
 	@echo "📍 DTB will be loaded at address: $(DTB_ADDR)"
 
-.PHONY: debug debug-no-suspend dtb clean-dtb clean readelf readelf-l readelf-S readelf-s
+rebuild: clean all
+
+.PHONY: debug debug-no-suspend dtb clean-dtb clean rebuild readelf readelf-l readelf-S readelf-s
 clean-dtb:
 	rm -f virt.dtb virt.dts
 
 clean:
 	rm -rf build/*
+	rm -f disk.img
 	cd $(RUST_DIR) && cargo clean
 
 # 查看 ELF 文件段信息 (-l)

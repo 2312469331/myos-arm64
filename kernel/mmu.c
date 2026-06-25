@@ -1,22 +1,49 @@
 #include <mmu.h>
 #include <types.h>
+#include <libc.h>
+#include <printk.h>
+#include <compiler.h>
 
 /* 全局变量定义 */
 uintptr_t slab_linear_map_base;
 phys_addr_t slab_l0_table_pa;
 
+/* 读取 TTBR0_EL1 */
+static inline phys_addr_t read_ttbr0(void) {
+    uint64_t val;
+    __asm__ volatile ("mrs %0, ttbr0_el1" : "=r"(val));
+    return (phys_addr_t)val;
+}
+
+/* 读取 TTBR1_EL1 */
+static inline phys_addr_t read_ttbr1(void) {
+    uint64_t val;
+    __asm__ volatile ("mrs %0, ttbr1_el1" : "=r"(val));
+    return (phys_addr_t)val;
+}
+
+/* 判断地址是用户态 (VA[47]=0) 还是内核态 (VA[47]=1) */
+static inline int is_user_addr(uintptr_t va) {
+    return (va >> 47) == 0;
+}
+
 /* 页表操作函数 */
 int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
-
-    
     pte_t *l0, *l1, *l2, *l3;
-    phys_addr_t l1_pa, l2_pa, l3_pa;
+    phys_addr_t l0_pa, l1_pa, l2_pa, l3_pa;
     unsigned long idx0, idx1, idx2, idx3;
 
-    if (!l0_table_pa)
+    /* 根据地址选择 L0 表：用户态走 TTBR0，内核态走 TTBR1 */
+    if (is_user_addr(va)) {
+        l0_pa = read_ttbr0();
+    } else {
+        l0_pa = read_ttbr1();
+    }
+
+    if (!l0_pa)
         return -1;
 
-    l0 = (pte_t *)phys_to_virt(l0_table_pa);
+    l0 = (pte_t *)phys_to_virt(l0_pa);
 
     idx0 = L0_INDEX(va);
     idx1 = L1_INDEX(va);
@@ -28,6 +55,7 @@ int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
         l1_pa = alloc_phys_pages(0, GFP_KERNEL);
         if (!l1_pa)
             return -1;
+        memset(phys_to_virt(l1_pa), 0, PAGE_SIZE);
         l0[idx0] = ARM64_TABLE_PROT | l1_pa;
     } else {
         l1_pa = pte_to_phys(l0[idx0]);
@@ -39,6 +67,7 @@ int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
         l2_pa = alloc_phys_pages(0, GFP_KERNEL);
         if (!l2_pa)
             return -1;
+        memset(phys_to_virt(l2_pa), 0, PAGE_SIZE);
         l1[idx1] = ARM64_TABLE_PROT | l2_pa;
     } else {
         l2_pa = pte_to_phys(l1[idx1]);
@@ -50,48 +79,38 @@ int arm64_map_one_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
         l3_pa = alloc_phys_pages(0, GFP_KERNEL);
         if (!l3_pa)
             return -1;
+        memset(phys_to_virt(l3_pa), 0, PAGE_SIZE);
         l2[idx2] = ARM64_TABLE_PROT | l3_pa;
     } else {
         l3_pa = pte_to_phys(l2[idx2]);
     }
     l3 = (pte_t *)phys_to_virt(l3_pa);
 
-    /* 4. 映射页面 - 根据 prot 参数选择合适的页表属性 */
-    uint64_t attr_bits;
-    
-    // 检查 prot 参数是否为 GFP_* 标志
-    if (prot == GFP_KERNEL) { // GFP_KERNEL
-        // 常规内核分配 - 使用内核可读写属性
-        attr_bits = PAGE_KERNEL_RW;
-    } else if (prot == GFP_ATOMIC) { // GFP_ATOMIC
-        // 原子分配 - 使用内核可读写属性
-        attr_bits = PAGE_KERNEL_RW;
-    } else if (prot == GFP_DMA) { // GFP_DMA
-        // DMA 分配 - 使用非共享属性
-        attr_bits = PAGE_DMA;
-    } else if (prot == GFP_HIGHMEM) { // GFP_HIGHMEM
-        // 高端内存 - 使用内核可读写属性
-        attr_bits = PAGE_KERNEL_RW;
-    } else {
-      return -1;
-    }
-    
-    // 组合属性位和物理地址
-    l3[idx3] = attr_bits | (pa & ARM64_PTE_ADDR_MASK);
+    /* 4. 映射页面 - prot 直接作为 PTE 标志 */
+    l3[idx3] = prot | (pa & ARM64_PTE_ADDR_MASK);
+
+    // DSB 确保 PTE 写对页表遍历器可见
+    wmb();
 
     return 0;
 }
 
 void arm64_unmap_one_page(uintptr_t va) {
-  
   pte_t *l0, *l1, *l2, *l3;
-  phys_addr_t l1_pa, l2_pa, l3_pa;
+  phys_addr_t l0_pa, l1_pa, l2_pa, l3_pa;
   unsigned long idx0, idx1, idx2, idx3;
 
-  if (!l0_table_pa)
+  /* 根据地址选择 L0 表 */
+  if (is_user_addr(va)) {
+    l0_pa = read_ttbr0();
+  } else {
+    l0_pa = read_ttbr1();
+  }
+
+  if (!l0_pa)
     return;
 
-  l0 = (pte_t *)phys_to_virt(l0_table_pa);
+  l0 = (pte_t *)phys_to_virt(l0_pa);
 
   idx0 = L0_INDEX(va);
   idx1 = L1_INDEX(va);
@@ -121,6 +140,10 @@ void arm64_unmap_one_page(uintptr_t va) {
 
   /* 1. 先让 L3 页项失效 */
   l3[idx3] = 0;
+
+  // DSB 保证 PTE 清零可见再刷 TLB
+  wmb();
+  flush_tlb();
 
   /* 2. 检查整个 L3 表是否空，空则释放，并让 L2 对应项失效 */
   if (pte_table_empty(l3)) {
@@ -242,9 +265,261 @@ void switch_ttbr0(phys_addr_t ttbr0_pa) {
   flush_tlb();
 }
 
-/* 刷新 TLB */
+/* 读取 TTBR0_EL1（供 Rust FFI 调用） */
+phys_addr_t read_ttbr0_el1(void) {
+    uint64_t val;
+    __asm__ volatile ("mrs %0, ttbr0_el1" : "=r"(val));
+    return (phys_addr_t)val;
+}
+
+/* 读取 TTBR1_EL1（供 Rust FFI 调用） */
+phys_addr_t read_ttbr1_el1(void) {
+    uint64_t val;
+    __asm__ volatile ("mrs %0, ttbr1_el1" : "=r"(val));
+    return (phys_addr_t)val;
+}
+
+/* 刷新 TLB（委托给架构层实现） */
 void flush_tlb(void) {
-  __asm__ volatile ("tlbi vmalle1" : : : "memory");
-  __asm__ volatile ("dsb sy" : : : "memory");
-  __asm__ volatile ("isb" : : : "memory");
+    arch_tlb_flush_all();
+}
+
+/**
+ * copy_user_page_table - 复制用户态页表树
+ * @src_pgd_pa: 源页表 L0 物理地址
+ * @dst_pgd_pa: 目标页表 L0 物理地址
+ *
+ * 遍历源页表的用户态条目 (VA[47]=0)，在目标页表建立相同映射。
+ * 物理页被共享（两个页表指向同一物理页），后续 COW 时再分离。
+ * 不复制内核态条目（由 TTBR1 共享）。
+ */
+void copy_user_page_table(phys_addr_t src_pgd_pa, phys_addr_t dst_pgd_pa) {
+    pte_t *src_l0 = (pte_t *)phys_to_virt(src_pgd_pa);
+    pte_t *dst_l0 = (pte_t *)phys_to_virt(dst_pgd_pa);
+
+    /* 只遍历用户态条目：L0 index 0..511 (VA[47]=0) */
+    for (unsigned long idx0 = 0; idx0 < PTRS_PER_PTE; idx0++) {
+        if (!pte_present(src_l0[idx0]))
+            continue;
+
+        pte_t *src_l1 = (pte_t *)phys_to_virt(pte_to_phys(src_l0[idx0]));
+
+        /* 目标 L1 表不存在则分配并清零 */
+        if (!pte_present(dst_l0[idx0])) {
+            phys_addr_t dst_l1_pa = alloc_phys_pages(0, GFP_KERNEL);
+            if (!dst_l1_pa) continue;
+            memset(phys_to_virt(dst_l1_pa), 0, PAGE_SIZE);
+            dst_l0[idx0] = ARM64_TABLE_PROT | dst_l1_pa;
+        }
+        pte_t *dst_l1 = (pte_t *)phys_to_virt(pte_to_phys(dst_l0[idx0]));
+
+        for (unsigned long idx1 = 0; idx1 < PTRS_PER_PTE; idx1++) {
+            if (!pte_present(src_l1[idx1]))
+                continue;
+
+            pte_t *src_l2 = (pte_t *)phys_to_virt(pte_to_phys(src_l1[idx1]));
+
+            if (!pte_present(dst_l1[idx1])) {
+                phys_addr_t dst_l2_pa = alloc_phys_pages(0, GFP_KERNEL);
+                if (!dst_l2_pa) continue;
+                memset(phys_to_virt(dst_l2_pa), 0, PAGE_SIZE);
+                dst_l1[idx1] = ARM64_TABLE_PROT | dst_l2_pa;
+            }
+            pte_t *dst_l2 = (pte_t *)phys_to_virt(pte_to_phys(dst_l1[idx1]));
+
+            for (unsigned long idx2 = 0; idx2 < PTRS_PER_PTE; idx2++) {
+                if (!pte_present(src_l2[idx2]))
+                    continue;
+
+                pte_t *src_l3 = (pte_t *)phys_to_virt(pte_to_phys(src_l2[idx2]));
+
+                if (!pte_present(dst_l2[idx2])) {
+                    phys_addr_t dst_l3_pa = alloc_phys_pages(0, GFP_KERNEL);
+                    if (!dst_l3_pa) continue;
+                    memset(phys_to_virt(dst_l3_pa), 0, PAGE_SIZE);
+                    dst_l2[idx2] = ARM64_TABLE_PROT | dst_l3_pa;
+                }
+                pte_t *dst_l3 = (pte_t *)phys_to_virt(pte_to_phys(dst_l2[idx2]));
+
+                /* 复制 L3 页表项：共享物理页，子进程可写页标 COW 只读 */
+                for (unsigned long idx3 = 0; idx3 < PTRS_PER_PTE; idx3++) {
+                    if (!pte_present(src_l3[idx3]))
+                        continue;
+
+                    pte_t pte = src_l3[idx3];
+
+                    /* 子进程：可写页标只读，触发写时复制 */
+                    if ((pte & (1UL << 6)) && !(pte & (1UL << 7))) {
+                        pte |= (1UL << 7);
+                    }
+
+                    dst_l3[idx3] = pte;
+
+                    /* 增加共享数据页的引用计数 */
+                    get_page(pte_to_phys(src_l3[idx3]));
+                }
+            }
+        }
+    }
+}
+
+/**
+ * free_page_table_tree - 递归释放整个页表树
+ * @pgd_pa: L0 页表物理地址
+ *
+ * 释放 L0→L1→L2→L3 所有页表页，以及 L3 中映射的数据页（通过 put_page 递减引用计数）。
+ */
+void free_page_table_tree(phys_addr_t pgd_pa) {
+    pte_t *l0 = (pte_t *)phys_to_virt(pgd_pa);
+
+    for (unsigned long idx0 = 0; idx0 < PTRS_PER_PTE; idx0++) {
+        if (!pte_present(l0[idx0]))
+            continue;
+
+        pte_t *l1 = (pte_t *)phys_to_virt(pte_to_phys(l0[idx0]));
+
+        for (unsigned long idx1 = 0; idx1 < PTRS_PER_PTE; idx1++) {
+            if (!pte_present(l1[idx1]))
+                continue;
+
+            pte_t *l2 = (pte_t *)phys_to_virt(pte_to_phys(l1[idx1]));
+
+            for (unsigned long idx2 = 0; idx2 < PTRS_PER_PTE; idx2++) {
+                if (!pte_present(l2[idx2]))
+                    continue;
+
+                pte_t *l3 = (pte_t *)phys_to_virt(pte_to_phys(l2[idx2]));
+
+                /* 释放 L3 中映射的数据页 */
+                for (unsigned long idx3 = 0; idx3 < PTRS_PER_PTE; idx3++) {
+                    if (pte_present(l3[idx3])) {
+                        put_page(pte_to_phys(l3[idx3]));
+                    }
+                }
+
+                /* 释放 L3 页表页 */
+                free_phys_pages(pte_to_phys(l2[idx2]), 0);
+            }
+
+            /* 释放 L2 页表页 */
+            free_phys_pages(pte_to_phys(l1[idx1]), 0);
+        }
+
+        /* 释放 L1 页表页 */
+        free_phys_pages(pte_to_phys(l0[idx0]), 0);
+    }
+
+    /* 释放 L0 页表页 */
+    free_phys_pages(pgd_pa, 0);
+}
+
+/* 从页表中读取虚拟地址对应的物理地址，未映射返回 0 */
+phys_addr_t arm64_get_phys_from_va(uintptr_t va) {
+  pte_t *l0, *l1, *l2, *l3;
+  phys_addr_t l0_pa;
+
+  if (is_user_addr(va)) {
+    l0_pa = read_ttbr0();
+  } else {
+    l0_pa = read_ttbr1();
+  }
+
+  if (!l0_pa) return 0;
+
+  l0 = (pte_t *)phys_to_virt(l0_pa);
+  if (!pte_present(l0[L0_INDEX(va)])) return 0;
+
+  l1 = (pte_t *)phys_to_virt(pte_to_phys(l0[L0_INDEX(va)]));
+  if (!pte_present(l1[L1_INDEX(va)])) return 0;
+
+  l2 = (pte_t *)phys_to_virt(pte_to_phys(l1[L1_INDEX(va)]));
+  if (!pte_present(l2[L2_INDEX(va)])) return 0;
+
+  l3 = (pte_t *)phys_to_virt(pte_to_phys(l2[L2_INDEX(va)]));
+  if (!pte_present(l3[L3_INDEX(va)])) return 0;
+
+  return pte_to_phys(l3[L3_INDEX(va)]);
+}
+
+/// 调试：以树状格式打印页表结构
+/// @param pgd_pa  L0 页表物理地址
+void dump_page_table(phys_addr_t pgd_pa) {
+    pte_t *l0 = (pte_t *)phys_to_virt(pgd_pa);
+
+    printk("[PT] pgd=0x%lx\n", (unsigned long)pgd_pa);
+
+    for (unsigned long idx0 = 0; idx0 < PTRS_PER_PTE; idx0++) {
+        if (!pte_present(l0[idx0]))
+            continue;
+
+        unsigned long l0_pa = (unsigned long)pte_to_phys(l0[idx0]);
+        printk("  L0[%3lu] -> 0x%lx\n", idx0, l0_pa);
+
+        pte_t *l1 = (pte_t *)phys_to_virt(pte_to_phys(l0[idx0]));
+        for (unsigned long idx1 = 0; idx1 < PTRS_PER_PTE; idx1++) {
+            if (!pte_present(l1[idx1]))
+                continue;
+
+            unsigned long l1_pa = (unsigned long)pte_to_phys(l1[idx1]);
+            printk("    L1[%3lu] -> 0x%lx\n", idx1, l1_pa);
+
+            pte_t *l2 = (pte_t *)phys_to_virt(pte_to_phys(l1[idx1]));
+            for (unsigned long idx2 = 0; idx2 < PTRS_PER_PTE; idx2++) {
+                if (!pte_present(l2[idx2]))
+                    continue;
+
+                unsigned long l2_pa = (unsigned long)pte_to_phys(l2[idx2]);
+
+                if (l2[idx2] & ARM64_PTE_TYPE_TABLE) {
+                    printk("      L2[%3lu] -> 0x%lx  [table]\n", idx2, l2_pa);
+
+                    pte_t *l3 = (pte_t *)phys_to_virt(pte_to_phys(l2[idx2]));
+                    for (unsigned long idx3 = 0; idx3 < PTRS_PER_PTE; idx3++) {
+                        if (!pte_present(l3[idx3]))
+                            continue;
+
+                        unsigned long va = (idx0 << 39) | (idx1 << 30) |
+                                          (idx2 << 21) | (idx3 << 12);
+                        unsigned long pa = (unsigned long)pte_to_phys(l3[idx3]);
+                        unsigned long prot = l3[idx3] & ~ARM64_PTE_ADDR_MASK;
+                        printk("        L3[%3lu] va=%#018lx -> pa=0x%lx  prot=%#010lx\n",
+                            idx3, va, pa, prot);
+                    }
+                } else {
+                    unsigned long va = (idx0 << 39) | (idx1 << 30) | (idx2 << 21);
+                    unsigned long prot = l2[idx2] & ~ARM64_PTE_ADDR_MASK;
+                    printk("      L2[%3lu] va=%#018lx -> pa=0x%lx  [block] prot=%#010lx\n",
+                        idx2, va, l2_pa, prot);
+                }
+            }
+        }
+    }
+}
+
+// ============================================================
+//  HAL 接口实现（架构无关包装，供上层调用）
+// ============================================================
+
+int map_page(uintptr_t va, phys_addr_t pa, uint64_t prot) {
+    return arm64_map_one_page(va, pa, prot);
+}
+
+void unmap_page(uintptr_t va) {
+    arm64_unmap_one_page(va);
+}
+
+phys_addr_t get_phys_from_va(uintptr_t va) {
+    return arm64_get_phys_from_va(va);
+}
+
+void flush_tlb_all(void) {
+    flush_tlb();
+}
+
+void copy_user_pgd(phys_addr_t src_pgd_pa, phys_addr_t dst_pgd_pa) {
+    copy_user_page_table(src_pgd_pa, dst_pgd_pa);
+}
+
+void free_pgd_tree(phys_addr_t pgd_pa) {
+    free_page_table_tree(pgd_pa);
 }
